@@ -1,7 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:flutter_highlight/flutter_highlight.dart';
+import 'package:flutter_code_editor/flutter_code_editor.dart';
+import 'package:highlight/languages/dart.dart';
+import 'package:highlight/languages/python.dart';
+import 'package:highlight/languages/javascript.dart';
+import 'package:highlight/languages/typescript.dart';
+import 'package:highlight/languages/java.dart';
+import 'package:highlight/languages/cpp.dart';
+import 'package:highlight/languages/cs.dart';
+import 'package:highlight/languages/go.dart';
+import 'package:highlight/languages/rust.dart';
+import 'package:highlight/languages/swift.dart';
+import 'package:highlight/languages/kotlin.dart';
+import 'package:highlight/languages/php.dart';
+import 'package:highlight/languages/ruby.dart';
+import 'package:highlight/languages/xml.dart';
+import 'package:highlight/languages/css.dart';
+import 'package:highlight/languages/yaml.dart';
+import 'package:highlight/languages/json.dart';
+import 'package:highlight/languages/markdown.dart';
 import 'package:flutter_highlight/themes/github.dart';
+import 'package:highlight/highlight_core.dart';
 
 class EditorWidget extends StatefulWidget {
   final String filePath;
@@ -22,20 +41,22 @@ class EditorWidget extends StatefulWidget {
 }
 
 class EditorWidgetState extends State<EditorWidget> {
-  late TextEditingController _textController;
+  late CodeController _codeController;
   late FocusNode _focusNode;
 
   @override
   void initState() {
     super.initState();
     _focusNode = FocusNode();
-    _textController = TextEditingController(text: widget.content);
-
-    _textController.addListener(() {
-      // Avoid notifyListeners during build phase
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        widget.onContentChanged(_textController.text);
-      });
+    _codeController = CodeController(
+      text: widget.content,
+      language: _getLanguage(widget.filePath),
+    );
+    _codeController.addListener(() {
+      widget.onContentChanged(_codeController.text);
+    });
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      widget.onContentChanged(_codeController.text);
     });
   }
 
@@ -44,60 +65,66 @@ class EditorWidgetState extends State<EditorWidget> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.filePath != widget.filePath ||
         oldWidget.content != widget.content) {
-      _textController.text = widget.content;
+      final newLanguage = _getLanguage(widget.filePath);
+      final newText = widget.content;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _codeController.language = newLanguage;
+        if (_codeController.text != newText) {
+          _codeController.text = newText;
+        }
+      });
     }
   }
 
-  String _getLanguage(String filePath) {
+  Mode? _getLanguage(String filePath) {
     final fileName = filePath.split('/').last;
     final extension = fileName.split('.').last.toLowerCase();
-
     switch (extension) {
       case 'dart':
-        return 'dart';
+        return dart;
       case 'py':
-        return 'python';
+        return python;
       case 'js':
       case 'jsx':
-        return 'javascript';
+        return javascript;
       case 'ts':
       case 'tsx':
-        return 'typescript';
+        return typescript;
       case 'java':
-        return 'java';
+        return java;
       case 'cpp':
       case 'cc':
       case 'cxx':
-        return 'cpp';
+        return cpp;
       case 'c':
-        return 'c';
+        return cpp; // Нет отдельного C в highlight, используем cpp
       case 'cs':
-        return 'csharp';
+        return cs;
       case 'go':
-        return 'go';
+        return go;
       case 'rs':
-        return 'rust';
+        return rust;
       case 'swift':
-        return 'swift';
+        return swift;
       case 'kt':
-        return 'kotlin';
+        return kotlin;
       case 'php':
-        return 'php';
+        return php;
       case 'rb':
-        return 'ruby';
+        return ruby;
       case 'html':
-        return 'html';
+        return xml; // highlight зовет это xml
       case 'css':
-        return 'css';
+        return css;
       case 'yaml':
       case 'yml':
-        return 'yaml';
+        return yaml;
       case 'json':
-        return 'json';
+        return json;
       case 'md':
-        return 'markdown';
+        return markdown;
       default:
-        return '';
+        return dart; // по умолчанию пусть будет dart
     }
   }
 
@@ -107,7 +134,7 @@ class EditorWidgetState extends State<EditorWidget> {
 
   @override
   void dispose() {
-    _textController.dispose();
+    _codeController.dispose();
     _focusNode.dispose();
     super.dispose();
   }
@@ -150,12 +177,18 @@ class EditorWidgetState extends State<EditorWidget> {
             decoration: BoxDecoration(
               border: Border.all(color: Colors.grey[300]!),
             ),
-            child: HighlightView(
-              _textController.text,
-              language: _getLanguage(widget.filePath),
-              theme: githubTheme,
-              padding: const EdgeInsets.all(16),
-              textStyle: const TextStyle(fontFamily: 'monospace', fontSize: 14),
+            child: CodeTheme(
+              data: CodeThemeData(styles: githubTheme),
+              child: CodeField(
+                controller: _codeController,
+                focusNode: _focusNode,
+                textStyle: const TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 14,
+                ),
+                expands: true,
+                padding: const EdgeInsets.all(16),
+              ),
             ),
           ),
         ),
