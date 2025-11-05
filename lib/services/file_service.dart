@@ -1,13 +1,14 @@
 import 'dart:io';
+import 'package:file_picker/file_picker.dart';
+
 import '../models/project_model.dart';
 
 class FileService {
   static Future<String?> pickProjectDirectory() async {
-    // For MVP, we'll use a mock directory picker
-    // In a real implementation, you'd use file_picker
+    // Use file_picker to let user select a directory
     try {
-      // Return current directory as mock
-      return Directory.current.path;
+      String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
+      return selectedDirectory;
     } catch (e) {
       print('Error picking directory: $e');
       return null;
