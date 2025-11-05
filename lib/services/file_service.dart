@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 
 import '../models/project_model.dart';
+import '../utils/logger.dart';
 
 class FileService {
   static Future<String?> pickProjectDirectory() async {
@@ -10,7 +11,7 @@ class FileService {
       String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
       return selectedDirectory;
     } catch (e) {
-      print('Error picking directory: $e');
+      logger.e('Error picking directory: $e');
       return null;
     }
   }
@@ -22,7 +23,7 @@ class FileService {
         return FileNode.fromDirectory(directory);
       }
     } catch (e) {
-      print('Error loading project tree: $e');
+      logger.e('Error loading project tree: $e');
     }
     return null;
   }
@@ -34,7 +35,7 @@ class FileService {
         return await file.readAsString();
       }
     } catch (e) {
-      print('Error reading file: $e');
+      logger.e('Error reading file: $e');
     }
     return '';
   }
@@ -45,7 +46,7 @@ class FileService {
       await file.writeAsString(content);
       return true;
     } catch (e) {
-      print('Error writing file: $e');
+      logger.e('Error writing file: $e');
       return false;
     }
   }

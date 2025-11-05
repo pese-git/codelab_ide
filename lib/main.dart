@@ -36,10 +36,10 @@ class IDEHomePage extends StatefulWidget {
   const IDEHomePage({super.key});
 
   @override
-  _IDEHomePageState createState() => _IDEHomePageState();
+  IDEHomePageState createState() => IDEHomePageState();
 }
 
-class _IDEHomePageState extends State<IDEHomePage> {
+class IDEHomePageState extends State<IDEHomePage> {
   double _fileTreeWidth = 250.0;
   double _terminalHeight = 200.0;
 
@@ -52,12 +52,12 @@ class _IDEHomePageState extends State<IDEHomePage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.folder_open),
-            onPressed: _openProject,
+            onPressed: () => _openProject(),
             tooltip: 'Open Project',
           ),
           IconButton(
             icon: const Icon(Icons.play_arrow),
-            onPressed: _runCurrentFile,
+            onPressed: () => _runCurrentFile(context),
             tooltip: 'Run Current File',
           ),
         ],
@@ -74,7 +74,8 @@ class _IDEHomePageState extends State<IDEHomePage> {
                     Expanded(
                       child: FileTreeWidget(
                         fileTree: projectState.fileTree,
-                        onFileSelected: (filePath) => _openFile(filePath, projectState),
+                        onFileSelected: (filePath) =>
+                            _openFile(filePath, projectState),
                         selectedFile: projectState.currentFile,
                       ),
                     ),
@@ -91,10 +92,7 @@ class _IDEHomePageState extends State<IDEHomePage> {
                       _fileTreeWidth = _fileTreeWidth.clamp(150.0, 400.0);
                     });
                   },
-                  child: Container(
-                    width: 4,
-                    color: Colors.grey[300],
-                  ),
+                  child: Container(width: 4, color: Colors.grey[300]),
                 ),
               ),
               // Editor and Terminal
@@ -108,8 +106,10 @@ class _IDEHomePageState extends State<IDEHomePage> {
                               filePath: projectState.currentFile!,
                               content: projectState.fileContent,
                               onContentChanged: (content) {
-                                Provider.of<ProjectState>(context, listen: false)
-                                    .copyWith(fileContent: content);
+                                Provider.of<ProjectState>(
+                                  context,
+                                  listen: false,
+                                ).copyWith(fileContent: content);
                               },
                               onSave: () => _saveCurrentFile(projectState),
                             )
@@ -117,11 +117,18 @@ class _IDEHomePageState extends State<IDEHomePage> {
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.code, size: 64, color: Colors.grey),
+                                  Icon(
+                                    Icons.code,
+                                    size: 64,
+                                    color: Colors.grey,
+                                  ),
                                   SizedBox(height: 16),
                                   Text(
                                     'No file selected',
-                                    style: TextStyle(fontSize: 18, color: Colors.grey),
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      color: Colors.grey,
+                                    ),
                                   ),
                                   Text(
                                     'Select a file from the file tree to start editing',
@@ -138,13 +145,13 @@ class _IDEHomePageState extends State<IDEHomePage> {
                         onVerticalDragUpdate: (details) {
                           setState(() {
                             _terminalHeight -= details.delta.dy;
-                            _terminalHeight = _terminalHeight.clamp(100.0, 400.0);
+                            _terminalHeight = _terminalHeight.clamp(
+                              100.0,
+                              400.0,
+                            );
                           });
                         },
-                        child: Container(
-                          height: 4,
-                          color: Colors.grey[300],
-                        ),
+                        child: Container(height: 4, color: Colors.grey[300]),
                       ),
                     ),
                     // Terminal Panel
@@ -166,6 +173,7 @@ class _IDEHomePageState extends State<IDEHomePage> {
 
   void _openProject() async {
     final projectPath = await FileService.pickProjectDirectory();
+    if (!mounted) return;
     if (projectPath != null) {
       final fileTree = FileService.loadProjectTree(projectPath);
       Provider.of<ProjectState>(context, listen: false).copyWith(
@@ -179,10 +187,11 @@ class _IDEHomePageState extends State<IDEHomePage> {
 
   void _openFile(String filePath, ProjectState projectState) async {
     final content = await FileService.readFile(filePath);
-    Provider.of<ProjectState>(context, listen: false).copyWith(
-      currentFile: filePath,
-      fileContent: content,
-    );
+    if (!mounted) return;
+    Provider.of<ProjectState>(
+      context,
+      listen: false,
+    ).copyWith(currentFile: filePath, fileContent: content);
   }
 
   void _saveCurrentFile(ProjectState projectState) async {
@@ -191,31 +200,31 @@ class _IDEHomePageState extends State<IDEHomePage> {
         projectState.currentFile!,
         projectState.fileContent,
       );
-      
+      if (!mounted) return;
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('File saved successfully')),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to save file')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Failed to save file')));
       }
     }
   }
 
-  void _runCurrentFile() {
+  void _runCurrentFile(BuildContext context) {
     final projectState = Provider.of<ProjectState>(context, listen: false);
     if (projectState.currentFile != null) {
       final command = RunService.getRunCommand(projectState.currentFile!);
       // In a real implementation, you would execute this command in the terminal
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Would run: $command')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Would run: $command')));
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No file selected to run')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('No file selected to run')));
     }
   }
 }

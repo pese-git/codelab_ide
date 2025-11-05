@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:codelab_ide/utils/logger.dart';
 import 'package:flutter/foundation.dart';
 
 class FileNode {
@@ -16,7 +17,7 @@ class FileNode {
 
   factory FileNode.fromDirectory(Directory directory) {
     final children = <FileNode>[];
-    
+
     try {
       final entities = directory.listSync();
       for (var entity in entities) {
@@ -25,21 +26,19 @@ class FileNode {
         if (name.startsWith('.') || name == 'build' || name == '.dart_tool') {
           continue;
         }
-        
+
         if (entity is Directory) {
           children.add(FileNode.fromDirectory(entity));
         } else {
-          children.add(FileNode(
-            name: name,
-            path: entity.path,
-            isDirectory: false,
-          ));
+          children.add(
+            FileNode(name: name, path: entity.path, isDirectory: false),
+          );
         }
       }
     } catch (e) {
-      print('Error reading directory ${directory.path}: $e');
+      logger.e('Error reading directory ${directory.path}: $e');
     }
-    
+
     // Sort: directories first, then files
     children.sort((a, b) {
       if (a.isDirectory && !b.isDirectory) return -1;

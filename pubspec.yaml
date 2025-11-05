@@ -39,6 +39,8 @@ dependencies:
   path: ^1.9.1
   file: ^7.0.1
   xterm: ^4.0.0
+  logger: ^2.6.2
+  flutter_highlight: ^0.7.0
 
 dev_dependencies:
   flutter_test:

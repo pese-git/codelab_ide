@@ -10,18 +10,18 @@ class EditorWidget extends StatefulWidget {
   final Function() onSave;
 
   const EditorWidget({
-    Key? key,
+    super.key,
     required this.filePath,
     required this.content,
     required this.onContentChanged,
     required this.onSave,
-  }) : super(key: key);
+  });
 
   @override
-  _EditorWidgetState createState() => _EditorWidgetState();
+  EditorWidgetState createState() => EditorWidgetState();
 }
 
-class _EditorWidgetState extends State<EditorWidget> {
+class EditorWidgetState extends State<EditorWidget> {
   late TextEditingController _textController;
   late FocusNode _focusNode;
 

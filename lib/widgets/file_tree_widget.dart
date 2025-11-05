@@ -7,17 +7,17 @@ class FileTreeWidget extends StatefulWidget {
   final String? selectedFile;
 
   const FileTreeWidget({
-    Key? key,
+    super.key,
     required this.fileTree,
     required this.onFileSelected,
     this.selectedFile,
-  }) : super(key: key);
+  });
 
   @override
-  _FileTreeWidgetState createState() => _FileTreeWidgetState();
+  FileTreeWidgetState createState() => FileTreeWidgetState();
 }
 
-class _FileTreeWidgetState extends State<FileTreeWidget> {
+class FileTreeWidgetState extends State<FileTreeWidget> {
   final Set<String> _expandedNodes = {};
 
   void _toggleExpanded(String path) {
@@ -70,9 +70,7 @@ class _FileTreeWidgetState extends State<FileTreeWidget> {
         if (node.isDirectory && isExpanded)
           Padding(
             padding: const EdgeInsets.only(left: 16.0),
-            child: Column(
-              children: node.children.map(_buildFileNode).toList(),
-            ),
+            child: Column(children: node.children.map(_buildFileNode).toList()),
           ),
       ],
     );
@@ -113,13 +111,9 @@ class _FileTreeWidgetState extends State<FileTreeWidget> {
   @override
   Widget build(BuildContext context) {
     if (widget.fileTree == null) {
-      return const Center(
-        child: Text('No project loaded'),
-      );
+      return const Center(child: Text('No project loaded'));
     }
 
-    return SingleChildScrollView(
-      child: _buildFileNode(widget.fileTree!),
-    );
+    return SingleChildScrollView(child: _buildFileNode(widget.fileTree!));
   }
 }

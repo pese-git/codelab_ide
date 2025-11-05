@@ -4,16 +4,13 @@ import '../services/run_service.dart';
 class TerminalWidget extends StatefulWidget {
   final String? workingDirectory;
 
-  const TerminalWidget({
-    Key? key,
-    this.workingDirectory,
-  }) : super(key: key);
+  const TerminalWidget({super.key, this.workingDirectory});
 
   @override
-  _TerminalWidgetState createState() => _TerminalWidgetState();
+  TerminalWidgetState createState() => TerminalWidgetState();
 }
 
-class _TerminalWidgetState extends State<TerminalWidget> {
+class TerminalWidgetState extends State<TerminalWidget> {
   final TextEditingController _commandController = TextEditingController();
   final List<String> _output = [];
   final ScrollController _scrollController = ScrollController();
@@ -31,7 +28,7 @@ class _TerminalWidgetState extends State<TerminalWidget> {
     if (command.trim().isEmpty) return;
 
     _output.add('\$ $command');
-    
+
     if (command == 'clear') {
       setState(() {
         _output.clear();
@@ -49,20 +46,21 @@ class _TerminalWidgetState extends State<TerminalWidget> {
     // Execute the command
     RunService.runCommand(command, workingDirectory: widget.workingDirectory)
         .then((result) {
-      setState(() {
-        _output.removeLast(); // Remove "Executing..."
-        _output.add(result);
-        _output.add('');
-      });
-      _scrollToBottom();
-    }).catchError((error) {
-      setState(() {
-        _output.removeLast(); // Remove "Executing..."
-        _output.add('Error: $error');
-        _output.add('');
-      });
-      _scrollToBottom();
-    });
+          setState(() {
+            _output.removeLast(); // Remove "Executing..."
+            _output.add(result);
+            _output.add('');
+          });
+          _scrollToBottom();
+        })
+        .catchError((error) {
+          setState(() {
+            _output.removeLast(); // Remove "Executing..."
+            _output.add('Error: $error');
+            _output.add('');
+          });
+          _scrollToBottom();
+        });
 
     _commandController.clear();
   }
@@ -107,7 +105,10 @@ class _TerminalWidgetState extends State<TerminalWidget> {
                 icon: const Icon(Icons.clear_all, size: 16),
                 label: const Text('Clear'),
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                 ),
               ),
             ],
