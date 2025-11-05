@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_highlight/flutter_highlight.dart';
 import 'package:flutter_highlight/themes/github.dart';
 
@@ -29,16 +30,20 @@ class _EditorWidgetState extends State<EditorWidget> {
     super.initState();
     _focusNode = FocusNode();
     _textController = TextEditingController(text: widget.content);
-    
+
     _textController.addListener(() {
-      widget.onContentChanged(_textController.text);
+      // Avoid notifyListeners during build phase
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        widget.onContentChanged(_textController.text);
+      });
     });
   }
 
   @override
   void didUpdateWidget(EditorWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.filePath != widget.filePath || oldWidget.content != widget.content) {
+    if (oldWidget.filePath != widget.filePath ||
+        oldWidget.content != widget.content) {
       _textController.text = widget.content;
     }
   }
@@ -46,7 +51,7 @@ class _EditorWidgetState extends State<EditorWidget> {
   String _getLanguage(String filePath) {
     final fileName = filePath.split('/').last;
     final extension = fileName.split('.').last.toLowerCase();
-    
+
     switch (extension) {
       case 'dart':
         return 'dart';
@@ -131,7 +136,10 @@ class _EditorWidgetState extends State<EditorWidget> {
                 icon: const Icon(Icons.save, size: 16),
                 label: const Text('Save'),
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                 ),
               ),
             ],
@@ -147,10 +155,7 @@ class _EditorWidgetState extends State<EditorWidget> {
               language: _getLanguage(widget.filePath),
               theme: githubTheme,
               padding: const EdgeInsets.all(16),
-              textStyle: const TextStyle(
-                fontFamily: 'monospace',
-                fontSize: 14,
-              ),
+              textStyle: const TextStyle(fontFamily: 'monospace', fontSize: 14),
             ),
           ),
         ),
