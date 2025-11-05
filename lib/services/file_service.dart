@@ -1,7 +1,7 @@
 import 'dart:io';
+import 'package:codelab_ide/models/file_node.dart';
 import 'package:file_picker/file_picker.dart';
 
-import '../models/project_model.dart';
 import '../utils/logger.dart';
 
 class FileService {

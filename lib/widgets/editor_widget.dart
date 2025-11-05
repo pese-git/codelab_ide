@@ -1,5 +1,6 @@
+import 'package:codelab_ide/project_bloc.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_code_editor/flutter_code_editor.dart';
 import 'package:highlight/languages/dart.dart';
 import 'package:highlight/languages/python.dart';
@@ -20,60 +21,176 @@ import 'package:highlight/languages/yaml.dart';
 import 'package:highlight/languages/json.dart';
 import 'package:highlight/languages/markdown.dart';
 import 'package:flutter_highlight/themes/github.dart';
-import 'package:highlight/highlight_core.dart';
+import 'package:highlight/highlight.dart' show Mode;
+import 'editor_bloc.dart';
 
 class EditorWidget extends StatefulWidget {
   final String filePath;
   final String content;
-  final Function(String) onContentChanged;
-  final Function() onSave;
 
   const EditorWidget({
     super.key,
     required this.filePath,
     required this.content,
-    required this.onContentChanged,
-    required this.onSave,
   });
 
   @override
-  EditorWidgetState createState() => EditorWidgetState();
+  State<EditorWidget> createState() => _EditorWidgetState();
 }
 
-class EditorWidgetState extends State<EditorWidget> {
+class _EditorWidgetState extends State<EditorWidget> {
   late CodeController _codeController;
   late FocusNode _focusNode;
+  late EditorBloc _bloc;
+  String _lastFilePath = '';
+  bool _ignoreControllerChanges = false;
 
   @override
   void initState() {
     super.initState();
     _focusNode = FocusNode();
+    _bloc = EditorBloc();
+
+    // Первичная инициализация состояния редактора
+    _bloc.add(
+      EditorEvent.setFile(filePath: widget.filePath, content: widget.content),
+    );
+
     _codeController = CodeController(
       text: widget.content,
       language: _getLanguage(widget.filePath),
     );
+
     _codeController.addListener(() {
-      widget.onContentChanged(_codeController.text);
+      if (!_ignoreControllerChanges) {
+        _bloc.add(EditorEvent.updateContent(_codeController.text));
+      }
     });
-    SchedulerBinding.instance.addPostFrameCallback((_) {
-      widget.onContentChanged(_codeController.text);
-    });
+
+    _lastFilePath = widget.filePath;
   }
 
   @override
-  void didUpdateWidget(EditorWidget oldWidget) {
+  void didUpdateWidget(covariant EditorWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.filePath != widget.filePath ||
-        oldWidget.content != widget.content) {
-      final newLanguage = _getLanguage(widget.filePath);
-      final newText = widget.content;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _codeController.language = newLanguage;
-        if (_codeController.text != newText) {
-          _codeController.text = newText;
-        }
-      });
+
+    final isValid = widget.filePath.isNotEmpty && widget.content.isNotEmpty;
+    if ((widget.filePath != oldWidget.filePath ||
+            widget.content != oldWidget.content) &&
+        isValid) {
+      _bloc.add(
+        EditorEvent.setFile(filePath: widget.filePath, content: widget.content),
+      );
     }
+  }
+
+  @override
+  void dispose() {
+    _codeController.dispose();
+    _focusNode.dispose();
+    _bloc.close();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider<EditorBloc>.value(
+      value: _bloc,
+      child: BlocBuilder<EditorBloc, EditorState>(
+        builder: (context, state) {
+          // Синхронизируем контроллер с новым файлом или внешним изменением контента
+          if (_lastFilePath != state.filePath ||
+              _codeController.text != state.content ||
+              _codeController.language != _getLanguage(state.filePath)) {
+            _ignoreControllerChanges = true;
+            _codeController.language = _getLanguage(state.filePath);
+            if (_codeController.text != state.content) {
+              _codeController.text = state.content;
+            }
+            _lastFilePath = state.filePath;
+            _ignoreControllerChanges = false;
+          }
+
+          return Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8.0),
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.code, size: 16),
+                    const SizedBox(width: 8),
+                    Text(
+                      _getFileName(state.filePath),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const Spacer(),
+                    ElevatedButton.icon(
+                      onPressed: state.isSaving
+                          ? null
+                          : () => context.read<ProjectBloc>().add(
+                              ProjectEvent.saveCurrentFile(
+                                currentFile: state.filePath,
+                                fileContent: state.content,
+                              ),
+                            ),
+                      icon: state.isSaving
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.save, size: 16),
+                      label: const Text('Save'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                      ),
+                    ),
+                    if (state.isDirty)
+                      const Padding(
+                        padding: EdgeInsets.only(left: 8.0),
+                        child: Text(
+                          'Unsaved',
+                          style: TextStyle(
+                            color: Colors.orange,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
+                  child: CodeTheme(
+                    data: CodeThemeData(styles: githubTheme),
+                    child: CodeField(
+                      controller: _codeController,
+                      focusNode: _focusNode,
+                      textStyle: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 14,
+                      ),
+                      expands: true,
+                      padding: const EdgeInsets.all(16),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 
   Mode? _getLanguage(String filePath) {
@@ -95,9 +212,8 @@ class EditorWidgetState extends State<EditorWidget> {
       case 'cpp':
       case 'cc':
       case 'cxx':
-        return cpp;
       case 'c':
-        return cpp; // Нет отдельного C в highlight, используем cpp
+        return cpp;
       case 'cs':
         return cs;
       case 'go':
@@ -113,7 +229,7 @@ class EditorWidgetState extends State<EditorWidget> {
       case 'rb':
         return ruby;
       case 'html':
-        return xml; // highlight зовет это xml
+        return xml;
       case 'css':
         return css;
       case 'yaml':
@@ -124,75 +240,11 @@ class EditorWidgetState extends State<EditorWidget> {
       case 'md':
         return markdown;
       default:
-        return dart; // по умолчанию пусть будет dart
+        return dart;
     }
   }
 
   String _getFileName(String filePath) {
     return filePath.split('/').last;
-  }
-
-  @override
-  void dispose() {
-    _codeController.dispose();
-    _focusNode.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8.0),
-          decoration: BoxDecoration(
-            color: Colors.grey[200],
-            border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.code, size: 16),
-              const SizedBox(width: 8),
-              Text(
-                _getFileName(widget.filePath),
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const Spacer(),
-              ElevatedButton.icon(
-                onPressed: widget.onSave,
-                icon: const Icon(Icons.save, size: 16),
-                label: const Text('Save'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey[300]!),
-            ),
-            child: CodeTheme(
-              data: CodeThemeData(styles: githubTheme),
-              child: CodeField(
-                controller: _codeController,
-                focusNode: _focusNode,
-                textStyle: const TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 14,
-                ),
-                expands: true,
-                padding: const EdgeInsets.all(16),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
   }
 }

@@ -1,68 +1,110 @@
 import 'package:flutter/material.dart';
-import '../services/run_service.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'terminal_bloc.dart';
 
 class TerminalWidget extends StatefulWidget {
-  final String? workingDirectory;
-
-  const TerminalWidget({super.key, this.workingDirectory});
+  final String? projectDirectory;
+  const TerminalWidget({super.key, this.projectDirectory});
 
   @override
-  TerminalWidgetState createState() => TerminalWidgetState();
+  State<TerminalWidget> createState() => _TerminalWidgetState();
 }
 
-class TerminalWidgetState extends State<TerminalWidget> {
-  final TextEditingController _commandController = TextEditingController();
-  final List<String> _output = [];
+class _TerminalWidgetState extends State<TerminalWidget> {
   final ScrollController _scrollController = ScrollController();
+  final TextEditingController _controller = TextEditingController();
 
   @override
-  void initState() {
-    super.initState();
-    _output.add('Welcome to CodeLab IDE Terminal');
-    _output.add('Working directory: ${widget.workingDirectory ?? 'Not set'}');
-    _output.add('Type commands and press Enter to execute');
-    _output.add('');
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
-  void _executeCommand(String command) {
-    if (command.trim().isEmpty) return;
-
-    _output.add('\$ $command');
-
-    if (command == 'clear') {
-      setState(() {
-        _output.clear();
-        _output.add('Terminal cleared');
-        _output.add('');
-      });
-      _scrollToBottom();
-      return;
+  void _submitCommand(BuildContext context) {
+    final text = _controller.text.trim();
+    if (text.isNotEmpty) {
+      context.read<TerminalBloc>().add(TerminalEvent.executeCommand(text));
+      _controller.clear();
     }
+  }
 
-    // Show loading
-    _output.add('Executing...');
-    _scrollToBottom();
-
-    // Execute the command
-    RunService.runCommand(command, workingDirectory: widget.workingDirectory)
-        .then((result) {
-          setState(() {
-            _output.removeLast(); // Remove "Executing..."
-            _output.add(result);
-            _output.add('');
-          });
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => TerminalBloc()
+        ..add(TerminalEvent.clear(projectDirectory: widget.projectDirectory)),
+      child: BlocConsumer<TerminalBloc, TerminalState>(
+        builder: (context, state) {
+          return Column(
+            children: [
+              Expanded(
+                child: Container(
+                  color: Colors.black,
+                  padding: const EdgeInsets.all(8),
+                  alignment: Alignment.topLeft,
+                  child: ListView(
+                    controller: _scrollController,
+                    children: state.output
+                        .map(
+                          (line) => Text(
+                            line,
+                            style: const TextStyle(
+                              color: Colors.greenAccent,
+                              fontFamily: 'monospace',
+                              fontSize: 14,
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _controller,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontFamily: 'monospace',
+                      ),
+                      decoration: const InputDecoration(
+                        filled: true,
+                        fillColor: Colors.black,
+                        hintText: 'Enter command...',
+                        hintStyle: TextStyle(color: Colors.grey),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(horizontal: 8),
+                      ),
+                      onSubmitted: (_) => _submitCommand(context),
+                    ),
+                  ),
+                  /*
+                  IconButton(
+                    color: Colors.black,
+                    icon: const Icon(Icons.send, color: Colors.white),
+                    onPressed: () => _submitCommand(context),
+                  ),
+                  IconButton(
+                    color: Colors.black,
+                    icon: const Icon(Icons.clear, color: Colors.white),
+                    onPressed: () {
+                      context.read<TerminalBloc>().add(
+                        const TerminalEvent.clear(),
+                      );
+                    },
+                  ),
+                  */
+                ],
+              ),
+            ],
+          );
+        },
+        listener: (BuildContext context, TerminalState state) {
           _scrollToBottom();
-        })
-        .catchError((error) {
-          setState(() {
-            _output.removeLast(); // Remove "Executing..."
-            _output.add('Error: $error');
-            _output.add('');
-          });
-          _scrollToBottom();
-        });
-
-    _commandController.clear();
+        },
+      ),
+    );
   }
 
   void _scrollToBottom() {
@@ -73,108 +115,5 @@ class TerminalWidgetState extends State<TerminalWidget> {
         curve: Curves.easeOut,
       );
     });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8.0),
-          decoration: BoxDecoration(
-            color: Colors.grey[200],
-            border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.terminal, size: 16),
-              const SizedBox(width: 8),
-              Text(
-                'Terminal',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const Spacer(),
-              ElevatedButton.icon(
-                onPressed: () {
-                  setState(() {
-                    _output.clear();
-                    _output.add('Terminal cleared');
-                    _output.add('');
-                  });
-                },
-                icon: const Icon(Icons.clear_all, size: 16),
-                label: const Text('Clear'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: Container(
-            color: Colors.black,
-            child: Column(
-              children: [
-                Expanded(
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(8.0),
-                    itemCount: _output.length,
-                    itemBuilder: (context, index) {
-                      return Text(
-                        _output[index],
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontFamily: 'monospace',
-                          fontSize: 14,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.all(8.0),
-                  decoration: BoxDecoration(
-                    border: Border(top: BorderSide(color: Colors.grey[700]!)),
-                  ),
-                  child: Row(
-                    children: [
-                      Text(
-                        '\$ ',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontFamily: 'monospace',
-                          fontSize: 14,
-                        ),
-                      ),
-                      Expanded(
-                        child: TextField(
-                          controller: _commandController,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontFamily: 'monospace',
-                            fontSize: 14,
-                          ),
-                          decoration: const InputDecoration(
-                            border: InputBorder.none,
-                            hintText: 'Type command...',
-                            hintStyle: TextStyle(color: Colors.grey),
-                          ),
-                          onSubmitted: _executeCommand,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
   }
 }

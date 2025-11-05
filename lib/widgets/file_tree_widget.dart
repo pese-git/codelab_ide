@@ -1,38 +1,74 @@
+import 'package:codelab_ide/models/file_node.dart';
 import 'package:flutter/material.dart';
-import '../models/project_model.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'file_tree_bloc.dart';
 
 class FileTreeWidget extends StatefulWidget {
-  final FileNode? fileTree;
-  final Function(String) onFileSelected;
-  final String? selectedFile;
+  final FileNode? initialFileTree;
+  final ValueChanged<String>? onFileSelected;
 
   const FileTreeWidget({
     super.key,
-    required this.fileTree,
-    required this.onFileSelected,
-    this.selectedFile,
+    required this.initialFileTree,
+    this.onFileSelected,
   });
 
   @override
-  FileTreeWidgetState createState() => FileTreeWidgetState();
+  State<FileTreeWidget> createState() => _FileTreeWidgetState();
 }
 
-class FileTreeWidgetState extends State<FileTreeWidget> {
-  final Set<String> _expandedNodes = {};
+class _FileTreeWidgetState extends State<FileTreeWidget> {
+  late final FileTreeBloc _bloc;
 
-  void _toggleExpanded(String path) {
-    setState(() {
-      if (_expandedNodes.contains(path)) {
-        _expandedNodes.remove(path);
-      } else {
-        _expandedNodes.add(path);
-      }
-    });
+  @override
+  void initState() {
+    super.initState();
+    _bloc = FileTreeBloc();
+    if (widget.initialFileTree != null) {
+      _bloc.add(FileTreeEvent.setFileTree(widget.initialFileTree));
+    }
   }
 
-  Widget _buildFileNode(FileNode node) {
-    final isExpanded = _expandedNodes.contains(node.path);
-    final isSelected = widget.selectedFile == node.path;
+  @override
+  void didUpdateWidget(covariant FileTreeWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialFileTree != oldWidget.initialFileTree) {
+      _bloc.add(FileTreeEvent.setFileTree(widget.initialFileTree));
+    }
+  }
+
+  @override
+  void dispose() {
+    _bloc.close();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider<FileTreeBloc>.value(
+      value: _bloc,
+      child: BlocBuilder<FileTreeBloc, FileTreeState>(
+        builder: (context, state) {
+          final fileTree = state.fileTree;
+          if (fileTree == null) {
+            return const Center(child: Text('No project loaded'));
+          }
+          return SingleChildScrollView(
+            child: _buildFileNode(context, fileTree, state),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildFileNode(
+    BuildContext context,
+    FileNode node,
+    FileTreeState state,
+  ) {
+    final isExpanded = state.expandedNodes.contains(node.path);
+    final isSelected = state.selectedFile == node.path;
+    final bloc = context.read<FileTreeBloc>();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -59,9 +95,12 @@ class FileTreeWidgetState extends State<FileTreeWidget> {
               : null,
           onTap: () {
             if (node.isDirectory) {
-              _toggleExpanded(node.path);
+              bloc.add(FileTreeEvent.toggleExpanded(node.path));
             } else {
-              widget.onFileSelected(node.path);
+              bloc.add(FileTreeEvent.selectFile(node.path));
+              if (widget.onFileSelected != null) {
+                widget.onFileSelected!(node.path);
+              }
             }
           },
           contentPadding: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -70,7 +109,11 @@ class FileTreeWidgetState extends State<FileTreeWidget> {
         if (node.isDirectory && isExpanded)
           Padding(
             padding: const EdgeInsets.only(left: 16.0),
-            child: Column(children: node.children.map(_buildFileNode).toList()),
+            child: Column(
+              children: node.children
+                  .map((child) => _buildFileNode(context, child, state))
+                  .toList(),
+            ),
           ),
       ],
     );
@@ -106,14 +149,5 @@ class FileTreeWidgetState extends State<FileTreeWidget> {
       default:
         return Icons.insert_drive_file;
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (widget.fileTree == null) {
-      return const Center(child: Text('No project loaded'));
-    }
-
-    return SingleChildScrollView(child: _buildFileNode(widget.fileTree!));
   }
 }

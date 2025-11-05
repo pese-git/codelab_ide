@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:codelab_ide/utils/logger.dart';
-import 'package:flutter/foundation.dart';
 
 class FileNode {
   final String name;
@@ -52,30 +51,5 @@ class FileNode {
       isDirectory: true,
       children: children,
     );
-  }
-}
-
-class ProjectState extends ChangeNotifier {
-  String? _projectPath;
-  FileNode? _fileTree;
-  String? _currentFile;
-  String _fileContent = '';
-
-  String? get projectPath => _projectPath;
-  FileNode? get fileTree => _fileTree;
-  String? get currentFile => _currentFile;
-  String get fileContent => _fileContent;
-
-  void copyWith({
-    String? projectPath,
-    FileNode? fileTree,
-    String? currentFile,
-    String? fileContent,
-  }) {
-    _projectPath = projectPath ?? _projectPath;
-    _fileTree = fileTree ?? _fileTree;
-    _currentFile = currentFile ?? _currentFile;
-    _fileContent = fileContent ?? _fileContent;
-    notifyListeners();
   }
 }

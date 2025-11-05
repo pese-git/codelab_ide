@@ -47,5 +47,7 @@ app.*.map.json
 .metadata
 .vscode/
 
+*.freezed.dart
+
 # FVM Version Cache
 .fvm/
