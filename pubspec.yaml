@@ -4,3 +4,13 @@ environment:
   sdk: ^3.9.0
 workspace:
   - apps/codelab_ide
+dev_dependencies:
+  melos: ^7.3.0
+
+
+melos:
+  sdkPath: .fvm/flutter_sdk
+
+  scripts:
+    generate:
+      run: melos exec -c 1 --depends-on build_runner -- dart run build_runner build
