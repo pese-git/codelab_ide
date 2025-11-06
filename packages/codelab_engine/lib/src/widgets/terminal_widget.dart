@@ -1,5 +1,5 @@
 import 'package:cherrypick/cherrypick.dart';
-import 'package:codelab_ide/services/run_service.dart';
+import 'package:codelab_engine/src/services/run_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'terminal_bloc.dart';

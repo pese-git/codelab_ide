@@ -1,6 +1,6 @@
 import 'package:cherrypick/cherrypick.dart';
-import 'package:codelab_ide/services/file_service.dart';
-import 'package:codelab_ide/services/run_service.dart';
+import 'package:codelab_engine/src/services/file_service.dart';
+import 'package:codelab_engine/src/services/run_service.dart';
 
 class AppDiModule extends Module {
   @override

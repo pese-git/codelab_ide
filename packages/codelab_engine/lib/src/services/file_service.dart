@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:codelab_ide/models/file_node.dart';
+import 'package:codelab_engine/src/models/file_node.dart';
 import 'package:file_picker/file_picker.dart';
 
 import '../utils/logger.dart';

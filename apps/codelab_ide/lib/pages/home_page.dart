@@ -1,10 +1,4 @@
-import 'package:cherrypick/cherrypick.dart';
-import 'package:codelab_ide/services/file_service.dart';
-import 'package:codelab_ide/services/run_service.dart';
-import 'package:codelab_ide/widgets/editor_widget.dart';
-import 'package:codelab_ide/widgets/file_tree_widget.dart';
-import 'package:codelab_ide/widgets/terminal_widget.dart';
-import 'package:codelab_ide/project_bloc.dart';
+import 'package:codelab_engine/codelab_engine.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -148,15 +142,12 @@ class IDEHomePageState extends State<IDEHomePage> {
   }
 
   void _openProject() async {
-    final fileService = CherryPick.openRootScope().resolve<FileService>();
-    final projectPath = await fileService.pickProjectDirectory();
-    if (!mounted) return;
-    if (projectPath != null) {
-      context.read<ProjectBloc>().add(ProjectEvent.openProject(projectPath));
-    }
+    context.read<ProjectBloc>().add(ProjectEvent.openProject());
   }
 
   void _runCurrentFile(BuildContext context) {
+        context.read<ProjectBloc>().add(ProjectEvent.runProject());
+    /*
     final projectState = context.read<ProjectBloc>().state;
     if (projectState.currentFile != null) {
       final runService = CherryPick.openRootScope().resolve<RunService>();
@@ -170,5 +161,6 @@ class IDEHomePageState extends State<IDEHomePage> {
         context,
       ).showSnackBar(const SnackBar(content: Text('No file selected to run')));
     }
+    */
   }
 }

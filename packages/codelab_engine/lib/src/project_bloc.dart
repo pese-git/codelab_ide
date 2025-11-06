@@ -1,4 +1,6 @@
-import 'package:codelab_ide/models/file_node.dart';
+import 'package:codelab_engine/codelab_engine.dart';
+import 'package:codelab_engine/src/models/file_node.dart';
+import 'package:codelab_engine/src/utils/logger.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'services/file_service.dart';
@@ -7,7 +9,8 @@ part 'project_bloc.freezed.dart';
 
 @freezed
 class ProjectEvent with _$ProjectEvent {
-  const factory ProjectEvent.openProject(String projectPath) = OpenProject;
+  const factory ProjectEvent.openProject() = OpenProject;
+  const factory ProjectEvent.runProject() = RunProject;
   const factory ProjectEvent.setFileTree(FileNode fileTree) = SetFileTree;
   const factory ProjectEvent.selectFile(String filePath) = SelectFile;
   const factory ProjectEvent.loadFileContent(String filePath) = LoadFileContent;
@@ -38,22 +41,44 @@ class ProjectState with _$ProjectState {
 
 class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
   final FileService _fileService;
+  final RunService _runService;
 
-  ProjectBloc({required FileService fileService})
+  ProjectBloc({required FileService fileService, required RunService runService})
     : _fileService = fileService,
+    _runService = runService,
       super(ProjectState.initial()) {
     on<OpenProject>((event, emit) async {
       emit(state.copyWith(isLoading: true, error: null, saveSuccess: false));
       try {
-        final fileTree = _fileService.loadProjectTree(event.projectPath);
+        final projectPath = await fileService.pickProjectDirectory();
+        final fileTree = _fileService.loadProjectTree(projectPath!);
         emit(
           state.copyWith(
-            projectPath: event.projectPath,
+            projectPath: projectPath,
             fileTree: fileTree,
             currentFile: null,
             fileContent: '',
             isLoading: false,
             error: null,
+          ),
+        );
+      } catch (e) {
+        emit(
+          state.copyWith(isLoading: false, error: 'Failed to open project: $e'),
+        );
+      }
+    });
+
+    on<RunProject>((event, emit) {
+      emit(state.copyWith(isLoading: true));
+      try {
+        final command = _runService.getRunCommand(state.currentFile!);
+
+        logger.i("Command: $command");
+          emit(
+          state.copyWith(
+            isLoading: false,
+  
           ),
         );
       } catch (e) {

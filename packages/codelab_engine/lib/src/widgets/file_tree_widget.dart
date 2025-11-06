@@ -1,4 +1,4 @@
-import 'package:codelab_ide/models/file_node.dart';
+import 'package:codelab_engine/src/models/file_node.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'file_tree_bloc.dart';

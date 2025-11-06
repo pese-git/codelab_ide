@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:async';
 
-import 'package:codelab_ide/services/file_service.dart';
+import 'package:codelab_engine/src/services/file_service.dart';
 
 abstract interface class RunService {
   Future<String> runCommand(String command, {String? workingDirectory});
