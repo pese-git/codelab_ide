@@ -1,3 +1,5 @@
+import 'package:cherrypick/cherrypick.dart';
+import 'package:codelab_ide/services/run_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'terminal_bloc.dart';
@@ -31,8 +33,9 @@ class _TerminalWidgetState extends State<TerminalWidget> {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => TerminalBloc()
-        ..add(TerminalEvent.clear(projectDirectory: widget.projectDirectory)),
+      create: (_) => TerminalBloc(
+        runService: CherryPick.openRootScope().resolve<RunService>(),
+      )..add(TerminalEvent.clear(projectDirectory: widget.projectDirectory)),
       child: BlocConsumer<TerminalBloc, TerminalState>(
         builder: (context, state) {
           return Column(

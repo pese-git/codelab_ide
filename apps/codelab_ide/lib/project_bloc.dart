@@ -37,11 +37,15 @@ class ProjectState with _$ProjectState {
 }
 
 class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
-  ProjectBloc() : super(ProjectState.initial()) {
+  final FileService _fileService;
+
+  ProjectBloc({required FileService fileService})
+    : _fileService = fileService,
+      super(ProjectState.initial()) {
     on<OpenProject>((event, emit) async {
       emit(state.copyWith(isLoading: true, error: null, saveSuccess: false));
       try {
-        final fileTree = FileService.loadProjectTree(event.projectPath);
+        final fileTree = _fileService.loadProjectTree(event.projectPath);
         emit(
           state.copyWith(
             projectPath: event.projectPath,
@@ -73,7 +77,7 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
         ),
       );
       try {
-        final content = await FileService.readFile(event.filePath);
+        final content = await _fileService.readFile(event.filePath);
 
         // 2. После await состояние блока могло измениться — используем последнее:
         final latestState = this.state;
@@ -101,7 +105,7 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
     on<LoadFileContent>((event, emit) async {
       emit(state.copyWith(isLoading: true, error: null));
       try {
-        final content = await FileService.readFile(event.filePath);
+        final content = await _fileService.readFile(event.filePath);
         emit(state.copyWith(fileContent: content, isLoading: false));
       } catch (e) {
         emit(
@@ -118,7 +122,7 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
       if (state.currentFile == null) return;
       emit(state.copyWith(isSaving: true, saveSuccess: false));
       try {
-        final success = await FileService.writeFile(
+        final success = await _fileService.writeFile(
           event.currentFile,
           event.fileContent,
         );

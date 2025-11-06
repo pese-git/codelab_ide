@@ -153,6 +153,38 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.4"
+  cherrypick:
+    dependency: transitive
+    description:
+      name: cherrypick
+      sha256: "9311bf7efb7748a9e0eda271f352ddd2890a785547e1e721463ed546123a4db5"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.0.2"
+  cherrypick_annotations:
+    dependency: transitive
+    description:
+      name: cherrypick_annotations
+      sha256: a89235bc11384c56af6778d4b0dc915cfe134d1fd148a1d5d91faa306b74d961
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.0.1"
+  cherrypick_flutter:
+    dependency: transitive
+    description:
+      name: cherrypick_flutter
+      sha256: "23c140f576d6604657a48ad0a8d0b6fcb29ea9b2c8eaab77073e9742873c722f"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.0.2"
+  cherrypick_generator:
+    dependency: transitive
+    description:
+      name: cherrypick_generator
+      sha256: f2acb119aea8576015b88b42aff40ecd97bad9b59867a54be2b68d2e8e0eeaa8
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.0.1"
   cli_launcher:
     dependency: transitive
     description:

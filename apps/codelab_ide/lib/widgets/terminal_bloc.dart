@@ -30,7 +30,11 @@ class TerminalState with _$TerminalState {
 }
 
 class TerminalBloc extends Bloc<TerminalEvent, TerminalState> {
-  TerminalBloc() : super(const TerminalState()) {
+  final RunService _runService;
+
+  TerminalBloc({required RunService runService})
+    : _runService = runService,
+      super(const TerminalState()) {
     on<ExecuteCommand>((event, emit) async {
       var output = List<String>.from(state.output);
 
@@ -49,7 +53,7 @@ class TerminalBloc extends Bloc<TerminalEvent, TerminalState> {
       emit(state.copyWith(output: output));
 
       try {
-        final result = await RunService.runCommand(
+        final result = await _runService.runCommand(
           event.command,
           //workingDirectory: event.workingDirectory,
         );

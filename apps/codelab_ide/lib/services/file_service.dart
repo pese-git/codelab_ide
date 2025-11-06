@@ -4,8 +4,17 @@ import 'package:file_picker/file_picker.dart';
 
 import '../utils/logger.dart';
 
-class FileService {
-  static Future<String?> pickProjectDirectory() async {
+abstract interface class FileService {
+  Future<String?> pickProjectDirectory();
+  FileNode? loadProjectTree(String projectPath);
+  Future<String> readFile(String filePath);
+  Future<bool> writeFile(String filePath, String content);
+  String getFileExtension(String fileName);
+}
+
+class FileServiceImpl extends FileService {
+  @override
+  Future<String?> pickProjectDirectory() async {
     // Use file_picker to let user select a directory
     try {
       String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
@@ -16,7 +25,8 @@ class FileService {
     }
   }
 
-  static FileNode? loadProjectTree(String projectPath) {
+  @override
+  FileNode? loadProjectTree(String projectPath) {
     try {
       final directory = Directory(projectPath);
       if (directory.existsSync()) {
@@ -28,7 +38,8 @@ class FileService {
     return null;
   }
 
-  static Future<String> readFile(String filePath) async {
+  @override
+  Future<String> readFile(String filePath) async {
     try {
       final file = File(filePath);
       if (await file.exists()) {
@@ -40,7 +51,8 @@ class FileService {
     return '';
   }
 
-  static Future<bool> writeFile(String filePath, String content) async {
+  @override
+  Future<bool> writeFile(String filePath, String content) async {
     try {
       final file = File(filePath);
       await file.writeAsString(content);
@@ -51,7 +63,8 @@ class FileService {
     }
   }
 
-  static String getFileExtension(String fileName) {
+  @override
+  String getFileExtension(String fileName) {
     final parts = fileName.split('.');
     return parts.length > 1 ? parts.last.toLowerCase() : '';
   }

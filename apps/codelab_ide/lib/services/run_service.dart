@@ -1,9 +1,22 @@
 import 'dart:io';
 import 'dart:async';
-import 'file_service.dart';
 
-class RunService {
-  static Future<String> runCommand(String command, {String? workingDirectory}) async {
+import 'package:codelab_ide/services/file_service.dart';
+
+abstract interface class RunService {
+  Future<String> runCommand(String command, {String? workingDirectory});
+  Future<Process> startProcess(String command, {String? workingDirectory});
+  String getRunCommand(String filePath);
+}
+
+class RunServiceImpl implements RunService {
+  final FileService _fileService;
+
+  RunServiceImpl({required FileService fileService})
+    : _fileService = fileService;
+
+  @override
+  Future<String> runCommand(String command, {String? workingDirectory}) async {
     try {
       final result = await Process.run(
         command.split(' ')[0],
@@ -11,7 +24,7 @@ class RunService {
         workingDirectory: workingDirectory,
         runInShell: true,
       );
-      
+
       if (result.exitCode == 0) {
         return result.stdout.toString();
       } else {
@@ -22,7 +35,11 @@ class RunService {
     }
   }
 
-  static Future<Process> startProcess(String command, {String? workingDirectory}) async {
+  @override
+  Future<Process> startProcess(
+    String command, {
+    String? workingDirectory,
+  }) async {
     final parts = command.split(' ');
     return await Process.start(
       parts[0],
@@ -32,9 +49,10 @@ class RunService {
     );
   }
 
-  static String getRunCommand(String filePath) {
-    final extension = FileService.getFileExtension(filePath);
-    
+  @override
+  String getRunCommand(String filePath) {
+    final extension = _fileService.getFileExtension(filePath);
+
     switch (extension) {
       case 'dart':
         return 'dart run $filePath';

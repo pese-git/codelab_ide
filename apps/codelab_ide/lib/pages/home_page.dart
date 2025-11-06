@@ -1,3 +1,4 @@
+import 'package:cherrypick/cherrypick.dart';
 import 'package:codelab_ide/services/file_service.dart';
 import 'package:codelab_ide/services/run_service.dart';
 import 'package:codelab_ide/widgets/editor_widget.dart';
@@ -147,7 +148,8 @@ class IDEHomePageState extends State<IDEHomePage> {
   }
 
   void _openProject() async {
-    final projectPath = await FileService.pickProjectDirectory();
+    final fileService = CherryPick.openRootScope().resolve<FileService>();
+    final projectPath = await fileService.pickProjectDirectory();
     if (!mounted) return;
     if (projectPath != null) {
       context.read<ProjectBloc>().add(ProjectEvent.openProject(projectPath));
@@ -157,7 +159,8 @@ class IDEHomePageState extends State<IDEHomePage> {
   void _runCurrentFile(BuildContext context) {
     final projectState = context.read<ProjectBloc>().state;
     if (projectState.currentFile != null) {
-      final command = RunService.getRunCommand(projectState.currentFile!);
+      final runService = CherryPick.openRootScope().resolve<RunService>();
+      final command = runService.getRunCommand(projectState.currentFile!);
       // Здесь можно интегрировать с реальным запуском или передавать в TerminalBloc
       ScaffoldMessenger.of(
         context,
