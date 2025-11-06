@@ -4,12 +4,24 @@ environment:
   sdk: ^3.9.0
 workspace:
   - apps/codelab_ide
+  - packages/codelab_uikit
+  - packages/codelab_engine
+  - packages/codelab_terminal
+  - packages/codelab_version_control
+  - packages/codelab_ai_assistant
+
 dev_dependencies:
   melos: ^7.3.0
 
 
 melos:
   sdkPath: .fvm/flutter_sdk
+
+  categories:
+    app:
+      - "apps/**"
+    packages:
+      - "packages/**"
 
   scripts:
     generate:

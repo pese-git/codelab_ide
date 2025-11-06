@@ -33,6 +33,13 @@ resolution: workspace
 dependencies:
   flutter:
     sdk: flutter
+
+  codelab_uikit: any
+  codelab_ai_assistant: any
+  codelab_engine: any
+  codelab_terminal: any
+  codelab_version_control: any
+
   cupertino_icons: ^1.0.8
   code_text_field: ^1.1.0
   highlight: ^0.7.0
