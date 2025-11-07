@@ -10,6 +10,4 @@ export 'src/widgets/terminal_widget.dart';
 
 export 'src/project_bloc.dart';
 
-export 'src/di/app_di_module.dart';
-
 // TODO: Export any libraries intended for clients of this package.
