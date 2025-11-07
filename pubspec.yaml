@@ -5,6 +5,7 @@ environment:
 workspace:
   - apps/codelab_ide
   - packages/codelab_uikit
+  - packages/codelab_core
   - packages/codelab_engine
   - packages/codelab_terminal
   - packages/codelab_version_control

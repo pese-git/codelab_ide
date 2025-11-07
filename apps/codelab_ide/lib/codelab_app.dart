@@ -1,4 +1,5 @@
 import 'package:cherrypick/cherrypick.dart';
+import 'package:codelab_core/codelab_core.dart';
 import 'package:codelab_engine/codelab_engine.dart';
 import 'package:codelab_ide/pages/home_page.dart';
 import 'package:flutter/material.dart';

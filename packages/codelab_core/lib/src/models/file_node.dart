@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:codelab_engine/src/utils/logger.dart';
+import 'package:codelab_core/src/utils/logger.dart';
 
 class FileNode {
   final String name;

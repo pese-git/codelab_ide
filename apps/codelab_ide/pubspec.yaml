@@ -35,6 +35,7 @@ dependencies:
     sdk: flutter
 
   codelab_uikit: any
+  codelab_core: any
   codelab_ai_assistant: any
   codelab_engine: any
   codelab_terminal: any

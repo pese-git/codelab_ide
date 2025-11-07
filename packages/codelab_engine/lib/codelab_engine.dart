@@ -8,9 +8,6 @@ export 'src/widgets/editor_widget.dart';
 export 'src/widgets/file_tree_widget.dart';
 export 'src/widgets/terminal_widget.dart';
 
-export 'src/services/file_service.dart';
-export 'src/services/run_service.dart';
-
 export 'src/project_bloc.dart';
 
 export 'src/di/app_di_module.dart';

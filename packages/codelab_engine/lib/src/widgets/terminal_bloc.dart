@@ -1,4 +1,4 @@
-import 'package:codelab_engine/src/services/run_service.dart';
+import 'package:codelab_core/codelab_core.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
