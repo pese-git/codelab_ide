@@ -3,7 +3,6 @@ import 'package:codelab_engine/src/models/file_node.dart';
 import 'package:codelab_engine/src/utils/logger.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'services/file_service.dart';
 
 part 'project_bloc.freezed.dart';
 
@@ -105,7 +104,7 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
         final content = await _fileService.readFile(event.filePath);
 
         // 2. После await состояние блока могло измениться — используем последнее:
-        final latestState = this.state;
+        final latestState = state;
 
         // ТОЛЬКО если пользователь всё ещё ждёт этот файл:
         if (latestState.currentFile == event.filePath) {
