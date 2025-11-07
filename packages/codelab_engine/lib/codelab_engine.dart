@@ -6,7 +6,6 @@ library;
 export 'src/codelab_engine_base.dart';
 export 'src/widgets/editor_widget.dart';
 export 'src/widgets/file_tree_widget.dart';
-export 'src/widgets/terminal_widget.dart';
 
 export 'src/project_bloc.dart';
 
