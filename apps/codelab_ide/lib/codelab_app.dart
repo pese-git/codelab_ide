@@ -24,6 +24,13 @@ class CodeLapApp extends StatelessWidget {
             runService: CherryPick.openRootScope().resolve<RunService>(),
           ),
         ),
+        BlocProvider<ProjectManagementBloc>(
+          create: (context) => ProjectManagementBloc(
+            projectService: CherryPick.openRootScope().resolve<ProjectService>(),
+            fileService: CherryPick.openRootScope().resolve<FileService>(),
+            runService: CherryPick.openRootScope().resolve<RunService>(),
+          ),
+        ),
       ],
       child: MaterialApp(
         title: 'CodeLab IDE',

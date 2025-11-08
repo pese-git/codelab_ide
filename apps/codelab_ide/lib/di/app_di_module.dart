@@ -11,5 +11,8 @@ class AppDiModule extends Module {
               RunServiceImpl(fileService: currentScope.resolve<FileService>()),
         )
         .singleton();
+    bind<ProjectService>()
+        .toProvide(() => ProjectServiceImpl())
+        .singleton();
   }
 }

@@ -51,3 +51,6 @@ app.*.map.json
 
 # FVM Version Cache
 .fvm/
+
+PROJECT_MANAGEMENT_GUIDE.md
+.codelab_project.json

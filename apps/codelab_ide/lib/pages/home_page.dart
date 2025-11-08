@@ -85,30 +85,7 @@ class IDEHomePageState extends State<IDEHomePage> {
                               filePath: projectState.currentFile!,
                               content: projectState.fileContent,
                             )
-                          : const Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.code,
-                                    size: 64,
-                                    color: Colors.grey,
-                                  ),
-                                  SizedBox(height: 16),
-                                  Text(
-                                    'No file selected',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Select a file from the file tree to start editing',
-                                    style: TextStyle(color: Colors.grey),
-                                  ),
-                                ],
-                              ),
-                            ),
+                          : const ProjectManagementWidget(),
                     ),
                     // Resize handle
                     MouseRegion(
@@ -151,31 +128,31 @@ class IDEHomePageState extends State<IDEHomePage> {
   void _runCurrentFile(BuildContext context) {
     final projectBloc = context.read<ProjectBloc>();
     final terminalBloc = context.read<TerminalBloc>();
-    
+
     final projectState = projectBloc.state;
     if (projectState.currentFile != null) {
       final runService = CherryPick.openRootScope().resolve<RunService>();
       final commandResult = runService.getRunCommand(projectState.currentFile!);
-      
+
       commandResult.match(
         (error) {
           // Показать ошибку пользователю
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $error')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error: $error')));
         },
         (command) {
           // Выполнить команду в терминале
           terminalBloc.add(TerminalEvent.executeCommand(command));
-          
+
           // Обновить состояние проекта
           projectBloc.add(ProjectEvent.runProject());
         },
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No file selected to run'))
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('No file selected to run')));
     }
   }
 }

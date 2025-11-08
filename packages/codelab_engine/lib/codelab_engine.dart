@@ -4,9 +4,10 @@
 library;
 
 export 'src/codelab_engine_base.dart';
-export 'src/widgets/editor_widget.dart';
-export 'src/widgets/file_tree_widget.dart';
-
 export 'src/project_bloc.dart';
+export 'src/widgets/project_management/project_management_bloc.dart';
+export 'src/widgets/editor/editor_widget.dart';
+export 'src/widgets/file_tree/file_tree_widget.dart';
+export 'src/widgets/project_management/project_management_widget.dart';
 
 // TODO: Export any libraries intended for clients of this package.

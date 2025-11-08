@@ -21,7 +21,7 @@ import 'package:highlight/languages/json.dart';
 import 'package:highlight/languages/markdown.dart';
 import 'package:flutter_highlight/themes/github.dart';
 import 'package:highlight/highlight.dart' show Mode;
-import '../../codelab_engine.dart';
+import '../../../codelab_engine.dart';
 import 'editor_bloc.dart';
 
 class EditorWidget extends StatefulWidget {
