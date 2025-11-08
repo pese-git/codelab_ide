@@ -1,3 +1,5 @@
+import 'package:cherrypick/cherrypick.dart';
+import 'package:codelab_core/codelab_core.dart';
 import 'package:codelab_engine/codelab_engine.dart';
 import 'package:codelab_terminal/codelab_terminal.dart';
 import 'package:flutter/material.dart';
@@ -147,21 +149,23 @@ class IDEHomePageState extends State<IDEHomePage> {
   }
 
   void _runCurrentFile(BuildContext context) {
-        context.read<ProjectBloc>().add(ProjectEvent.runProject());
-    /*
-    final projectState = context.read<ProjectBloc>().state;
+    final projectBloc = context.read<ProjectBloc>();
+    final terminalBloc = context.read<TerminalBloc>();
+    
+    final projectState = projectBloc.state;
     if (projectState.currentFile != null) {
       final runService = CherryPick.openRootScope().resolve<RunService>();
       final command = runService.getRunCommand(projectState.currentFile!);
-      // Здесь можно интегрировать с реальным запуском или передавать в TerminalBloc
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Would run: $command')));
+      
+      // Выполнить команду в терминале
+      terminalBloc.add(TerminalEvent.executeCommand(command));
+      
+      // Обновить состояние проекта
+      projectBloc.add(ProjectEvent.runProject());
     } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('No file selected to run')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No file selected to run'))
+      );
     }
-    */
   }
 }

@@ -1,5 +1,3 @@
-import 'package:cherrypick/cherrypick.dart';
-import 'package:codelab_core/codelab_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'terminal_bloc.dart';
@@ -17,6 +15,16 @@ class _TerminalWidgetState extends State<TerminalWidget> {
   final TextEditingController _controller = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    // Инициализировать терминал с projectDirectory при создании
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final terminalBloc = context.read<TerminalBloc>();
+      terminalBloc.add(TerminalEvent.clear(projectDirectory: widget.projectDirectory));
+    });
+  }
+
+  @override
   void dispose() {
     _controller.dispose();
     super.dispose();
@@ -32,12 +40,11 @@ class _TerminalWidgetState extends State<TerminalWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => TerminalBloc(
-        runService: CherryPick.openRootScope().resolve<RunService>(),
-      )..add(TerminalEvent.clear(projectDirectory: widget.projectDirectory)),
-      child: BlocConsumer<TerminalBloc, TerminalState>(
-        builder: (context, state) {
+    return BlocConsumer<TerminalBloc, TerminalState>(
+      listener: (BuildContext context, TerminalState state) {
+        _scrollToBottom();
+      },
+      builder: (context, state) {
           return Column(
             children: [
               Expanded(
@@ -103,10 +110,6 @@ class _TerminalWidgetState extends State<TerminalWidget> {
             ],
           );
         },
-        listener: (BuildContext context, TerminalState state) {
-          _scrollToBottom();
-        },
-      ),
     );
   }
 
