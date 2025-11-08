@@ -1,66 +1,75 @@
 import 'dart:io';
-import 'package:codelab_core/src/models/file_node.dart';
+import 'package:codelab_core/codelab_core.dart';
+import 'package:fpdart/fpdart.dart';
 import 'package:file_picker/file_picker.dart';
 
-import '../utils/logger.dart';
-
 abstract interface class FileService {
-  Future<String?> pickProjectDirectory();
-  FileNode? loadProjectTree(String projectPath);
-  Future<String> readFile(String filePath);
-  Future<bool> writeFile(String filePath, String content);
+  TaskEither<FileError, String?> pickProjectDirectory();
+  Either<FileError, FileNode?> loadProjectTree(String projectPath);
+  TaskEither<FileError, String> readFile(String filePath);
+  TaskEither<FileError, bool> writeFile(String filePath, String content);
   String getFileExtension(String fileName);
 }
 
 class FileServiceImpl extends FileService {
   @override
-  Future<String?> pickProjectDirectory() async {
-    // Use file_picker to let user select a directory
-    try {
-      String? selectedDirectory = await FilePicker.platform.getDirectoryPath();
-      return selectedDirectory;
-    } catch (e) {
-      logger.e('Error picking directory: $e');
-      return null;
-    }
+  TaskEither<FileError, String?> pickProjectDirectory() {
+    return TaskEither<FileError, String?>.tryCatch(
+      () async {
+        final selectedDirectory = await FilePicker.platform.getDirectoryPath();
+        return selectedDirectory;
+      },
+      (error, stackTrace) => FileError.pickDirectoryError(error),
+    );
   }
 
   @override
-  FileNode? loadProjectTree(String projectPath) {
-    try {
-      final directory = Directory(projectPath);
-      if (directory.existsSync()) {
+  Either<FileError, FileNode?> loadProjectTree(String projectPath) {
+    return Either.tryCatch(
+      () {
+        final directory = Directory(projectPath);
+        if (!directory.existsSync()) {
+          throw FileError.directoryNotFound(projectPath);
+        }
         return FileNode.fromDirectory(directory);
-      }
-    } catch (e) {
-      logger.e('Error loading project tree: $e');
-    }
-    return null;
+      },
+      (error, stackTrace) {
+        if (error is FileError) return error;
+        return FileError('Failed to load project tree: $error', cause: stackTrace);
+      },
+    );
   }
 
   @override
-  Future<String> readFile(String filePath) async {
-    try {
-      final file = File(filePath);
-      if (await file.exists()) {
+  TaskEither<FileError, String> readFile(String filePath) {
+    return TaskEither<FileError, String>.tryCatch(
+      () async {
+        final file = File(filePath);
+        if (!await file.exists()) {
+          throw FileError.fileNotFound(filePath);
+        }
         return await file.readAsString();
-      }
-    } catch (e) {
-      logger.e('Error reading file: $e');
-    }
-    return '';
+      },
+      (error, stackTrace) {
+        if (error is FileError) return error;
+        return FileError.readError(filePath, error);
+      },
+    );
   }
 
   @override
-  Future<bool> writeFile(String filePath, String content) async {
-    try {
-      final file = File(filePath);
-      await file.writeAsString(content);
-      return true;
-    } catch (e) {
-      logger.e('Error writing file: $e');
-      return false;
-    }
+  TaskEither<FileError, bool> writeFile(String filePath, String content) {
+    return TaskEither<FileError, bool>.tryCatch(
+      () async {
+        final file = File(filePath);
+        await file.writeAsString(content);
+        return true;
+      },
+      (error, stackTrace) {
+        if (error is FileError) return error;
+        return FileError.writeError(filePath, error);
+      },
+    );
   }
 
   @override

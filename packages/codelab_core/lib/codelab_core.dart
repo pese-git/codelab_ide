@@ -5,6 +5,7 @@ library;
 
 export 'src/codelab_core_base.dart';
 
+export 'src/errors/app_errors.dart';
 export 'src/models/file_node.dart';
 export 'src/services/file_service.dart';
 export 'src/services/run_service.dart';

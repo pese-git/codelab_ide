@@ -46,24 +46,50 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
       super(ProjectState.initial()) {
     on<OpenProject>((event, emit) async {
       emit(state.copyWith(isLoading: true, error: null, saveSuccess: false));
-      try {
-        final projectPath = await fileService.pickProjectDirectory();
-        final fileTree = _fileService.loadProjectTree(projectPath!);
-        emit(
-          state.copyWith(
-            projectPath: projectPath,
-            fileTree: fileTree,
-            currentFile: null,
-            fileContent: '',
-            isLoading: false,
-            error: null,
-          ),
-        );
-      } catch (e) {
-        emit(
-          state.copyWith(isLoading: false, error: 'Failed to open project: $e'),
-        );
-      }
+      
+      final result = await _fileService.pickProjectDirectory().run();
+      
+      result.match(
+        (error) {
+          emit(
+            state.copyWith(
+              isLoading: false, 
+              error: 'Failed to open project: $error'
+            ),
+          );
+        },
+        (projectPath) async {
+          if (projectPath == null) {
+            emit(state.copyWith(isLoading: false));
+            return;
+          }
+          
+          final fileTreeResult = _fileService.loadProjectTree(projectPath);
+          
+          fileTreeResult.match(
+            (error) {
+              emit(
+                state.copyWith(
+                  isLoading: false, 
+                  error: 'Failed to load project tree: $error'
+                ),
+              );
+            },
+            (fileTree) {
+              emit(
+                state.copyWith(
+                  projectPath: projectPath,
+                  fileTree: fileTree,
+                  currentFile: null,
+                  fileContent: '',
+                  isLoading: false,
+                  error: null,
+                ),
+              );
+            },
+          );
+        },
+      );
     });
 
     on<RunProject>((event, emit) {
@@ -98,42 +124,57 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
           currentFile: event.filePath,
         ),
       );
-      try {
-        final content = await _fileService.readFile(event.filePath);
+      
+      final result = await _fileService.readFile(event.filePath).run();
+      
+      // 2. После await состояние блока могло измениться — используем последнее:
+      final latestState = state;
 
-        // 2. После await состояние блока могло измениться — используем последнее:
-        final latestState = state;
-
-        // ТОЛЬКО если пользователь всё ещё ждёт этот файл:
-        if (latestState.currentFile == event.filePath) {
+      result.match(
+        (error) {
           emit(
             latestState.copyWith(
-              fileContent: content,
-              loadedFile: event.filePath,
-              isLoading: false,
+              isLoading: false, 
+              error: 'Failed to open file: $error'
             ),
           );
-        } else {
-          // Пользователь уже выбрал другой файл — не меняем content
-          emit(latestState.copyWith(isLoading: false));
-        }
-      } catch (e) {
-        emit(
-          state.copyWith(isLoading: false, error: 'Failed to open file: $e'),
-        );
-      }
+        },
+        (content) {
+          // ТОЛЬКО если пользователь всё ещё ждёт этот файл:
+          if (latestState.currentFile == event.filePath) {
+            emit(
+              latestState.copyWith(
+                fileContent: content,
+                loadedFile: event.filePath,
+                isLoading: false,
+              ),
+            );
+          } else {
+            // Пользователь уже выбрал другой файл — не меняем content
+            emit(latestState.copyWith(isLoading: false));
+          }
+        },
+      );
     });
 
     on<LoadFileContent>((event, emit) async {
       emit(state.copyWith(isLoading: true, error: null));
-      try {
-        final content = await _fileService.readFile(event.filePath);
-        emit(state.copyWith(fileContent: content, isLoading: false));
-      } catch (e) {
-        emit(
-          state.copyWith(isLoading: false, error: 'Failed to read file: $e'),
-        );
-      }
+      
+      final result = await _fileService.readFile(event.filePath).run();
+      
+      result.match(
+        (error) {
+          emit(
+            state.copyWith(
+              isLoading: false, 
+              error: 'Failed to read file: $error'
+            ),
+          );
+        },
+        (content) {
+          emit(state.copyWith(fileContent: content, isLoading: false));
+        },
+      );
     });
 
     on<UpdateFileContent>((event, emit) {
@@ -143,21 +184,26 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
     on<SaveCurrentFile>((SaveCurrentFile event, emit) async {
       if (state.currentFile == null) return;
       emit(state.copyWith(isSaving: true, saveSuccess: false));
-      try {
-        final success = await _fileService.writeFile(
-          event.currentFile,
-          event.fileContent,
-        );
-        emit(state.copyWith(isSaving: false, saveSuccess: success));
-      } catch (e) {
-        emit(
-          state.copyWith(
-            isSaving: false,
-            error: 'Failed to save file: $e',
-            saveSuccess: false,
-          ),
-        );
-      }
+      
+      final result = await _fileService.writeFile(
+        event.currentFile,
+        event.fileContent,
+      ).run();
+      
+      result.match(
+        (error) {
+          emit(
+            state.copyWith(
+              isSaving: false,
+              error: 'Failed to save file: $error',
+              saveSuccess: false,
+            ),
+          );
+        },
+        (success) {
+          emit(state.copyWith(isSaving: false, saveSuccess: success));
+        },
+      );
     });
   }
 }

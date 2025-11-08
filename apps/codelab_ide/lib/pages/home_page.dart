@@ -155,13 +155,23 @@ class IDEHomePageState extends State<IDEHomePage> {
     final projectState = projectBloc.state;
     if (projectState.currentFile != null) {
       final runService = CherryPick.openRootScope().resolve<RunService>();
-      final command = runService.getRunCommand(projectState.currentFile!);
+      final commandResult = runService.getRunCommand(projectState.currentFile!);
       
-      // Выполнить команду в терминале
-      terminalBloc.add(TerminalEvent.executeCommand(command));
-      
-      // Обновить состояние проекта
-      projectBloc.add(ProjectEvent.runProject());
+      commandResult.match(
+        (error) {
+          // Показать ошибку пользователю
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $error')),
+          );
+        },
+        (command) {
+          // Выполнить команду в терминале
+          terminalBloc.add(TerminalEvent.executeCommand(command));
+          
+          // Обновить состояние проекта
+          projectBloc.add(ProjectEvent.runProject());
+        },
+      );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No file selected to run'))

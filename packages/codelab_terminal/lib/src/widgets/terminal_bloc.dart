@@ -52,27 +52,31 @@ class TerminalBloc extends Bloc<TerminalEvent, TerminalState> {
       output.add('Executing...');
       emit(state.copyWith(output: output));
 
-      try {
-        final result = await _runService.runCommand(
-          event.command,
-          //workingDirectory: event.workingDirectory,
-        );
-        output = List<String>.from(state.output);
-        if (output.isNotEmpty && output.last == 'Executing...') {
-          output.removeLast();
-        }
-        output.add(result);
-        output.add('');
-        emit(state.copyWith(output: output));
-      } catch (e) {
-        output = List<String>.from(state.output);
-        if (output.isNotEmpty && output.last == 'Executing...') {
-          output.removeLast();
-        }
-        output.add('Error: $e');
-        output.add('');
-        emit(state.copyWith(output: output));
-      }
+      final result = await _runService.runCommand(
+        event.command,
+        //workingDirectory: event.workingDirectory,
+      ).run();
+      
+      result.match(
+        (error) {
+          final updatedOutput = List<String>.from(output);
+          if (updatedOutput.isNotEmpty && updatedOutput.last == 'Executing...') {
+            updatedOutput.removeLast();
+          }
+          updatedOutput.add(error.toString());
+          updatedOutput.add('');
+          emit(state.copyWith(output: updatedOutput));
+        },
+        (result) {
+          final updatedOutput = List<String>.from(output);
+          if (updatedOutput.isNotEmpty && updatedOutput.last == 'Executing...') {
+            updatedOutput.removeLast();
+          }
+          updatedOutput.add(result);
+          updatedOutput.add('');
+          emit(state.copyWith(output: updatedOutput));
+        },
+      );
     });
 
     on<AppendOutput>((event, emit) {

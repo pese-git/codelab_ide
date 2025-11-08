@@ -17,6 +17,7 @@ dependencies:
   path: ^1.9.1
   file: ^7.0.1
   logger: ^2.6.2
+  fpdart: ^1.2.0
 
 dev_dependencies:
   flutter_test:
