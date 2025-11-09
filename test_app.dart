@@ -4,7 +4,7 @@ void main() {
   print('Current time: ${DateTime.now()}');
   
   // Simple calculation to show it's working
-  final result = 2 / 0;
+  final result = 2 + 2;
   print('2 + 2 = $result');
   
   print('Test completed successfully!');

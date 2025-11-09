@@ -14,5 +14,8 @@ class AppDiModule extends Module {
     bind<ProjectService>()
         .toProvide(() => ProjectServiceImpl())
         .singleton();
+    bind<ProjectManagerService>()
+        .toProvide(() => ProjectManagerServiceImpl())
+        .singleton();
   }
 }

@@ -29,6 +29,7 @@ class CodeLapApp extends StatelessWidget {
             projectService: CherryPick.openRootScope().resolve<ProjectService>(),
             fileService: CherryPick.openRootScope().resolve<FileService>(),
             runService: CherryPick.openRootScope().resolve<RunService>(),
+            projectManagerService: CherryPick.openRootScope().resolve<ProjectManagerService>(),
           ),
         ),
       ],

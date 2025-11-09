@@ -12,51 +12,45 @@ class ProjectManagementEvent with _$ProjectManagementEvent {
     required String type,
   }) = CreateProjectEvent;
 
-  const factory ProjectManagementEvent.openProject(String projectPath) =
-      OpenProjectEvent;
-
+  const factory ProjectManagementEvent.openProject(String projectPath) = OpenProjectEvent;
+  
   const factory ProjectManagementEvent.saveProject() = SaveProjectEvent;
-
+  
   const factory ProjectManagementEvent.buildProject() = BuildProjectEvent;
-
+  
   const factory ProjectManagementEvent.runProject() = RunProjectEvent;
-
+  
   const factory ProjectManagementEvent.testProject() = TestProjectEvent;
-
+  
   const factory ProjectManagementEvent.closeProject() = CloseProjectEvent;
-
-  const factory ProjectManagementEvent.loadRecentProjects() =
-      LoadRecentProjectsEvent;
+  
+  const factory ProjectManagementEvent.loadRecentProjects() = LoadRecentProjectsEvent;
 }
 
 @freezed
 class ProjectManagementState with _$ProjectManagementState {
   const factory ProjectManagementState.initial() = InitialProjectState;
-
+  
   const factory ProjectManagementState.loading() = LoadingProjectState;
-
+  
   const factory ProjectManagementState.loaded({
     required ProjectConfig project,
     required FileNode fileTree,
     required bool hasUnsavedChanges,
   }) = LoadedProjectState;
-
+  
   const factory ProjectManagementState.building() = BuildingProjectState;
-
+  
   const factory ProjectManagementState.running() = RunningProjectState;
-
+  
   const factory ProjectManagementState.testing() = TestingProjectState;
-
-  const factory ProjectManagementState.error(String message) =
-      ProjectErrorState;
-
-  const factory ProjectManagementState.recentProjectsLoaded(
-    List<ProjectConfig> projects,
-  ) = RecentProjectsLoadedState;
+  
+  const factory ProjectManagementState.error(String message) = ProjectErrorState;
+  
+  const factory ProjectManagementState.recentProjectsLoaded(List<ProjectConfig> projects) = RecentProjectsLoadedState;
 }
 
-class ProjectManagementBloc
-    extends Bloc<ProjectManagementEvent, ProjectManagementState> {
+class ProjectManagementBloc extends Bloc<ProjectManagementEvent, ProjectManagementState> {
   final ProjectService _projectService;
   final FileService _fileService;
   final RunService _runService;
@@ -67,11 +61,11 @@ class ProjectManagementBloc
     required FileService fileService,
     required RunService runService,
     required ProjectManagerService projectManagerService,
-  }) : _projectService = projectService,
-       _fileService = fileService,
-       _runService = runService,
-       _projectManagerService = projectManagerService,
-       super(const ProjectManagementState.initial()) {
+  })  : _projectService = projectService,
+        _fileService = fileService,
+        _runService = runService,
+        _projectManagerService = projectManagerService,
+        super(const ProjectManagementState.initial()) {
     on<CreateProjectEvent>(_onCreateProject);
     on<OpenProjectEvent>(_onOpenProject);
     on<SaveProjectEvent>(_onSaveProject);
@@ -87,11 +81,13 @@ class ProjectManagementBloc
     Emitter<ProjectManagementState> emit,
   ) async {
     emit(const ProjectManagementState.loading());
-
-    final result = await _projectService
-        .createProject(name: event.name, path: event.path, type: event.type)
-        .run();
-
+    
+    final result = await _projectService.createProject(
+      name: event.name,
+      path: event.path,
+      type: event.type,
+    ).run();
+    
     result.match(
       (error) => emit(ProjectManagementState.error(error.toString())),
       (project) async {
@@ -101,13 +97,11 @@ class ProjectManagementBloc
           (fileTree) {
             // Устанавливаем проект в глобальный менеджер
             _projectManagerService.setCurrentProject(project);
-            emit(
-              ProjectManagementState.loaded(
-                project: project,
-                fileTree: fileTree!,
-                hasUnsavedChanges: false,
-              ),
-            );
+            emit(ProjectManagementState.loaded(
+              project: project,
+              fileTree: fileTree!,
+              hasUnsavedChanges: false,
+            ));
           },
         );
       },
@@ -119,9 +113,9 @@ class ProjectManagementBloc
     Emitter<ProjectManagementState> emit,
   ) async {
     emit(const ProjectManagementState.loading());
-
+    
     final result = await _projectService.loadProject(event.projectPath).run();
-
+    
     result.match(
       (error) => emit(ProjectManagementState.error(error.toString())),
       (project) async {
@@ -131,13 +125,11 @@ class ProjectManagementBloc
           (fileTree) {
             // Устанавливаем проект в глобальный менеджер
             _projectManagerService.setCurrentProject(project);
-            emit(
-              ProjectManagementState.loaded(
-                project: project,
-                fileTree: fileTree!,
-                hasUnsavedChanges: false,
-              ),
-            );
+            emit(ProjectManagementState.loaded(
+              project: project,
+              fileTree: fileTree!,
+              hasUnsavedChanges: false,
+            ));
           },
         );
       },
@@ -162,17 +154,16 @@ class ProjectManagementBloc
     final currentState = state;
     if (currentState is LoadedProjectState) {
       emit(const ProjectManagementState.building());
-
+      
       for (final command in currentState.project.buildCommands) {
-        final result = await _runService
-            .runCommand(command, workingDirectory: currentState.project.path)
-            .run();
-
+        final result = await _runService.runCommand(
+          command,
+          workingDirectory: currentState.project.path,
+        ).run();
+        
         result.match(
           (error) {
-            emit(
-              ProjectManagementState.error('Build failed: ${error.toString()}'),
-            );
+            emit(ProjectManagementState.error('Build failed: ${error.toString()}'));
             return;
           },
           (output) {
@@ -180,7 +171,7 @@ class ProjectManagementBloc
           },
         );
       }
-
+      
       emit(currentState);
     }
   }
@@ -192,17 +183,16 @@ class ProjectManagementBloc
     final currentState = state;
     if (currentState is LoadedProjectState) {
       emit(const ProjectManagementState.running());
-
+      
       for (final command in currentState.project.runCommands) {
-        final result = await _runService
-            .runCommand(command, workingDirectory: currentState.project.path)
-            .run();
-
+        final result = await _runService.runCommand(
+          command,
+          workingDirectory: currentState.project.path,
+        ).run();
+        
         result.match(
           (error) {
-            emit(
-              ProjectManagementState.error('Run failed: ${error.toString()}'),
-            );
+            emit(ProjectManagementState.error('Run failed: ${error.toString()}'));
             return;
           },
           (output) {
@@ -210,7 +200,7 @@ class ProjectManagementBloc
           },
         );
       }
-
+      
       emit(currentState);
     }
   }
@@ -222,17 +212,16 @@ class ProjectManagementBloc
     final currentState = state;
     if (currentState is LoadedProjectState) {
       emit(const ProjectManagementState.testing());
-
+      
       for (final command in currentState.project.testCommands) {
-        final result = await _runService
-            .runCommand(command, workingDirectory: currentState.project.path)
-            .run();
-
+        final result = await _runService.runCommand(
+          command,
+          workingDirectory: currentState.project.path,
+        ).run();
+        
         result.match(
           (error) {
-            emit(
-              ProjectManagementState.error('Tests failed: ${error.toString()}'),
-            );
+            emit(ProjectManagementState.error('Tests failed: ${error.toString()}'));
             return;
           },
           (output) {
@@ -240,7 +229,7 @@ class ProjectManagementBloc
           },
         );
       }
-
+      
       emit(currentState);
     }
   }
@@ -259,7 +248,7 @@ class ProjectManagementBloc
     Emitter<ProjectManagementState> emit,
   ) async {
     final result = await _projectService.getRecentProjects().run();
-
+    
     result.match(
       (error) => emit(ProjectManagementState.error(error.toString())),
       (projects) => emit(ProjectManagementState.recentProjectsLoaded(projects)),
