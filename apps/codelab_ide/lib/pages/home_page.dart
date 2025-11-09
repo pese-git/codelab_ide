@@ -1,7 +1,7 @@
 import 'package:cherrypick/cherrypick.dart';
 import 'package:codelab_core/codelab_core.dart';
 import 'package:codelab_engine/codelab_engine.dart';
-import 'package:codelab_terminal/codelab_terminal.dart';
+import 'package:codelab_ide/widgets/dev_tools_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -104,13 +104,7 @@ class IDEHomePageState extends State<IDEHomePage> {
                       ),
                     ),
                     // Terminal Panel
-                    SizedBox(
-                      height: _terminalHeight,
-                      child: TerminalWidget(
-                        key: ValueKey(projectState.projectPath),
-                        projectDirectory: projectState.projectPath,
-                      ),
-                    ),
+                    SizedBox(height: _terminalHeight, child: DevToolsWidget()),
                   ],
                 ),
               ),
@@ -127,7 +121,7 @@ class IDEHomePageState extends State<IDEHomePage> {
 
   void _runCurrentFile(BuildContext context) {
     final projectBloc = context.read<ProjectBloc>();
-    final terminalBloc = context.read<TerminalBloc>();
+    final consoleBloc = context.read<DebugConsoleBloc>();
 
     final projectState = projectBloc.state;
     if (projectState.currentFile != null) {
@@ -143,7 +137,7 @@ class IDEHomePageState extends State<IDEHomePage> {
         },
         (command) {
           // Выполнить команду в терминале
-          terminalBloc.add(TerminalEvent.executeCommand(command));
+          consoleBloc.add(DebugConsoleEvent.executeCommand(command));
 
           // Обновить состояние проекта
           projectBloc.add(ProjectEvent.runProject());
