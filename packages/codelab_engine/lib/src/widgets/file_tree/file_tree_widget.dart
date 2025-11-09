@@ -1,3 +1,4 @@
+import 'package:cherrypick/cherrypick.dart';
 import 'package:codelab_core/codelab_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -23,7 +24,11 @@ class _FileTreeWidgetState extends State<FileTreeWidget> {
   @override
   void initState() {
     super.initState();
-    _bloc = FileTreeBloc();
+    _bloc = FileTreeBloc(
+      projectManagerService: CherryPick.openRootScope()
+          .resolve<ProjectManagerService>(),
+      fileService: CherryPick.openRootScope().resolve<FileService>(),
+    );
     if (widget.initialFileTree != null) {
       _bloc.add(FileTreeEvent.setFileTree(widget.initialFileTree));
     }

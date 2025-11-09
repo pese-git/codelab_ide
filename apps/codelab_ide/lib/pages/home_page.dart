@@ -85,7 +85,7 @@ class IDEHomePageState extends State<IDEHomePage> {
                               filePath: projectState.currentFile!,
                               content: projectState.fileContent,
                             )
-                          : const ProjectManagementWidget(),
+                          : const SelectProjectWidget(),
                     ),
                     // Resize handle
                     MouseRegion(

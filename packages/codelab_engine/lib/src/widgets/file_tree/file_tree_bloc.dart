@@ -21,7 +21,15 @@ class FileTreeState with _$FileTreeState {
 }
 
 class FileTreeBloc extends Bloc<FileTreeEvent, FileTreeState> {
-  FileTreeBloc() : super(const FileTreeState()) {
+  final ProjectManagerService _projectManagerService;
+  final FileService _fileService;
+
+  FileTreeBloc({
+    required ProjectManagerService projectManagerService,
+    required FileService fileService,
+  }) : _projectManagerService = projectManagerService,
+       _fileService = fileService,
+       super(const FileTreeState()) {
     on<ToggleExpanded>((event, emit) {
       final expanded = Set<String>.from(state.expandedNodes);
       if (expanded.contains(event.path)) {
@@ -38,6 +46,14 @@ class FileTreeBloc extends Bloc<FileTreeEvent, FileTreeState> {
 
     on<SetFileTree>((event, emit) {
       emit(state.copyWith(fileTree: event.fileTree));
+    });
+
+    _projectManagerService.projectStream.listen((config) {
+      final fileTreeResult = _fileService.loadProjectTree(config!.path);
+
+      fileTreeResult.match((error) {}, (fileTree) {
+        add(FileTreeEvent.setFileTree(fileTree));
+      });
     });
   }
 }

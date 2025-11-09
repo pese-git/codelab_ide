@@ -1,33 +1,42 @@
 import 'package:cherrypick/cherrypick.dart';
 import 'package:codelab_core/codelab_core.dart';
-import 'package:codelab_engine/src/widgets/project_management/project_management_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'select_project_bloc.dart';
 
-class ProjectManagementWidget extends StatelessWidget {
-  const ProjectManagementWidget({super.key});
+/// Виджет для выбора и создания проектов (New Project/Open Project)
+class SelectProjectWidget extends StatelessWidget {
+  const SelectProjectWidget({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<ProjectManagementBloc, ProjectManagementState>(
-      builder: (context, state) {
-        return Column(
-          children: [
-            // Панель управления проектом
-            _buildProjectToolbar(context, state),
-            const SizedBox(height: 8),
-            // Статус проекта
-            _buildProjectStatus(context, state),
-          ],
-        );
-      },
+    return BlocProvider(
+      create: (context) => SelectProjectBloc(
+        projectService: CherryPick.openRootScope().resolve<ProjectService>(),
+
+        projectManagerService: CherryPick.openRootScope()
+            .resolve<ProjectManagerService>(),
+      ),
+      child: BlocListener<SelectProjectBloc, SelectProjectState>(
+        listener: (context, state) {
+          // Обработка ошибок
+          if (state is SelectProjectErrorState) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(state.message)));
+          }
+        },
+        child: const _SelectProjectContent(),
+      ),
     );
   }
+}
 
-  Widget _buildProjectToolbar(
-    BuildContext context,
-    ProjectManagementState state,
-  ) {
+class _SelectProjectContent extends StatelessWidget {
+  const _SelectProjectContent();
+
+  @override
+  Widget build(BuildContext context) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(8.0),
@@ -47,87 +56,39 @@ class ProjectManagementWidget extends StatelessWidget {
               label: const Text('Open Project'),
             ),
             const Spacer(),
-            // Кнопки управления для открытого проекта
-            if (state is LoadedProjectState) ...[
-              ElevatedButton.icon(
-                onPressed: () => context.read<ProjectManagementBloc>().add(
-                  const SaveProjectEvent(),
-                ),
-                icon: const Icon(Icons.save),
-                label: const Text('Save'),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton.icon(
-                onPressed: () => context.read<ProjectManagementBloc>().add(
-                  const BuildProjectEvent(),
-                ),
-                icon: const Icon(Icons.build),
-                label: const Text('Build'),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton.icon(
-                onPressed: () => context.read<ProjectManagementBloc>().add(
-                  const RunProjectEvent(),
-                ),
-                icon: const Icon(Icons.play_arrow),
-                label: const Text('Run'),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton.icon(
-                onPressed: () => context.read<ProjectManagementBloc>().add(
-                  const TestProjectEvent(),
-                ),
-                icon: const Icon(Icons.bug_report),
-                label: const Text('Test'),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton.icon(
-                onPressed: () => context.read<ProjectManagementBloc>().add(
-                  const CloseProjectEvent(),
-                ),
-                icon: const Icon(Icons.close),
-                label: const Text('Close'),
-              ),
-            ],
+            // Статус проекта
+            _buildProjectStatus(context),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildProjectStatus(
-    BuildContext context,
-    ProjectManagementState state,
-  ) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Row(
+  Widget _buildProjectStatus(BuildContext context) {
+    return BlocBuilder<SelectProjectBloc, SelectProjectState>(
+      builder: (context, state) {
+        return Row(
           children: [
             const Icon(Icons.info, size: 16),
             const SizedBox(width: 8),
-            Expanded(
-              child: state.when(
-                initial: () => const Text('No project opened'),
-                loading: () => const Text('Loading project...'),
-                loaded: (project, fileTree, hasUnsavedChanges) => Text(
-                  'Project: ${project.name} (${project.type})'
-                  '${hasUnsavedChanges ? ' • Unsaved changes' : ''}',
-                ),
-                building: () => const Text('Building project...'),
-                running: () => const Text('Running project...'),
-                testing: () => const Text('Running tests...'),
-                error: (message) => Text(
-                  'Error: $message',
-                  style: const TextStyle(color: Colors.red),
-                ),
+            Text(
+              state.when(
+                initial: () => 'No project opened',
+                creating: () => 'Creating project...',
+                opening: () => 'Opening project...',
+                created: (project) => 'Created: ${project.name}',
+                opened: (project) => 'Opened: ${project.name}',
+                error: (message) => 'Error: $message',
                 recentProjectsLoaded: (projects) =>
-                    Text('Recent projects: ${projects.length}'),
+                    'Recent projects: ${projects.length}',
+              ),
+              style: TextStyle(
+                color: state is SelectProjectErrorState ? Colors.red : null,
               ),
             ),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -188,8 +149,8 @@ class ProjectManagementWidget extends StatelessWidget {
             onPressed: () {
               if (nameController.text.isNotEmpty &&
                   pathController.text.isNotEmpty) {
-                context.read<ProjectManagementBloc>().add(
-                  CreateProjectEvent(
+                context.read<SelectProjectBloc>().add(
+                  SelectProjectEvent.createProject(
                     name: nameController.text,
                     path: pathController.text,
                     type: selectedType,
@@ -215,8 +176,8 @@ class ProjectManagementWidget extends StatelessWidget {
       ).showSnackBar(SnackBar(content: Text('Failed to open project: $error'))),
       (projectPath) {
         if (projectPath != null) {
-          context.read<ProjectManagementBloc>().add(
-            OpenProjectEvent(projectPath),
+          context.read<SelectProjectBloc>().add(
+            SelectProjectEvent.openProject(projectPath),
           );
         }
       },
