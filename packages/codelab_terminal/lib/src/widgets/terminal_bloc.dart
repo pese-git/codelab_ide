@@ -52,15 +52,18 @@ class TerminalBloc extends Bloc<TerminalEvent, TerminalState> {
       output.add('Executing...');
       emit(state.copyWith(output: output));
 
-      final result = await _runService.runCommand(
-        event.command,
-        //workingDirectory: event.workingDirectory,
-      ).run();
-      
+      final result = await _runService
+          .runCommand(
+            event.command,
+            //workingDirectory: event.workingDirectory,
+          )
+          .run();
+
       result.match(
         (error) {
           final updatedOutput = List<String>.from(output);
-          if (updatedOutput.isNotEmpty && updatedOutput.last == 'Executing...') {
+          if (updatedOutput.isNotEmpty &&
+              updatedOutput.last == 'Executing...') {
             updatedOutput.removeLast();
           }
           updatedOutput.add(error.toString());
@@ -69,7 +72,8 @@ class TerminalBloc extends Bloc<TerminalEvent, TerminalState> {
         },
         (result) {
           final updatedOutput = List<String>.from(output);
-          if (updatedOutput.isNotEmpty && updatedOutput.last == 'Executing...') {
+          if (updatedOutput.isNotEmpty &&
+              updatedOutput.last == 'Executing...') {
             updatedOutput.removeLast();
           }
           updatedOutput.add(result);
@@ -86,7 +90,7 @@ class TerminalBloc extends Bloc<TerminalEvent, TerminalState> {
 
     on<ClearTerminal>((event, emit) {
       final output = List<String>.from(<String>[])
-        ..add('Welcome to CodeLab IDE Terminal')
+        ..add('Welcome to CodeLab IDE Debug Console')
         ..add('Working directory: ${event.projectDirectory ?? 'Not set'}')
         ..add('Type commands and press Enter to execute')
         ..add('');

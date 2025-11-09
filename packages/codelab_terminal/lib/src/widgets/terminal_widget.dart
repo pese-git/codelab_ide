@@ -1,6 +1,9 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'terminal_bloc.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_pty/flutter_pty.dart';
+import 'package:xterm/xterm.dart';
 
 class TerminalWidget extends StatefulWidget {
   final String? projectDirectory;
@@ -11,115 +14,151 @@ class TerminalWidget extends StatefulWidget {
 }
 
 class _TerminalWidgetState extends State<TerminalWidget> {
-  final ScrollController _scrollController = ScrollController();
-  final TextEditingController _controller = TextEditingController();
+  final terminal = Terminal(
+    maxLines: 10000,
+  );
+
+  final terminalController = TerminalController();
+
+  late Pty pty;
 
   @override
   void initState() {
     super.initState();
-    // Инициализировать терминал с projectDirectory при создании
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final terminalBloc = context.read<TerminalBloc>();
-      terminalBloc.add(TerminalEvent.clear(projectDirectory: widget.projectDirectory));
+
+    WidgetsBinding.instance.endOfFrame.then(
+      (_) {
+        if (mounted) _startPty();
+      },
+    );
+  }
+
+  void _startPty() {
+    pty = Pty.start(
+      _getShell(),
+      workingDirectory: widget.projectDirectory,
+      columns: terminal.viewWidth,
+      rows: terminal.viewHeight,
+    );
+
+    pty.output
+        .cast<List<int>>()
+        .transform(const Utf8Decoder())
+        .listen(terminal.write);
+
+    pty.exitCode.then((code) {
+      terminal.write('the process exited with exit code $code');
     });
+
+    terminal.onOutput = (data) {
+      pty.write(const Utf8Encoder().convert(data));
+    };
+
+    terminal.onResize = (w, h, pw, ph) {
+      pty.resize(h, w);
+    };
+  }
+
+  String _getShell() {
+    if (Platform.isMacOS || Platform.isLinux) {
+      return Platform.environment['SHELL'] ?? 'bash';
+    }
+
+    if (Platform.isWindows) {
+      return 'cmd.exe';
+    }
+
+    return 'sh';
+  }
+
+  void _restartPty() {
+    pty.kill();
+    _startPty();
   }
 
   @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _submitCommand(BuildContext context) {
-    final text = _controller.text.trim();
-    if (text.isNotEmpty) {
-      context.read<TerminalBloc>().add(TerminalEvent.executeCommand(text));
-      _controller.clear();
+  void didUpdateWidget(covariant TerminalWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.projectDirectory != oldWidget.projectDirectory) {
+      _restartPty();
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    return BlocConsumer<TerminalBloc, TerminalState>(
-      listener: (BuildContext context, TerminalState state) {
-        _scrollToBottom();
-      },
-      builder: (context, state) {
-          return Column(
-            children: [
-              Expanded(
-                child: Container(
-                  color: Colors.black,
-                  padding: const EdgeInsets.all(8),
-                  alignment: Alignment.topLeft,
-                  child: ListView(
-                    controller: _scrollController,
-                    children: state.output
-                        .map(
-                          (line) => Text(
-                            line,
-                            style: const TextStyle(
-                              color: Colors.greenAccent,
-                              fontFamily: 'monospace',
-                              fontSize: 14,
-                            ),
-                          ),
-                        )
-                        .toList(),
-                  ),
-                ),
-              ),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _controller,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontFamily: 'monospace',
-                      ),
-                      decoration: const InputDecoration(
-                        filled: true,
-                        fillColor: Colors.black,
-                        hintText: 'Enter command...',
-                        hintStyle: TextStyle(color: Colors.grey),
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 8),
-                      ),
-                      onSubmitted: (_) => _submitCommand(context),
-                    ),
-                  ),
-                  /*
-                  IconButton(
-                    color: Colors.black,
-                    icon: const Icon(Icons.send, color: Colors.white),
-                    onPressed: () => _submitCommand(context),
-                  ),
-                  IconButton(
-                    color: Colors.black,
-                    icon: const Icon(Icons.clear, color: Colors.white),
-                    onPressed: () {
-                      context.read<TerminalBloc>().add(
-                        const TerminalEvent.clear(),
-                      );
-                    },
-                  ),
-                  */
-                ],
-              ),
-            ],
-          );
-        },
-    );
+  void dispose() {
+    pty.kill();
+    super.dispose();
   }
 
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    });
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // Header с кнопками управления
+        Container(
+          padding: const EdgeInsets.all(8.0),
+          decoration: BoxDecoration(
+            color: Colors.grey[200],
+            border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.terminal, size: 16, color: Colors.grey[700]),
+              const SizedBox(width: 8),
+              Text(
+                'Terminal',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[700],
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Индикатор рабочей директории
+              if (widget.projectDirectory != null)
+                Expanded(
+                  child: Text(
+                    widget.projectDirectory!,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 12,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              const Spacer(),
+              // Кнопка перезапуска
+              IconButton(
+                icon: const Icon(Icons.refresh, size: 16),
+                onPressed: _restartPty,
+                tooltip: 'Restart Terminal',
+              ),
+            ],
+          ),
+        ),
+        // Терминал
+        Expanded(
+          child: TerminalView(
+            terminal,
+            controller: terminalController,
+            autofocus: true,
+            backgroundOpacity: 1.0,
+            onSecondaryTapDown: (details, offset) async {
+              final selection = terminalController.selection;
+              if (selection != null) {
+                final text = terminal.buffer.getText(selection);
+                terminalController.clearSelection();
+                await Clipboard.setData(ClipboardData(text: text));
+              } else {
+                final data = await Clipboard.getData('text/plain');
+                final text = data?.text;
+                if (text != null) {
+                  terminal.paste(text);
+                }
+              }
+            },
+          ),
+        ),
+      ],
+    );
   }
 }

@@ -1,16 +1,31 @@
 import 'package:codelab_terminal/codelab_terminal.dart';
-import 'package:test/test.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  group('A group of tests', () {
-    final awesome = Awesome();
+  group('TerminalWidget', () {
+    testWidgets('creates terminal widget', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: TerminalWidget(),
+          ),
+        ),
+      );
 
-    setUp(() {
-      // Additional setup goes here.
+      expect(find.byType(TerminalWidget), findsOneWidget);
     });
 
-    test('First Test', () {
-      expect(awesome.isAwesome, isTrue);
+    testWidgets('creates terminal widget with project directory', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: TerminalWidget(projectDirectory: '/test'),
+          ),
+        ),
+      );
+
+      expect(find.byType(TerminalWidget), findsOneWidget);
     });
   });
 }

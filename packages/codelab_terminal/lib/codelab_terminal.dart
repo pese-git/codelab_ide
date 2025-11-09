@@ -1,11 +1,5 @@
-/// Support for doing something awesome.
-///
-/// More dartdocs go here.
-library;
+// Terminal package for CodeLab IDE
 
-export 'src/codelab_terminal_base.dart';
-
-export 'src/widgets/terminal_bloc.dart';
 export 'src/widgets/terminal_widget.dart';
 
 // TODO: Export any libraries intended for clients of this package.
