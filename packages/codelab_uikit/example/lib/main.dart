@@ -47,73 +47,87 @@ class _IdeRootPageState extends State<IdeRootPage> {
   Widget build(BuildContext context) {
     return ScaffoldPage(
       header: const MainHeader(),
-      content: Column(
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                SidebarNavigation(
-                  selectedIndex: _selectedSidebarIndex,
-                  onSelected: (i) => setState(() => _selectedSidebarIndex = i),
+      content: LayoutBuilder(
+        builder: (context, constraints) {
+          const minEditorWidth = 120.0;
+          final maxSidebarWidth = constraints.maxWidth - minEditorWidth;
+          return Column(
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    SidebarNavigation(
+                      selectedIndex: _selectedSidebarIndex,
+                      onSelected: (i) =>
+                          setState(() => _selectedSidebarIndex = i),
+                    ),
+                    SizedBox(
+                      width: _sidebarPanelWidth,
+                      child: SidebarPanel(selectedIndex: _selectedSidebarIndex),
+                    ),
+                    HorizontalSplitter(
+                      onDrag: (delta) {
+                        setState(() {
+                          _sidebarPanelWidth += delta;
+                          _sidebarPanelWidth = _sidebarPanelWidth.clamp(
+                            130.0,
+                            maxSidebarWidth,
+                          );
+                        });
+                      },
+                    ),
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final panelHeight = constraints.maxHeight;
+                          final editorHeight =
+                              panelHeight * _editorPanelFraction;
+                          final terminalHeight =
+                              panelHeight * (1 - _editorPanelFraction) - 36;
+                          return Column(
+                            children: [
+                              SizedBox(
+                                height: editorHeight.clamp(
+                                  100,
+                                  panelHeight - 100,
+                                ),
+                                child: MainPanelArea(
+                                  projectOpened: _projectOpened,
+                                  editorSplitFraction: _editorSplitFraction,
+                                  onEditorDrag: (f) =>
+                                      setState(() => _editorSplitFraction = f),
+                                  onWizardAction: (action) =>
+                                      setState(() => _projectOpened = true),
+                                ),
+                              ),
+                              VerticalSplitter(
+                                onDrag: (delta) {
+                                  setState(() {
+                                    _editorPanelFraction += delta / panelHeight;
+                                    _editorPanelFraction = _editorPanelFraction
+                                        .clamp(0.15, 0.85);
+                                  });
+                                },
+                              ),
+                              SizedBox(
+                                height: terminalHeight.clamp(
+                                  50,
+                                  panelHeight - 100,
+                                ),
+                                child: const BottomPanel(),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ),
-                SizedBox(
-                  width: _sidebarPanelWidth,
-                  child: SidebarPanel(selectedIndex: _selectedSidebarIndex),
-                ),
-                HorizontalSplitter(
-                  onDrag: (delta) {
-                    setState(() {
-                      _sidebarPanelWidth += delta;
-                      _sidebarPanelWidth = _sidebarPanelWidth.clamp(
-                        130.0,
-                        400.0,
-                      );
-                    });
-                  },
-                ),
-                Expanded(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final panelHeight = constraints.maxHeight;
-                      final editorHeight = panelHeight * _editorPanelFraction;
-                      final terminalHeight =
-                          panelHeight * (1 - _editorPanelFraction) - 36;
-                      return Column(
-                        children: [
-                          SizedBox(
-                            height: editorHeight.clamp(100, panelHeight - 100),
-                            child: MainPanelArea(
-                              projectOpened: _projectOpened,
-                              editorSplitFraction: _editorSplitFraction,
-                              onEditorDrag: (f) =>
-                                  setState(() => _editorSplitFraction = f),
-                              onWizardAction: (action) =>
-                                  setState(() => _projectOpened = true),
-                            ),
-                          ),
-                          VerticalSplitter(
-                            onDrag: (delta) {
-                              setState(() {
-                                _editorPanelFraction += delta / panelHeight;
-                                _editorPanelFraction = _editorPanelFraction
-                                    .clamp(0.15, 0.85);
-                              });
-                            },
-                          ),
-                          SizedBox(
-                            height: terminalHeight.clamp(50, panelHeight - 100),
-                            child: const BottomPanel(),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const StatusBar(),
-        ],
+              ),
+              const StatusBar(),
+            ],
+          );
+        },
       ),
     );
   }
