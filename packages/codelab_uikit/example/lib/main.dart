@@ -52,13 +52,17 @@ class _IdeHomePageState extends State<IdeHomePage> {
           _buildSidebarNavigation(),
           _buildSidebarContent(),
           Expanded(
-            child: Stack(
+            child: Column(
               children: [
-                _buildEditorArea(),
-                Align(
-                  alignment: Alignment.bottomCenter,
-                  child: _buildStatusBar(),
+                Expanded(
+                  flex: 7,
+                  child: _buildEditorArea(),
                 ),
+                Expanded(
+                  flex: 3,
+                  child: _buildTerminalArea(),
+                ),
+                _buildStatusBar(),
               ],
             ),
           ),
@@ -179,13 +183,24 @@ class _IdeHomePageState extends State<IdeHomePage> {
   );
 
   Widget _buildStatusBar() => Container(
-    height: 28,
-    color: const Color(0xFFf2f2f2),
-    alignment: Alignment.centerRight,
-    padding: const EdgeInsets.symmetric(horizontal: 16),
-    child: const Text(
-      'Ln 1, Col 1   Spaces: 2   UTF-8',
-      style: TextStyle(fontSize: 13, color: Color(0xFF4e4e4e)),
-    ),
-  );
+        height: 28,
+        color: const Color(0xFFf2f2f2),
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: const Text(
+          'Ln 1, Col 1   Spaces: 2   UTF-8',
+          style: TextStyle(fontSize: 13, color: Color(0xFF4e4e4e)),
+        ),
+      );
+
+  Widget _buildTerminalArea() => Container(
+        color: Colors.black,
+        child: const Center(
+          child: Text(
+            'Terminal Area\n(Здесь будет терминал)',
+            style: TextStyle(fontSize: 18, color: Color(0xFF50FA7B)),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
 }
