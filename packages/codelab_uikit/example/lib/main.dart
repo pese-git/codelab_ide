@@ -1,3 +1,4 @@
+import 'package:example/main_panel_area.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'main_header.dart';
 import 'sidebar_navigation.dart';
@@ -40,6 +41,8 @@ class _IdeHomePageState extends State<IdeHomePage> {
   double _editorPanelFraction = 0.7;
   double _editorSplitFraction = 0.5;
 
+  bool _projectOpened = false;
+
   @override
   Widget build(BuildContext context) {
     return ScaffoldPage(
@@ -79,11 +82,13 @@ class _IdeHomePageState extends State<IdeHomePage> {
                         children: [
                           SizedBox(
                             height: editorHeight.clamp(100, panelHeight - 100),
-                            child: EditorSplitView(
-                              splitFraction: _editorSplitFraction,
-                              onDrag: (fraction) => setState(
-                                () => _editorSplitFraction = fraction,
-                              ),
+                            child: MainPanelArea(
+                              projectOpened: _projectOpened,
+                              editorSplitFraction: _editorSplitFraction,
+                              onEditorDrag: (f) =>
+                                  setState(() => _editorSplitFraction = f),
+                              onWizardAction: (action) =>
+                                  setState(() => _projectOpened = true),
                             ),
                           ),
                           VerticalSplitter(
