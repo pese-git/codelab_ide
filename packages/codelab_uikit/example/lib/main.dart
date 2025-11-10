@@ -22,20 +22,20 @@ class MyApp extends StatelessWidget {
         brightness: Brightness.light,
         accentColor: Colors.blue,
       ),
-      home: const IdeHomePage(),
+      home: const IdeRootPage(),
       debugShowCheckedModeBanner: true,
     );
   }
 }
 
-class IdeHomePage extends StatefulWidget {
-  const IdeHomePage({super.key});
+class IdeRootPage extends StatefulWidget {
+  const IdeRootPage({super.key});
 
   @override
-  State<IdeHomePage> createState() => _IdeHomePageState();
+  State<IdeRootPage> createState() => _IdeRootPageState();
 }
 
-class _IdeHomePageState extends State<IdeHomePage> {
+class _IdeRootPageState extends State<IdeRootPage> {
   double _sidebarPanelWidth = 200;
   int _selectedSidebarIndex = 0;
   double _editorPanelFraction = 0.7;
