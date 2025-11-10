@@ -1,0 +1,33 @@
+name: codelab_terminal
+description: A starting point for Dart libraries or applications.
+version: 1.0.0
+# repository: https://github.com/my_org/my_repo
+
+resolution: workspace
+
+environment:
+  sdk: ^3.9.0
+
+# Add regular dependencies here.
+dependencies:
+  flutter:
+    sdk: flutter
+  codelab_uikit: any
+  codelab_core: any
+  flutter_bloc: ^8.1.6
+  cherrypick: ^3.0.2
+  freezed_annotation: ^2.4.1
+  fpdart: ^1.2.0
+  xterm: ^4.0.0
+  flutter_pty: ^0.4.2
+
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  # rules and activating additional ones.
+  flutter_lints: ^6.0.0
+  test: ^1.25.6
+
+  build_runner: ^2.4.11
+  freezed: ^2.4.7

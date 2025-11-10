@@ -44,8 +44,6 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-**/build/
-
 .metadata
 .vscode/
 
@@ -53,6 +51,3 @@ app.*.map.json
 
 # FVM Version Cache
 .fvm/
-
-PROJECT_MANAGEMENT_GUIDE.md
-.codelab_project.json
