@@ -28,6 +28,8 @@ class IdeHomePage extends StatefulWidget {
 
 class _IdeHomePageState extends State<IdeHomePage> {
   int _selectedSidebarIndex = 0;
+  double _editorPanelFraction = 0.7;
+  double _dragStart = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -52,18 +54,60 @@ class _IdeHomePageState extends State<IdeHomePage> {
           _buildSidebarNavigation(),
           _buildSidebarContent(),
           Expanded(
-            child: Column(
-              children: [
-                Expanded(
-                  flex: 7,
-                  child: _buildEditorArea(),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: _buildTerminalArea(),
-                ),
-                _buildStatusBar(),
-              ],
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final panelHeight = constraints.maxHeight;
+                final editorHeight = panelHeight * _editorPanelFraction;
+                final terminalHeight =
+                    panelHeight * (1 - _editorPanelFraction) -
+                    36; // 36 for status bar
+                return Column(
+                  children: [
+                    SizedBox(
+                      height: editorHeight.clamp(100, panelHeight - 100),
+                      child: _buildEditorArea(),
+                    ),
+                    GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onVerticalDragStart: (details) {
+                        _dragStart = details.localPosition.dy;
+                      },
+                      onVerticalDragUpdate: (details) {
+                        setState(() {
+                          final d = details.localPosition.dy - _dragStart;
+                          _editorPanelFraction += d / panelHeight;
+                          _editorPanelFraction = _editorPanelFraction.clamp(
+                            0.15,
+                            0.85,
+                          );
+                          _dragStart = details.localPosition.dy;
+                        });
+                      },
+                      child: MouseRegion(
+                        cursor: SystemMouseCursors.resizeRow,
+                        child: Container(
+                          height: 8,
+                          color: Colors.grey[30],
+                          alignment: Alignment.center,
+                          child: Container(
+                            width: 40,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[110],
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    SizedBox(
+                      height: terminalHeight.clamp(50, panelHeight - 100),
+                      child: _buildTerminalArea(),
+                    ),
+                    _buildStatusBar(),
+                  ],
+                );
+              },
             ),
           ),
         ],
@@ -183,24 +227,24 @@ class _IdeHomePageState extends State<IdeHomePage> {
   );
 
   Widget _buildStatusBar() => Container(
-        height: 28,
-        color: const Color(0xFFf2f2f2),
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: const Text(
-          'Ln 1, Col 1   Spaces: 2   UTF-8',
-          style: TextStyle(fontSize: 13, color: Color(0xFF4e4e4e)),
-        ),
-      );
+    height: 28,
+    color: const Color(0xFFf2f2f2),
+    alignment: Alignment.centerRight,
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    child: const Text(
+      'Ln 1, Col 1   Spaces: 2   UTF-8',
+      style: TextStyle(fontSize: 13, color: Color(0xFF4e4e4e)),
+    ),
+  );
 
   Widget _buildTerminalArea() => Container(
-        color: Colors.black,
-        child: const Center(
-          child: Text(
-            'Terminal Area\n(Здесь будет терминал)',
-            style: TextStyle(fontSize: 18, color: Color(0xFF50FA7B)),
-            textAlign: TextAlign.center,
-          ),
-        ),
-      );
+    color: Colors.black,
+    child: const Center(
+      child: Text(
+        'Terminal Area\n(Здесь будет терминал)',
+        style: TextStyle(fontSize: 18, color: Color(0xFF50FA7B)),
+        textAlign: TextAlign.center,
+      ),
+    ),
+  );
 }
