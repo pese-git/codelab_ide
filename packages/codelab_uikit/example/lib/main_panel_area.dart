@@ -1,3 +1,4 @@
+import 'package:example/editor_panel.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'editor_split_view.dart';
 import 'start_wizard.dart';
@@ -20,9 +21,6 @@ class MainPanelArea extends StatelessWidget {
     if (!projectOpened) {
       return StartWizard(onAction: onWizardAction);
     }
-    return EditorSplitView(
-      splitFraction: editorSplitFraction,
-      onDrag: onEditorDrag,
-    );
+    return const EditorPanel(label: 'Editor 1');
   }
 }

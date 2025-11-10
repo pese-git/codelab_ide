@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'editor_panel.dart';
 
 class EditorSplitView extends StatefulWidget {
   final double splitFraction;
@@ -71,21 +72,4 @@ class _EditorSplitViewState extends State<EditorSplitView> {
   }
 }
 
-class EditorPanel extends StatelessWidget {
-  final String label;
-  const EditorPanel({super.key, required this.label});
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Colors.white,
-      child: Center(
-        child: Text(
-          '$label\n(Здесь будет редактор кода)',
-          style: const TextStyle(fontSize: 18, color: Color(0xFF888888)),
-          textAlign: TextAlign.center,
-        ),
-      ),
-    );
-  }
-}
