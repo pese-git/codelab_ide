@@ -20,19 +20,31 @@ class ExplorerPanel extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Expanded(
-            child: ListView(
-              children: const [
-                ListTile(
-                  leading: Icon(FluentIcons.page),
-                  title: Text('main.dart'),
-                ),
-                ListTile(
-                  leading: Icon(FluentIcons.page),
-                  title: Text('home_page.dart'),
-                ),
-                ListTile(
-                  leading: Icon(FluentIcons.folder_horizontal),
-                  title: Text('lib/'),
+            child: TreeView(
+              items: [
+                TreeViewItem(
+                  leading: const Icon(FluentIcons.folder_horizontal),
+                  content: const Text('project/'),
+                  children: [
+                    TreeViewItem(
+                      leading: const Icon(FluentIcons.folder_horizontal),
+                      content: const Text('lib/'),
+                      children: [
+                        TreeViewItem(
+                          leading: const Icon(FluentIcons.page),
+                          content: const Text('main.dart'),
+                        ),
+                        TreeViewItem(
+                          leading: const Icon(FluentIcons.page),
+                          content: const Text('home_page.dart'),
+                        ),
+                      ],
+                    ),
+                    TreeViewItem(
+                      leading: const Icon(FluentIcons.page),
+                      content: const Text('README.md'),
+                    ),
+                  ],
                 ),
               ],
             ),
