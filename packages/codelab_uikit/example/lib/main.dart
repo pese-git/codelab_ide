@@ -27,6 +27,7 @@ class IdeHomePage extends StatefulWidget {
 }
 
 class _IdeHomePageState extends State<IdeHomePage> {
+  double _sidebarPanelWidth = 200;
   int _selectedSidebarIndex = 0;
   double _editorPanelFraction = 0.7;
   double _editorSplitFraction = 0.5;
@@ -43,7 +44,21 @@ class _IdeHomePageState extends State<IdeHomePage> {
             selectedIndex: _selectedSidebarIndex,
             onSelected: (i) => setState(() => _selectedSidebarIndex = i),
           ),
-          SidebarPanel(selectedIndex: _selectedSidebarIndex),
+          SizedBox(
+            width: _sidebarPanelWidth,
+            child: SidebarPanel(selectedIndex: _selectedSidebarIndex),
+          ),
+          _HorizontalSplitter(
+            onDrag: (delta) {
+              setState(() {
+                _sidebarPanelWidth += delta;
+                _sidebarPanelWidth = _sidebarPanelWidth.clamp(
+                  130.0,
+                  400.0,
+                ); // по желанию
+              });
+            },
+          ),
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
@@ -311,6 +326,37 @@ class _VerticalSplitter extends StatelessWidget {
           child: Container(
             width: 40,
             height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey[110],
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HorizontalSplitter extends StatelessWidget {
+  final ValueChanged<double> onDrag;
+  const _HorizontalSplitter({required this.onDrag, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onHorizontalDragUpdate: (details) {
+        onDrag(details.delta.dx);
+      },
+      child: MouseRegion(
+        cursor: SystemMouseCursors.resizeColumn,
+        child: Container(
+          width: 8,
+          color: Colors.grey[30],
+          alignment: Alignment.center,
+          child: Container(
+            height: 40,
+            width: 4,
             decoration: BoxDecoration(
               color: Colors.grey[110],
               borderRadius: BorderRadius.circular(2),
