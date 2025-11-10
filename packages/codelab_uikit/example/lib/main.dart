@@ -27,74 +27,99 @@ class IdeHomePage extends StatefulWidget {
 }
 
 class _IdeHomePageState extends State<IdeHomePage> {
-  int _selectedIndex = 0;
+  int _selectedSidebarIndex = 0;
 
   @override
   Widget build(BuildContext context) {
-    return NavigationView(
-      appBar: NavigationAppBar(
-        title: const Text('Codelab IDE'),
-        //leading: IconButton(
-        //  icon: const Icon(FluentIcons.page),
-        //  onPressed: () {},
-        //),
-        actions: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            IconButton(icon: const Icon(FluentIcons.save), onPressed: () {}),
-            IconButton(icon: const Icon(FluentIcons.play), onPressed: () {}),
-            IconButton(
-              icon: const Icon(FluentIcons.settings),
-              onPressed: () {},
-            ),
-          ],
-        ),
-      ),
-      pane: NavigationPane(
-        selected: _selectedIndex,
-        onChanged: (index) => setState(() => _selectedIndex = index),
-        displayMode: PaneDisplayMode.compact,
-        size: const NavigationPaneSize(),
-        items: [
-          PaneItem(
-            icon: const Icon(FluentIcons.open_folder_horizontal),
-            title: const Text('Explorer'),
-            body: _buildFileExplorer(),
-          ),
-          PaneItem(
-            icon: const Icon(FluentIcons.search),
-            title: const Text('Search'),
-            body: _placeholderBody('Search'),
-          ),
-          PaneItem(
-            icon: const Icon(FluentIcons.git_graph),
-            title: const Text('Git'),
-            body: _placeholderBody('Source Control'),
-          ),
-          PaneItem(
-            icon: const Icon(FluentIcons.play),
-            title: const Text('Run'),
-            body: _placeholderBody('Run/Debug'),
-          ),
-          PaneItem(
-            icon: const Icon(FluentIcons.plug),
-            title: const Text('Extensions'),
-            body: _placeholderBody('Extensions'),
-          ),
-        ],
-      ),
-      /*
-      content: Stack(
+    return ScaffoldPage(
+      header: Row(
         children: [
-          Positioned.fill(child: _buildEditorArea()),
-          Align(alignment: Alignment.bottomCenter, child: _buildStatusBar()),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              'Codelab IDE',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          ),
+          const Spacer(),
+          IconButton(icon: const Icon(FluentIcons.save), onPressed: () {}),
+          IconButton(icon: const Icon(FluentIcons.play), onPressed: () {}),
+          IconButton(icon: const Icon(FluentIcons.settings), onPressed: () {}),
         ],
       ),
-      */
+      content: Row(
+        children: [
+          _buildSidebarNavigation(),
+          _buildSidebarContent(),
+          Expanded(
+            child: Stack(
+              children: [
+                _buildEditorArea(),
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: _buildStatusBar(),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
+  // Custom vertical sidebar navigation
+  Widget _buildSidebarNavigation() => Container(
+    width: 56,
+    color: Colors.grey[10],
+    child: Column(
+      children: [
+        _sidebarIcon(
+          FluentIcons.open_folder_horizontal,
+          0,
+          tooltip: 'Explorer',
+        ),
+        _sidebarIcon(FluentIcons.search, 1, tooltip: 'Search'),
+        _sidebarIcon(FluentIcons.git_graph, 2, tooltip: 'Git'),
+        _sidebarIcon(FluentIcons.play, 3, tooltip: 'Run'),
+        _sidebarIcon(FluentIcons.plug, 4, tooltip: 'Extensions'),
+      ],
+    ),
+  );
+
+  Widget _sidebarIcon(IconData icon, int idx, {String? tooltip}) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 6),
+    child: Tooltip(
+      message: tooltip ?? '',
+      child: IconButton(
+        icon: Icon(
+          icon,
+          color: _selectedSidebarIndex == idx ? Colors.blue : Colors.grey[100],
+        ),
+        onPressed: () => setState(() => _selectedSidebarIndex = idx),
+      ),
+    ),
+  );
+
+  // Dynamic content based on sidebar selection
+  Widget _buildSidebarContent() {
+    switch (_selectedSidebarIndex) {
+      case 0:
+        return _buildFileExplorer();
+      case 1:
+        return _placeholderBody('Search');
+      case 2:
+        return _placeholderBody('Source Control');
+      case 3:
+        return _placeholderBody('Run/Debug');
+      case 4:
+        return _placeholderBody('Extensions');
+      default:
+        return const SizedBox(width: 200);
+    }
+  }
+
   Widget _buildFileExplorer() => Container(
+    width: 200,
     color: Colors.grey[20],
     padding: const EdgeInsets.all(8),
     child: Column(
@@ -130,31 +155,32 @@ class _IdeHomePageState extends State<IdeHomePage> {
     ),
   );
 
-  Widget _buildEditorArea() => Padding(
-    padding: const EdgeInsets.only(left: 75), // Сдвиг под NavigationPane
-    child: Container(
-      color: Colors.white,
-      child: const Center(
-        child: Text(
-          'Editor Area\n(Здесь будет редактор кода)',
-          style: TextStyle(fontSize: 20, color: Color(0xFF888888)),
-          textAlign: TextAlign.center,
-        ),
+  Widget _placeholderBody(String name) => Container(
+    width: 200,
+    color: Colors.grey[20],
+    child: Center(
+      child: Text(
+        '$name\nбудет реализовано позже',
+        style: const TextStyle(color: Color(0xFF888888), fontSize: 15),
+        textAlign: TextAlign.center,
       ),
     ),
   );
 
-  Widget _placeholderBody(String name) => Center(
-    child: Text(
-      '$name area (будет реализовано позже)',
-      style: const TextStyle(color: Color(0xFF888888), fontSize: 17),
-      textAlign: TextAlign.center,
+  Widget _buildEditorArea() => Container(
+    color: Colors.white,
+    child: const Center(
+      child: Text(
+        'Editor Area\n(Здесь будет редактор кода)',
+        style: TextStyle(fontSize: 20, color: Color(0xFF888888)),
+        textAlign: TextAlign.center,
+      ),
     ),
   );
 
   Widget _buildStatusBar() => Container(
     height: 28,
-    color: const Color(0xFFf2f2f2), // светло-серый, или любой по желанию,
+    color: const Color(0xFFf2f2f2),
     alignment: Alignment.centerRight,
     padding: const EdgeInsets.symmetric(horizontal: 16),
     child: const Text(
