@@ -92,7 +92,7 @@ class _IdeHomePageState extends State<IdeHomePage> {
                     ),
                     SizedBox(
                       height: terminalHeight.clamp(50, panelHeight - 100),
-                      child: const TerminalPanel(),
+                      child: const BottomPanel(),
                     ),
                     const StatusBar(),
                   ],
