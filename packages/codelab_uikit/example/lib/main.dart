@@ -38,6 +38,7 @@ class IdeRootPage extends StatefulWidget {
 class _IdeRootPageState extends State<IdeRootPage> {
   double _sidebarPanelWidth = 200;
   int _selectedSidebarIndex = 0;
+  bool _sidebarVisible = true;
   double _editorPanelFraction = 0.7;
   double _editorSplitFraction = 0.5;
 
@@ -58,24 +59,34 @@ class _IdeRootPageState extends State<IdeRootPage> {
                   children: [
                     SidebarNavigation(
                       selectedIndex: _selectedSidebarIndex,
-                      onSelected: (i) =>
-                          setState(() => _selectedSidebarIndex = i),
+                      onSelected: (i) => setState(() {
+                        if (_selectedSidebarIndex == i) {
+                          _sidebarVisible = !_sidebarVisible;
+                        } else {
+                          _sidebarVisible = true;
+                          _selectedSidebarIndex = i;
+                        }
+                      }),
                     ),
                     SizedBox(
-                      width: _sidebarPanelWidth,
-                      child: SidebarPanel(selectedIndex: _selectedSidebarIndex),
+                      width: _sidebarVisible ? _sidebarPanelWidth : 0.0,
+                      child: _sidebarVisible
+                          ? SidebarPanel(selectedIndex: _selectedSidebarIndex)
+                          : null,
                     ),
-                    HorizontalSplitter(
-                      onDrag: (delta) {
-                        setState(() {
-                          _sidebarPanelWidth += delta;
-                          _sidebarPanelWidth = _sidebarPanelWidth.clamp(
-                            130.0,
-                            maxSidebarWidth,
-                          );
-                        });
-                      },
-                    ),
+                    _sidebarVisible
+                        ? HorizontalSplitter(
+                            onDrag: (delta) {
+                              setState(() {
+                                _sidebarPanelWidth += delta;
+                                _sidebarPanelWidth = _sidebarPanelWidth.clamp(
+                                  130.0,
+                                  maxSidebarWidth,
+                                );
+                              });
+                            },
+                          )
+                        : const SizedBox(width: 0),
                     Expanded(
                       child: LayoutBuilder(
                         builder: (context, constraints) {
