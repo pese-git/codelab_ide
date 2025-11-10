@@ -23,7 +23,7 @@ class MyApp extends StatelessWidget {
         accentColor: Colors.blue,
       ),
       home: const IdeRootPage(),
-      debugShowCheckedModeBanner: true,
+      debugShowCheckedModeBanner: false,
     );
   }
 }
@@ -38,16 +38,21 @@ class IdeRootPage extends StatefulWidget {
 class _IdeRootPageState extends State<IdeRootPage> {
   double _sidebarPanelWidth = 200;
   int _selectedSidebarIndex = 0;
-  bool _sidebarVisible = true;
+  bool _sidebarVisible = false;
   double _editorPanelFraction = 0.7;
   double _editorSplitFraction = 0.5;
+  bool _bottomPanelVisible = false;
 
   bool _projectOpened = false;
 
   @override
   Widget build(BuildContext context) {
     return ScaffoldPage(
-      header: const MainHeader(),
+      header: MainHeader(
+        bottomPanelVisible: _bottomPanelVisible,
+        onToggleBottomPanel: () =>
+            setState(() => _bottomPanelVisible = !_bottomPanelVisible),
+      ),
       content: LayoutBuilder(
         builder: (context, constraints) {
           const minEditorWidth = 120.0;
@@ -96,38 +101,61 @@ class _IdeRootPageState extends State<IdeRootPage> {
                           final terminalHeight =
                               panelHeight * (1 - _editorPanelFraction) - 36;
                           return Column(
-                            children: [
-                              SizedBox(
-                                height: editorHeight.clamp(
-                                  100,
-                                  panelHeight - 100,
-                                ),
-                                child: MainPanelArea(
-                                  projectOpened: _projectOpened,
-                                  editorSplitFraction: _editorSplitFraction,
-                                  onEditorDrag: (f) =>
-                                      setState(() => _editorSplitFraction = f),
-                                  onWizardAction: (action) =>
-                                      setState(() => _projectOpened = true),
-                                ),
-                              ),
-                              VerticalSplitter(
-                                onDrag: (delta) {
-                                  setState(() {
-                                    _editorPanelFraction += delta / panelHeight;
-                                    _editorPanelFraction = _editorPanelFraction
-                                        .clamp(0.15, 0.85);
-                                  });
-                                },
-                              ),
-                              SizedBox(
-                                height: terminalHeight.clamp(
-                                  50,
-                                  panelHeight - 100,
-                                ),
-                                child: const BottomPanel(),
-                              ),
-                            ],
+                            children: _bottomPanelVisible
+                                ? [
+                                    SizedBox(
+                                      height: editorHeight.clamp(
+                                        100,
+                                        panelHeight - 100,
+                                      ),
+                                      child: MainPanelArea(
+                                        projectOpened: _projectOpened,
+                                        editorSplitFraction:
+                                            _editorSplitFraction,
+                                        onEditorDrag: (f) => setState(
+                                          () => _editorSplitFraction = f,
+                                        ),
+                                        onWizardAction: (action) => setState(
+                                          () => _projectOpened = true,
+                                        ),
+                                      ),
+                                    ),
+                                    VerticalSplitter(
+                                      onDrag: (delta) {
+                                        setState(() {
+                                          _editorPanelFraction +=
+                                              delta / panelHeight;
+                                          _editorPanelFraction =
+                                              _editorPanelFraction.clamp(
+                                                0.15,
+                                                0.85,
+                                              );
+                                        });
+                                      },
+                                    ),
+                                    SizedBox(
+                                      height: terminalHeight.clamp(
+                                        50,
+                                        panelHeight - 100,
+                                      ),
+                                      child: const BottomPanel(),
+                                    ),
+                                  ]
+                                : [
+                                    Expanded(
+                                      child: MainPanelArea(
+                                        projectOpened: _projectOpened,
+                                        editorSplitFraction:
+                                            _editorSplitFraction,
+                                        onEditorDrag: (f) => setState(
+                                          () => _editorSplitFraction = f,
+                                        ),
+                                        onWizardAction: (action) => setState(
+                                          () => _projectOpened = true,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                           );
                         },
                       ),
