@@ -3,7 +3,6 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'main_header.dart';
 import 'sidebar_navigation.dart';
 import 'sidebar_panel.dart';
-import 'editor_split_view.dart';
 import 'bottom_panel.dart';
 import 'status_bar.dart';
 import 'horizontal_splitter.dart';
