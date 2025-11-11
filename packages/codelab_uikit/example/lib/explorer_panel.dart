@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/material.dart' as material show Material, Colors, BorderRadius, BoxDecoration;
 import 'file_node.dart';
 
 class ExplorerPanel extends StatelessWidget {
@@ -44,9 +45,30 @@ class ExplorerPanel extends StatelessWidget {
       } else {
         return TreeViewItem(
           leading: const Icon(FluentIcons.page),
-          content: GestureDetector(
-            onTap: () => onFileOpen(node),
-            child: Text(node.name),
+          content: Draggable<FileNode>(
+            data: node,
+            feedback: material.Material(
+              color: material.Colors.transparent,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: material.BoxDecoration(
+                  color: material.Colors.grey[200],
+                  borderRadius: material.BorderRadius.circular(2),
+                ),
+                child: Text(
+                  node.name,
+                  style: const TextStyle(color: material.Colors.black, fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+              ),
+            ),
+            childWhenDragging: Opacity(
+              opacity: 0.4,
+              child: Text(node.name),
+            ),
+            child: GestureDetector(
+              onTap: () => onFileOpen(node),
+              child: Text(node.name),
+            ),
           ),
         );
       }

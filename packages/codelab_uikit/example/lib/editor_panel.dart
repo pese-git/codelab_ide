@@ -1,3 +1,4 @@
+import 'package:example/file_node.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'editor_tab.dart';
 import 'editor_panel_toolbar.dart';
@@ -46,9 +47,7 @@ class EditorPanelState extends State<EditorPanel> {
   @override
   void initState() {
     super.initState();
-    rootPane = EditorTabsPane(
-      tabs: List.from(widget.initialTabs),
-    );
+    rootPane = EditorTabsPane(tabs: List.from(widget.initialTabs));
   }
 
   // --- ОПЕРАЦИИ НА ПАНЕЛЯХ ---
@@ -84,16 +83,16 @@ class EditorPanelState extends State<EditorPanel> {
     required String filePath,
     required String title,
     required String content,
+    EditorTabsPane? targetPane,
   }) {
     setState(() {
-      final targetPane = _lastActivePane ?? _findFirstOrRootPane(rootPane);
-      final existingIdx = targetPane.tabs.indexWhere(
-        (t) => t.filePath == filePath,
-      );
+      final pane =
+          targetPane ?? _lastActivePane ?? _findFirstOrRootPane(rootPane);
+      final existingIdx = pane.tabs.indexWhere((t) => t.filePath == filePath);
       if (existingIdx != -1) {
-        targetPane.selectedIndex = existingIdx;
+        pane.selectedIndex = existingIdx;
       } else {
-        targetPane.tabs.add(
+        pane.tabs.add(
           EditorTab(
             id: DateTime.now().millisecondsSinceEpoch.toString(),
             title: title,
@@ -101,7 +100,7 @@ class EditorPanelState extends State<EditorPanel> {
             content: content,
           ),
         );
-        targetPane.selectedIndex = targetPane.tabs.length - 1;
+        pane.selectedIndex = pane.tabs.length - 1;
       }
     });
   }
@@ -220,8 +219,6 @@ class EditorPanelState extends State<EditorPanel> {
     return current;
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -232,42 +229,60 @@ class EditorPanelState extends State<EditorPanel> {
 
   Widget _buildPane(PaneNode node, String label) {
     if (node is EditorTabsPane) {
-      return Focus(
-        onFocusChange: (hasFocus) {
-          if (hasFocus && _lastActivePane != node) {
-            setState(() => _lastActivePane = node);
-          }
+      return _EditorPaneDragTarget(
+        pane: node,
+        isActive: _lastActivePane == node,
+        onOpenFile: (fileNode) {
+          openFile(
+            filePath: fileNode.path,
+            title: fileNode.name,
+            content:
+                '// Stub content for drag-and-drop: \\${fileNode.name}\\nvoid main() {\\n  print(\\"Hello, \\${fileNode.name}!\\");\\n}',
+            targetPane: node,
+          );
         },
-        child: GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onTap: () {
-            if (_lastActivePane != node) {
+        onFocused: () {
+          if (_lastActivePane != node) setState(() => _lastActivePane = node);
+        },
+        child: Focus(
+          onFocusChange: (hasFocus) {
+            if (hasFocus && _lastActivePane != node) {
               setState(() => _lastActivePane = node);
             }
           },
-          child: Column(
-            children: [
-              EditorPanelToolbar(
-                label: label,
-                onAddTab: () => _addTabInPane(node),
-                onSaveTabs: () => _saveTabsInPane(node),
-                onSplitVertical: () => _splitPane(node, isVertical: true),
-                onSplitHorizontal: () => _splitPane(node, isVertical: false),
-                canSplit: true,
-              ),
-              Expanded(
-                child: EditorTabView(
-                  tabs: node.tabs,
-                  onTabSelected: (i) => setState(() {
-                    node.selectedIndex = i;
-                    _lastActivePane = node;
-                  }),
-                  onTabClosed: (i) => _closeTabInPane(node, i),
-                  onTabContentChanged: (tab) => _updateTabContentInPane(node, tab),
-                  onTabsReordered: (newTabs) => setState(() => node.tabs = newTabs),
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: () {
+              if (_lastActivePane != node) {
+                setState(() => _lastActivePane = node);
+              }
+            },
+            child: Column(
+              children: [
+                EditorPanelToolbar(
+                  label: label,
+                  onAddTab: () => _addTabInPane(node),
+                  onSaveTabs: () => _saveTabsInPane(node),
+                  onSplitVertical: () => _splitPane(node, isVertical: true),
+                  onSplitHorizontal: () => _splitPane(node, isVertical: false),
+                  canSplit: true,
                 ),
-              ),
-            ],
+                Expanded(
+                  child: EditorTabView(
+                    tabs: node.tabs,
+                    onTabSelected: (i) => setState(() {
+                      node.selectedIndex = i;
+                      _lastActivePane = node;
+                    }),
+                    onTabClosed: (i) => _closeTabInPane(node, i),
+                    onTabContentChanged: (tab) =>
+                        _updateTabContentInPane(node, tab),
+                    onTabsReordered: (newTabs) =>
+                        setState(() => node.tabs = newTabs),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -316,5 +331,61 @@ class EditorPanelState extends State<EditorPanel> {
     } else {
       return const SizedBox.shrink();
     }
+  }
+}
+
+// --- DragTarget wrapper for EditorTabsPane ---
+class _EditorPaneDragTarget extends StatefulWidget {
+  final EditorTabsPane pane;
+  final Widget child;
+  final bool isActive;
+  final void Function(FileNode) onOpenFile;
+  final VoidCallback? onFocused;
+  const _EditorPaneDragTarget({
+    required this.pane,
+    required this.child,
+    required this.isActive,
+    required this.onOpenFile,
+    this.onFocused,
+  });
+  @override
+  State<_EditorPaneDragTarget> createState() => _EditorPaneDragTargetState();
+}
+
+class _EditorPaneDragTargetState extends State<_EditorPaneDragTarget> {
+  bool _isDragOver = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return DragTarget<FileNode>(
+      onWillAcceptWithDetails: (details) {
+        final file = details.data;
+        setState(() => _isDragOver = true);
+        widget.onFocused?.call();
+        return !file.isDirectory;
+      },
+      onLeave: (file) => setState(() => _isDragOver = false),
+      onAcceptWithDetails: (details) {
+        final file = details.data;
+        setState(() => _isDragOver = false);
+        widget.onOpenFile(file);
+      },
+      builder: (context, candidateData, rejectedData) {
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          curve: Curves.ease,
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: _isDragOver
+                  ? Colors.blue
+                  : (widget.isActive ? Colors.grey[50] : Colors.transparent),
+              width: _isDragOver ? 2.5 : (widget.isActive ? 1 : 0),
+            ),
+            borderRadius: BorderRadius.circular(3),
+          ),
+          child: widget.child,
+        );
+      },
+    );
   }
 }
