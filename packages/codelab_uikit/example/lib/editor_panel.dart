@@ -15,7 +15,7 @@ class EditorPanel extends StatefulWidget {
   });
 
   @override
-  State<EditorPanel> createState() => _EditorPanelState();
+  State<EditorPanel> createState() => EditorPanelState();
 }
 
 abstract class PaneNode {}
@@ -39,16 +39,14 @@ class SplitPane extends PaneNode {
   });
 }
 
-class _EditorPanelState extends State<EditorPanel> {
+class EditorPanelState extends State<EditorPanel> {
   late PaneNode rootPane;
 
   @override
   void initState() {
     super.initState();
     rootPane = EditorTabsPane(
-      tabs: widget.initialTabs.isEmpty
-          ? _createDefaultTabs()
-          : List.from(widget.initialTabs),
+      tabs: List.from(widget.initialTabs),
     );
   }
 
@@ -78,6 +76,43 @@ class _EditorPanelState extends State<EditorPanel> {
         );
       },
     );
+  }
+
+  // --- API внешнего открытия файла ---
+  void openFile({
+    required String filePath,
+    required String title,
+    required String content,
+  }) {
+    setState(() {
+      final targetPane = _findFirstOrRootPane(rootPane);
+      final existingIdx = targetPane.tabs.indexWhere(
+        (t) => t.filePath == filePath,
+      );
+      if (existingIdx != -1) {
+        targetPane.selectedIndex = existingIdx;
+      } else {
+        targetPane.tabs.add(
+          EditorTab(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            title: title,
+            filePath: filePath,
+            content: content,
+          ),
+        );
+        targetPane.selectedIndex = targetPane.tabs.length - 1;
+      }
+    });
+  }
+
+  EditorTabsPane _findFirstOrRootPane(PaneNode node) {
+    if (node is EditorTabsPane) return node;
+    if (node is SplitPane) {
+      final first = _findFirstOrRootPane(node.first);
+      if (first.tabs.isNotEmpty) return first;
+      return _findFirstOrRootPane(node.second);
+    }
+    return node as EditorTabsPane;
   }
 
   void _updateTabContentInPane(EditorTabsPane pane, EditorTab tab) {
@@ -184,102 +219,7 @@ class _EditorPanelState extends State<EditorPanel> {
     return current;
   }
 
-  List<EditorTab> _createDefaultTabs() {
-    return [
-      EditorTab(
-        id: '1',
-        title: 'main.dart',
-        filePath: 'lib/main.dart',
-        content: '''
-import 'package:flutter/material.dart';
 
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: const MyHomePage(),
-    );
-  }
-}
-
-class MyHomePage extends StatelessWidget {
-  const MyHomePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Home Page'),
-      ),
-      body: const Center(
-        child: Text('Hello World!'),
-      ),
-    );
-  }
-}
-''',
-      ),
-      EditorTab(
-        id: '2',
-        title: 'pubspec.yaml',
-        filePath: 'pubspec.yaml',
-        content: '''
-name: my_app
-description: A new Flutter project.
-
-publish_to: 'none'
-
-version: 1.0.0+1
-
-environment:
-  sdk: '>=3.0.0 <4.0.0'
-
-dependencies:
-  flutter:
-    sdk: flutter
-
-dev_dependencies:
-  flutter_test:
-    sdk: flutter
-
-flutter:
-  uses-material-design: true
-''',
-      ),
-      EditorTab(
-        id: '3',
-        title: 'README.md',
-        filePath: 'README.md',
-        content: '''
-# My Flutter App
-
-This is a sample Flutter application.
-
-## Features
-
-- Feature 1
-- Feature 2
-- Feature 3
-
-## Getting Started
-
-1. Clone the repository
-2. Run `flutter pub get`
-3. Run `flutter run`
-''',
-      ),
-    ];
-  }
 
   @override
   Widget build(BuildContext context) {

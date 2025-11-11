@@ -1,7 +1,11 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'file_node.dart';
 
 class ExplorerPanel extends StatelessWidget {
-  const ExplorerPanel({super.key});
+  final List<FileNode> files;
+  final void Function(FileNode) onFileOpen;
+  const ExplorerPanel({super.key, required this.files, required this.onFileOpen});
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -21,36 +25,31 @@ class ExplorerPanel extends StatelessWidget {
           const SizedBox(height: 6),
           Expanded(
             child: TreeView(
-              items: [
-                TreeViewItem(
-                  leading: const Icon(FluentIcons.folder_horizontal),
-                  content: const Text('project/'),
-                  children: [
-                    TreeViewItem(
-                      leading: const Icon(FluentIcons.folder_horizontal),
-                      content: const Text('lib/'),
-                      children: [
-                        TreeViewItem(
-                          leading: const Icon(FluentIcons.page),
-                          content: const Text('main.dart'),
-                        ),
-                        TreeViewItem(
-                          leading: const Icon(FluentIcons.page),
-                          content: const Text('home_page.dart'),
-                        ),
-                      ],
-                    ),
-                    TreeViewItem(
-                      leading: const Icon(FluentIcons.page),
-                      content: const Text('README.md'),
-                    ),
-                  ],
-                ),
-              ],
+              items: _buildTree(files),
             ),
           ),
         ],
       ),
     );
+  }
+
+  List<TreeViewItem> _buildTree(List<FileNode> nodes) {
+    return nodes.map((node) {
+      if (node.isDirectory) {
+        return TreeViewItem(
+          leading: const Icon(FluentIcons.folder_horizontal),
+          content: Text(node.name),
+          children: _buildTree(node.children),
+        );
+      } else {
+        return TreeViewItem(
+          leading: const Icon(FluentIcons.page),
+          content: GestureDetector(
+            onTap: () => onFileOpen(node),
+            child: Text(node.name),
+          ),
+        );
+      }
+    }).toList();
   }
 }

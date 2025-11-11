@@ -2,16 +2,24 @@ import 'package:flutter/material.dart'
     show SizedBox, StatelessWidget, BuildContext, Widget;
 import 'explorer_panel.dart';
 import 'sidebar_placeholder.dart';
+import 'file_node.dart';
 
 class SidebarPanel extends StatelessWidget {
   final int selectedIndex;
-  const SidebarPanel({super.key, required this.selectedIndex});
+  final List<FileNode> files;
+  final void Function(FileNode) onFileOpen;
+  const SidebarPanel({
+    super.key,
+    required this.selectedIndex,
+    required this.files,
+    required this.onFileOpen,
+  });
 
   @override
   Widget build(BuildContext context) {
     switch (selectedIndex) {
       case 0:
-        return const ExplorerPanel();
+        return ExplorerPanel(files: files, onFileOpen: onFileOpen);
       case 1:
         return const SidebarPlaceholder('Search');
       case 2:
