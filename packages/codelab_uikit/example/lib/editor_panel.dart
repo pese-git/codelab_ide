@@ -191,6 +191,7 @@ This is a sample Flutter application.
               onTabSelected: _onTabSelected,
               onTabClosed: _onTabClosed,
               onTabContentChanged: _onTabContentChanged,
+              onTabsReordered: (newTabs) => setState(() => _tabs = newTabs),
             ),
           ),
         ],
