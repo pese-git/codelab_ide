@@ -9,6 +9,7 @@ import 'status_bar.dart';
 import 'horizontal_splitter.dart';
 import 'vertical_splitter.dart';
 import 'editor_panel.dart';
+import 'ai_assistant_panel.dart';
 
 void main() => runApp(const MyApp());
 
@@ -43,7 +44,8 @@ class _IdeRootPageState extends State<IdeRootPage> {
   double _editorPanelFraction = 0.7;
   double _editorSplitFraction = 0.5;
   bool _bottomPanelVisible = false;
-
+  bool _aiPanelVisible = false;
+  double _aiPanelWidth = 320.0; // ширина AI панели
   bool _projectOpened = false;
 
   final GlobalKey<EditorPanelState> editorPanelKey =
@@ -79,6 +81,9 @@ class _IdeRootPageState extends State<IdeRootPage> {
         bottomPanelVisible: _bottomPanelVisible,
         onToggleBottomPanel: () =>
             setState(() => _bottomPanelVisible = !_bottomPanelVisible),
+        aiPanelVisible: _aiPanelVisible,
+        onToggleAiPanel: () =>
+            setState(() => _aiPanelVisible = !_aiPanelVisible),
       ),
       content: LayoutBuilder(
         builder: (context, constraints) {
@@ -142,63 +147,98 @@ class _IdeRootPageState extends State<IdeRootPage> {
                           final terminalHeight =
                               panelHeight * (1 - _editorPanelFraction) - 36;
                           return Column(
-                            children: _bottomPanelVisible
-                                ? [
-                                    SizedBox(
-                                      height: editorHeight.clamp(
-                                        100,
-                                        panelHeight - 100,
-                                      ),
-                                      child: MainPanelArea(
-                                        projectOpened: _projectOpened,
-                                        editorSplitFraction:
-                                            _editorSplitFraction,
-                                        onEditorDrag: (f) => setState(
-                                          () => _editorSplitFraction = f,
-                                        ),
-                                        onWizardAction: (action) => setState(
-                                          () => _projectOpened = true,
-                                        ),
-                                        editorPanelKey: editorPanelKey,
-                                      ),
-                                    ),
-                                    VerticalSplitter(
-                                      onDrag: (delta) {
-                                        setState(() {
-                                          _editorPanelFraction +=
-                                              delta / panelHeight;
-                                          _editorPanelFraction =
-                                              _editorPanelFraction.clamp(
-                                                0.15,
-                                                0.85,
-                                              );
-                                        });
-                                      },
-                                    ),
-                                    SizedBox(
-                                      height: terminalHeight.clamp(
-                                        50,
-                                        panelHeight - 100,
-                                      ),
-                                      child: const BottomPanel(),
-                                    ),
-                                  ]
-                                : [
+                            children: [
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    // Левая часть — MainPanelArea и BottomPanel
                                     Expanded(
-                                      child: MainPanelArea(
-                                        projectOpened: _projectOpened,
-                                        editorSplitFraction:
-                                            _editorSplitFraction,
-                                        onEditorDrag: (f) => setState(
-                                          () => _editorSplitFraction = f,
-                                        ),
-                                        onWizardAction: (action) => setState(
-                                          () => _projectOpened = true,
-                                        ),
-                                        editorPanelKey: editorPanelKey,
-                                      ),
+                                      child: _bottomPanelVisible
+                                          ? Column(
+                                              children: [
+                                                SizedBox(
+                                                  height: editorHeight.clamp(
+                                                    100,
+                                                    panelHeight - 100,
+                                                  ),
+                                                  child: MainPanelArea(
+                                                    projectOpened:
+                                                        _projectOpened,
+                                                    editorSplitFraction:
+                                                        _editorSplitFraction,
+                                                    onEditorDrag: (f) => setState(
+                                                      () =>
+                                                          _editorSplitFraction =
+                                                              f,
+                                                    ),
+                                                    onWizardAction: (action) =>
+                                                        setState(
+                                                          () => _projectOpened =
+                                                              true,
+                                                        ),
+                                                    editorPanelKey:
+                                                        editorPanelKey,
+                                                  ),
+                                                ),
+                                                VerticalSplitter(
+                                                  onDrag: (delta) {
+                                                    setState(() {
+                                                      _editorPanelFraction +=
+                                                          delta / panelHeight;
+                                                      _editorPanelFraction =
+                                                          _editorPanelFraction
+                                                              .clamp(
+                                                                0.15,
+                                                                0.85,
+                                                              );
+                                                    });
+                                                  },
+                                                ),
+                                                SizedBox(
+                                                  height: terminalHeight.clamp(
+                                                    50,
+                                                    panelHeight - 100,
+                                                  ),
+                                                  child: const BottomPanel(),
+                                                ),
+                                              ],
+                                            )
+                                          : MainPanelArea(
+                                              projectOpened: _projectOpened,
+                                              editorSplitFraction:
+                                                  _editorSplitFraction,
+                                              onEditorDrag: (f) => setState(
+                                                () => _editorSplitFraction = f,
+                                              ),
+                                              onWizardAction: (action) =>
+                                                  setState(
+                                                    () => _projectOpened = true,
+                                                  ),
+                                              editorPanelKey: editorPanelKey,
+                                            ),
                                     ),
+                                    // Splitter и AI панель только если видима
+                                    if (_aiPanelVisible) ...[
+                                      HorizontalSplitter(
+                                        onDrag: (dx) {
+                                          setState(() {
+                                            _aiPanelWidth -= dx;
+                                            _aiPanelWidth = _aiPanelWidth.clamp(
+                                              200.0,
+                                              500.0,
+                                            );
+                                          });
+                                        },
+                                      ),
+                                      SizedBox(
+                                        width: _aiPanelWidth,
+                                        child: const AIAssistantPanel(),
+                                      ),
+                                    ],
                                   ],
+                                ),
+                              ),
+                            ],
                           );
                         },
                       ),
