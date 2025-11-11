@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'editor_tab.dart';
 import 'editor_panel_toolbar.dart';
 import 'horizontal_splitter.dart';
+import 'vertical_splitter.dart';
 
 class EditorPanel extends StatefulWidget {
   final String label;
@@ -17,22 +18,170 @@ class EditorPanel extends StatefulWidget {
   State<EditorPanel> createState() => _EditorPanelState();
 }
 
+abstract class PaneNode {}
+
+class EditorTabsPane extends PaneNode {
+  List<EditorTab> tabs;
+  int selectedIndex;
+  EditorTabsPane({required this.tabs, this.selectedIndex = 0});
+}
+
+class SplitPane extends PaneNode {
+  bool isVertical; // true = vertical, false = horizontal
+  double fraction;
+  PaneNode first;
+  PaneNode second;
+  SplitPane({
+    required this.isVertical,
+    required this.fraction,
+    required this.first,
+    required this.second,
+  });
+}
+
 class _EditorPanelState extends State<EditorPanel> {
-  late List<List<EditorTab>> _panes; // Split panes
-  List<int> _selectedTabIndices = [0, 0];
-  double _splitFraction = 0.5;
-  bool _splitActive = false;
+  late PaneNode rootPane;
 
   @override
   void initState() {
     super.initState();
-    _panes = [
-      widget.initialTabs.isEmpty ? _createDefaultTabs() : List.from(widget.initialTabs),
-      <EditorTab>[], // starts closed
-    ];
-    _selectedTabIndices = [0, 0];
-    _splitFraction = 0.5;
-    _splitActive = false;
+    rootPane = EditorTabsPane(
+      tabs: widget.initialTabs.isEmpty
+          ? _createDefaultTabs()
+          : List.from(widget.initialTabs),
+    );
+  }
+
+  // --- ОПЕРАЦИИ НА ПАНЕЛЯХ ---
+  void _addTabInPane(EditorTabsPane pane) {
+    setState(() {
+      final newTab = EditorTab(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        title: 'new_file.dart',
+        filePath: 'lib/new_file.dart',
+        content:
+            '// New file content\nvoid main() {\n  print("Hello World!");\n}',
+      );
+      pane.tabs.add(newTab);
+      pane.selectedIndex = pane.tabs.length - 1;
+    });
+  }
+
+  void _saveTabsInPane(EditorTabsPane pane) {
+    displayInfoBar(
+      context,
+      builder: (context, close) {
+        return const InfoBar(
+          title: Text('Files saved'),
+          content: Text('All open files have been saved.'),
+          severity: InfoBarSeverity.success,
+        );
+      },
+    );
+  }
+
+  void _updateTabContentInPane(EditorTabsPane pane, EditorTab tab) {
+    setState(() {
+      final idx = pane.tabs.indexWhere((t) => t.id == tab.id);
+      if (idx != -1) pane.tabs[idx] = tab;
+    });
+  }
+
+  void _closeTabInPane(EditorTabsPane pane, int tabIndex) {
+    setState(() {
+      pane.tabs.removeAt(tabIndex);
+      if (pane.selectedIndex >= pane.tabs.length) {
+        pane.selectedIndex = pane.tabs.length - 1;
+      }
+      // Если все вкладки закрылись — убрать Pane рекурсивно
+      if (pane.tabs.isEmpty) {
+        rootPane = _removePane(root: true, current: rootPane, target: pane);
+      }
+    });
+  }
+
+  void _splitPane(EditorTabsPane pane, {required bool isVertical}) {
+    setState(() {
+      _replacePane(
+        root: true,
+        current: rootPane,
+        target: pane,
+        newPane: SplitPane(
+          isVertical: isVertical,
+          fraction: 0.5,
+          first: pane,
+          second: EditorTabsPane(tabs: []),
+        ),
+      );
+    });
+  }
+
+  void _replacePane({
+    required bool root,
+    required PaneNode current,
+    required EditorTabsPane target,
+    required PaneNode newPane,
+  }) {
+    if (current is SplitPane) {
+      if (current.first == target) {
+        current.first = newPane;
+      } else if (current.second == target) {
+        current.second = newPane;
+      } else {
+        _replacePane(
+          root: false,
+          current: current.first,
+          target: target,
+          newPane: newPane,
+        );
+        _replacePane(
+          root: false,
+          current: current.second,
+          target: target,
+          newPane: newPane,
+        );
+      }
+    } else if (root && current == target) {
+      rootPane = newPane;
+    }
+  }
+
+  PaneNode _removePane({
+    required bool root,
+    required PaneNode current,
+    required EditorTabsPane target,
+  }) {
+    if (current is SplitPane) {
+      if (current.first == target) {
+        return current.second;
+      }
+      if (current.second == target) {
+        return current.first;
+      }
+      current.first = _removePane(
+        root: false,
+        current: current.first,
+        target: target,
+      );
+      current.second = _removePane(
+        root: false,
+        current: current.second,
+        target: target,
+      );
+      // collapse если один из детей стал EditorTabsPane и пустой
+      if (current.first is EditorTabsPane &&
+          (current.first as EditorTabsPane).tabs.isEmpty) {
+        return current.second;
+      }
+      if (current.second is EditorTabsPane &&
+          (current.second as EditorTabsPane).tabs.isEmpty) {
+        return current.first;
+      }
+      return current;
+    } else if (root && current == target) {
+      return EditorTabsPane(tabs: []); // Пустой корень
+    }
+    return current;
   }
 
   List<EditorTab> _createDefaultTabs() {
@@ -132,163 +281,81 @@ This is a sample Flutter application.
     ];
   }
 
-  void _openNewTab() {
-    final newTab = EditorTab(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      title: 'new_file.dart',
-      filePath: 'lib/new_file.dart',
-      content: '// New file content\nvoid main() {\n  print("Hello World!");\n}',
-    );
-    setState(() {
-      final paneIndex = _splitActive && _panes[1].isNotEmpty ? 1 : 0;
-      _panes[paneIndex].add(newTab);
-      _selectedTabIndices[paneIndex] = _panes[paneIndex].length - 1;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
       color: Colors.white,
-      child: Column(
+      child: _buildPane(rootPane, widget.label),
+    );
+  }
+
+  Widget _buildPane(PaneNode node, String label) {
+    if (node is EditorTabsPane) {
+      return Column(
         children: [
           EditorPanelToolbar(
-            label: widget.label,
-            onAddTab: _openNewTab,
-            onSaveTabs: () {
-              displayInfoBar(
-                context,
-                builder: (context, close) {
-                  return InfoBar(
-                    title: const Text('Files saved'),
-                    content: const Text('All open files have been saved.'),
-                    severity: InfoBarSeverity.success,
-                  );
-                },
-              );
-            },
-            onSplit: _onSplitPane,
-            isSplitActive: _splitActive,
-            canSplit: _panes[0].isNotEmpty && !_splitActive,
+            label: label,
+            onAddTab: () => _addTabInPane(node),
+            onSaveTabs: () => _saveTabsInPane(node),
+            onSplitVertical: () => _splitPane(node, isVertical: true),
+            onSplitHorizontal: () => _splitPane(node, isVertical: false),
+            canSplit: true,
           ),
           Expanded(
-            child: _splitActive ? _buildSplitEditors() : _buildSingleEditor(),
+            child: EditorTabView(
+              tabs: node.tabs,
+              onTabSelected: (i) => setState(() => node.selectedIndex = i),
+              onTabClosed: (i) => _closeTabInPane(node, i),
+              onTabContentChanged: (tab) => _updateTabContentInPane(node, tab),
+              onTabsReordered: (newTabs) => setState(() => node.tabs = newTabs),
+            ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSingleEditor() {
-    return EditorTabView(
-      tabs: _panes[0],
-      onTabSelected: (i) => setState(() => _selectedTabIndices[0] = i),
-      onTabClosed: (i) {
-        setState(() {
-          _panes[0].removeAt(i);
-          if (_selectedTabIndices[0] >= _panes[0].length) {
-            _selectedTabIndices[0] = _panes[0].length - 1;
-          }
-        });
-      },
-      onTabContentChanged: (tab) {
-        setState(() {
-          final idx = _panes[0].indexWhere((t) => t.id == tab.id);
-          if (idx != -1) _panes[0][idx] = tab;
-        });
-      },
-      onTabsReordered: (newTabs) => setState(() => _panes[0] = newTabs),
-    );
-  }
-
-  Widget _buildSplitEditors() {
-    return Row(
-      children: [
-        Flexible(
-          flex: (_splitFraction * 1000).toInt(),
-          child: EditorTabView(
-            tabs: _panes[0],
-            onTabSelected: (i) => setState(() => _selectedTabIndices[0] = i),
-            onTabClosed: (i) {
-              setState(() {
-                _panes[0].removeAt(i);
-                if (_selectedTabIndices[0] >= _panes[0].length) {
-                  _selectedTabIndices[0] = _panes[0].length - 1;
-                }
-                // если одна из панелей стала пустой, убираем split и все табы собираем в одну
-                if (_panes[0].isEmpty || _panes[1].isEmpty) {
-                  final allTabs = [..._panes[0], ..._panes[1]];
-                  _panes = [allTabs, []];
-                  _selectedTabIndices = [allTabs.isNotEmpty ? 0 : 0, 0];
-                  _splitActive = false;
-                }
-              });
-            },
-            onTabContentChanged: (tab) {
-              setState(() {
-                final idx = _panes[0].indexWhere((t) => t.id == tab.id);
-                if (idx != -1) _panes[0][idx] = tab;
-              });
-            },
-            onTabsReordered: (newTabs) => setState(() => _panes[0] = newTabs),
-          ),
-        ),
-        HorizontalSplitter(
-          onDrag: (dx) {
-            setState(() {
-              _splitFraction += dx / context.size!.width;
-              _splitFraction = _splitFraction.clamp(0.2, 0.8);
-            });
-          },
-        ),
-        Flexible(
-          flex: ((1 - _splitFraction) * 1000).toInt(),
-          child: EditorTabView(
-            tabs: _panes[1],
-            onTabSelected: (i) => setState(() => _selectedTabIndices[1] = i),
-            onTabClosed: (i) {
-              setState(() {
-                _panes[1].removeAt(i);
-                if (_selectedTabIndices[1] >= _panes[1].length) {
-                  _selectedTabIndices[1] = _panes[1].length - 1;
-                }
-                // если одна из панелей стала пустой, убираем split и все табы собираем в одну
-                if (_panes[0].isEmpty || _panes[1].isEmpty) {
-                  final allTabs = [..._panes[0], ..._panes[1]];
-                  _panes = [allTabs, []];
-                  _selectedTabIndices = [allTabs.isNotEmpty ? 0 : 0, 0];
-                  _splitActive = false;
-                }
-              });
-            },
-            onTabContentChanged: (tab) {
-              setState(() {
-                final idx = _panes[1].indexWhere((t) => t.id == tab.id);
-                if (idx != -1) _panes[1][idx] = tab;
-              });
-            },
-            onTabsReordered: (newTabs) => setState(() => _panes[1] = newTabs),
-          ),
-        )
-      ],
-    );
-  }
-
-  void _onSplitPane() {
-    setState(() {
-      final leftTabs = _panes[0];
-      if (leftTabs.isNotEmpty) {
-        // перенести/клонировать выбранный tab слева в правое окно
-        final tabToSplit = leftTabs[_selectedTabIndices[0]];
-        // Если tab уже есть справа — просто фокус
-        if (!_panes[1].contains(tabToSplit)) {
-          _panes[1].add(tabToSplit);
-          _selectedTabIndices[1] = _panes[1].length - 1;
-        } else {
-          _selectedTabIndices[1] = _panes[1].indexOf(tabToSplit);
-        }
-        _splitActive = true;
-      }
-    });
+      );
+    } else if (node is SplitPane) {
+      return node.isVertical
+          ? Column(
+              children: [
+                Flexible(
+                  flex: (node.fraction * 1000).toInt(),
+                  child: _buildPane(node.first, label),
+                ),
+                VerticalSplitter(
+                  onDrag: (dy) {
+                    setState(() {
+                      node.fraction += dy / context.size!.height;
+                      node.fraction = node.fraction.clamp(0.2, 0.8);
+                    });
+                  },
+                ),
+                Flexible(
+                  flex: ((1 - node.fraction) * 1000).toInt(),
+                  child: _buildPane(node.second, label),
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                Flexible(
+                  flex: (node.fraction * 1000).toInt(),
+                  child: _buildPane(node.first, label),
+                ),
+                HorizontalSplitter(
+                  onDrag: (dx) {
+                    setState(() {
+                      node.fraction += dx / context.size!.width;
+                      node.fraction = node.fraction.clamp(0.2, 0.8);
+                    });
+                  },
+                ),
+                Flexible(
+                  flex: ((1 - node.fraction) * 1000).toInt(),
+                  child: _buildPane(node.second, label),
+                ),
+              ],
+            );
+    } else {
+      return const SizedBox.shrink();
+    }
   }
 }
