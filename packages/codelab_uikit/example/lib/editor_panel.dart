@@ -1,5 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'editor_tab.dart';
+import 'editor_panel_toolbar.dart';
 
 class EditorPanel extends StatefulWidget {
   final String label;
@@ -168,53 +169,10 @@ This is a sample Flutter application.
       color: Colors.white,
       child: Column(
         children: [
-          _buildToolbar(),
-          Expanded(
-            child: EditorTabView(
-              tabs: _tabs,
-              onTabSelected: _onTabSelected,
-              onTabClosed: _onTabClosed,
-              onTabContentChanged: _onTabContentChanged,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildToolbar() {
-    return Container(
-      height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        color: Colors.grey[10],
-        border: Border(
-          bottom: BorderSide(color: Colors.grey[30]),
-        ),
-      ),
-      child: Row(
-        children: [
-          Text(
-            widget.label,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[100],
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const Spacer(),
-          IconButton(
-            icon: const Icon(FluentIcons.add, size: 16),
-            onPressed: _openNewTab,
-            style: ButtonStyle(
-              padding: WidgetStateProperty.all(const EdgeInsets.all(6)),
-            ),
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            icon: const Icon(FluentIcons.save, size: 16),
-            onPressed: () {
-              // Save all tabs logic would go here
+          EditorPanelToolbar(
+            label: widget.label,
+            onAddTab: _openNewTab,
+            onSaveTabs: () {
               displayInfoBar(
                 context,
                 builder: (context, close) {
@@ -226,8 +184,13 @@ This is a sample Flutter application.
                 },
               );
             },
-            style: ButtonStyle(
-              padding: WidgetStateProperty.all(const EdgeInsets.all(6)),
+          ),
+          Expanded(
+            child: EditorTabView(
+              tabs: _tabs,
+              onTabSelected: _onTabSelected,
+              onTabClosed: _onTabClosed,
+              onTabContentChanged: _onTabContentChanged,
             ),
           ),
         ],
