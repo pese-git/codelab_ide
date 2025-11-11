@@ -1,5 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart' hide ButtonStyle, IconButton;
-import 'package:flutter/material.dart' hide Colors;
+import 'package:flutter/material.dart' hide Colors, Tab;
 
 class EditorTab {
   final String id;
@@ -38,6 +38,7 @@ class EditorTabView extends StatefulWidget {
   final ValueChanged<int>? onTabSelected;
   final ValueChanged<int>? onTabClosed;
   final ValueChanged<EditorTab>? onTabContentChanged;
+  final ValueChanged<List<EditorTab>>? onTabsReordered;
 
   const EditorTabView({
     super.key,
@@ -45,6 +46,7 @@ class EditorTabView extends StatefulWidget {
     this.onTabSelected,
     this.onTabClosed,
     this.onTabContentChanged,
+    this.onTabsReordered,
   });
 
   @override
@@ -55,18 +57,64 @@ class _EditorTabViewState extends State<EditorTabView> {
   int _selectedIndex = 0;
 
   @override
+  void didUpdateWidget(covariant EditorTabView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_selectedIndex >= widget.tabs.length && widget.tabs.isNotEmpty) {
+      _selectedIndex = widget.tabs.length - 1;
+    }
+    if (widget.tabs.isEmpty) {
+      _selectedIndex = 0;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     if (widget.tabs.isEmpty) {
       return _buildEmptyState();
     }
 
-    return Column(
-      children: [
-        _buildTabBar(),
-        Expanded(
-          child: _buildEditorContent(),
-        ),
+    return TabView(
+      tabs: [
+        for (final tab in widget.tabs)
+          Tab(
+            text: Text('${tab.title}${tab.isDirty ? ' •' : ''}'),
+            semanticLabel: tab.title,
+            icon: const Icon(FluentIcons.document),
+            body: _buildEditorContent(tab),
+            onClosed: () {
+              final idx = widget.tabs.indexOf(tab);
+              widget.onTabClosed?.call(idx);
+              setState(() {
+                if (_selectedIndex >= widget.tabs.length - 1 && _selectedIndex > 0) {
+                  _selectedIndex--;
+                }
+              });
+            },
+          )
       ],
+      currentIndex: _selectedIndex,
+      onChanged: (index) {
+        setState(() {
+          _selectedIndex = index;
+        });
+        widget.onTabSelected?.call(index);
+      },
+      tabWidthBehavior: TabWidthBehavior.sizeToContent,
+      closeButtonVisibility: CloseButtonVisibilityMode.always,
+      showScrollButtons: true,
+      onReorder: (oldIndex, newIndex) {
+        setState(() {
+          var tabs = List.of(widget.tabs);
+          if (oldIndex < newIndex) newIndex -= 1;
+          final item = tabs.removeAt(oldIndex);
+          tabs.insert(newIndex, item);
+          widget.onTabsReordered?.call(tabs);
+          if (_selectedIndex == oldIndex)
+            _selectedIndex = newIndex;
+          else if (_selectedIndex == newIndex)
+            _selectedIndex = oldIndex;
+        });
+      },
     );
   }
 
@@ -101,33 +149,7 @@ class _EditorTabViewState extends State<EditorTabView> {
     );
   }
 
-  Widget _buildTabBar() {
-    return Container(
-      height: 40,
-      decoration: BoxDecoration(
-        color: Colors.grey[10],
-        border: Border(
-          bottom: BorderSide(color: Colors.grey[30]),
-        ),
-      ),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: widget.tabs.length,
-        itemBuilder: (context, index) {
-          final tab = widget.tabs[index];
-          return _TabItem(
-            tab: tab,
-            isSelected: index == _selectedIndex,
-            onTap: () => _selectTab(index),
-            onClose: () => _closeTab(index),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildEditorContent() {
-    final tab = widget.tabs[_selectedIndex];
+  Widget _buildEditorContent(EditorTab tab) {
     return Container(
       color: Colors.white,
       child: Padding(
@@ -153,7 +175,7 @@ class _EditorTabViewState extends State<EditorTabView> {
                 child: TextFormBox(
                   maxLines: null,
                   expands: true,
-                  controller: TextEditingController(text: tab.content),
+                  initialValue: tab.content,
                   style: const TextStyle(
                     fontFamily: 'Monospace',
                     fontSize: 14,
@@ -170,93 +192,6 @@ class _EditorTabViewState extends State<EditorTabView> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  void _selectTab(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-    widget.onTabSelected?.call(index);
-  }
-
-  void _closeTab(int index) {
-    widget.onTabClosed?.call(index);
-    if (index == _selectedIndex && widget.tabs.length > 1) {
-      final newIndex = index == widget.tabs.length - 1 ? index - 1 : index;
-      _selectTab(newIndex);
-    }
-  }
-}
-
-class _TabItem extends StatelessWidget {
-  final EditorTab tab;
-  final bool isSelected;
-  final VoidCallback onTap;
-  final VoidCallback onClose;
-
-  const _TabItem({
-    required this.tab,
-    required this.isSelected,
-    required this.onTap,
-    required this.onClose,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: isSelected ? Colors.white : Colors.transparent,
-        border: Border(
-          bottom: BorderSide(
-            color: isSelected ? Colors.blue : Colors.transparent,
-            width: 2,
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: onTap,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  Icon(
-                    FluentIcons.document,
-                    size: 16,
-                    color: isSelected ? Colors.blue : Colors.grey[100],
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${tab.title}${tab.isDirty ? ' •' : ''}',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: isSelected ? Colors.blue : Colors.grey[100],
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(
-            width: 24,
-            height: 24,
-            child: IconButton(
-              icon: Icon(
-                FluentIcons.chrome_close,
-                size: 12,
-                color: Colors.grey[80],
-              ),
-              onPressed: onClose,
-              style: ButtonStyle(
-                padding: WidgetStateProperty.all(const EdgeInsets.all(4)),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
