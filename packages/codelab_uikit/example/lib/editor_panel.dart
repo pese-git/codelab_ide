@@ -41,6 +41,7 @@ class SplitPane extends PaneNode {
 
 class EditorPanelState extends State<EditorPanel> {
   late PaneNode rootPane;
+  EditorTabsPane? _lastActivePane;
 
   @override
   void initState() {
@@ -85,7 +86,7 @@ class EditorPanelState extends State<EditorPanel> {
     required String content,
   }) {
     setState(() {
-      final targetPane = _findFirstOrRootPane(rootPane);
+      final targetPane = _lastActivePane ?? _findFirstOrRootPane(rootPane);
       final existingIdx = targetPane.tabs.indexWhere(
         (t) => t.filePath == filePath,
       );
@@ -231,26 +232,44 @@ class EditorPanelState extends State<EditorPanel> {
 
   Widget _buildPane(PaneNode node, String label) {
     if (node is EditorTabsPane) {
-      return Column(
-        children: [
-          EditorPanelToolbar(
-            label: label,
-            onAddTab: () => _addTabInPane(node),
-            onSaveTabs: () => _saveTabsInPane(node),
-            onSplitVertical: () => _splitPane(node, isVertical: true),
-            onSplitHorizontal: () => _splitPane(node, isVertical: false),
-            canSplit: true,
+      return Focus(
+        onFocusChange: (hasFocus) {
+          if (hasFocus && _lastActivePane != node) {
+            setState(() => _lastActivePane = node);
+          }
+        },
+        child: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () {
+            if (_lastActivePane != node) {
+              setState(() => _lastActivePane = node);
+            }
+          },
+          child: Column(
+            children: [
+              EditorPanelToolbar(
+                label: label,
+                onAddTab: () => _addTabInPane(node),
+                onSaveTabs: () => _saveTabsInPane(node),
+                onSplitVertical: () => _splitPane(node, isVertical: true),
+                onSplitHorizontal: () => _splitPane(node, isVertical: false),
+                canSplit: true,
+              ),
+              Expanded(
+                child: EditorTabView(
+                  tabs: node.tabs,
+                  onTabSelected: (i) => setState(() {
+                    node.selectedIndex = i;
+                    _lastActivePane = node;
+                  }),
+                  onTabClosed: (i) => _closeTabInPane(node, i),
+                  onTabContentChanged: (tab) => _updateTabContentInPane(node, tab),
+                  onTabsReordered: (newTabs) => setState(() => node.tabs = newTabs),
+                ),
+              ),
+            ],
           ),
-          Expanded(
-            child: EditorTabView(
-              tabs: node.tabs,
-              onTabSelected: (i) => setState(() => node.selectedIndex = i),
-              onTabClosed: (i) => _closeTabInPane(node, i),
-              onTabContentChanged: (tab) => _updateTabContentInPane(node, tab),
-              onTabsReordered: (newTabs) => setState(() => node.tabs = newTabs),
-            ),
-          ),
-        ],
+        ),
       );
     } else if (node is SplitPane) {
       return node.isVertical
