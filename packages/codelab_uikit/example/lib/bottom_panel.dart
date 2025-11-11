@@ -20,16 +20,22 @@ class _BottomPanelState extends State<BottomPanel> {
   @override
   Widget build(BuildContext context) {
     return TabView(
+      tabWidthBehavior: TabWidthBehavior.sizeToContent,
       currentIndex: currentIndex,
       onChanged: (i) => setState(() => currentIndex = i),
       tabs: [
         for (final title in tabTitles)
           Tab(
-            text: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+            text: Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
             body: Center(
-              child: Text('$title\n(Здесь будет содержимое $title)',
-                  style: const TextStyle(fontSize: 16, color: Color(0xFF888888)),
-                  textAlign: TextAlign.center),
+              child: Text(
+                '$title\n(Здесь будет содержимое $title)',
+                style: const TextStyle(fontSize: 16, color: Color(0xFF888888)),
+                textAlign: TextAlign.center,
+              ),
             ),
           ),
       ],
