@@ -4,8 +4,8 @@ class EditorPanelToolbar extends StatelessWidget {
   final String label;
   final VoidCallback onAddTab;
   final VoidCallback onSaveTabs;
-  final VoidCallback? onSplit;
-  final bool isSplitActive;
+  final VoidCallback? onSplitVertical;
+  final VoidCallback? onSplitHorizontal;
   final bool canSplit;
 
   const EditorPanelToolbar({
@@ -13,8 +13,8 @@ class EditorPanelToolbar extends StatelessWidget {
     required this.label,
     required this.onAddTab,
     required this.onSaveTabs,
-    this.onSplit,
-    this.isSplitActive = false,
+    this.onSplitVertical,
+    this.onSplitHorizontal,
     this.canSplit = true,
   });
 
@@ -47,18 +47,21 @@ class EditorPanelToolbar extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Tooltip(
-            message: isSplitActive
-                ? 'Split editor is active'
-                : 'Split editor right',
+            message: 'Split vertically',
             child: IconButton(
-              icon: Icon(
-                FluentIcons.split,
-                size: 16,
-                color: canSplit
-                    ? (isSplitActive ? Colors.orange : null)
-                    : Colors.grey[110],
+              icon: const Icon(FluentIcons.split, size: 16),
+              onPressed: canSplit ? onSplitVertical : null,
+              style: ButtonStyle(
+                padding: WidgetStateProperty.all(const EdgeInsets.all(6)),
               ),
-              onPressed: canSplit ? onSplit : null,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Tooltip(
+            message: 'Split horizontally',
+            child: IconButton(
+              icon: const Icon(FluentIcons.gripper_bar_horizontal, size: 16),
+              onPressed: canSplit ? onSplitHorizontal : null,
               style: ButtonStyle(
                 padding: WidgetStateProperty.all(const EdgeInsets.all(6)),
               ),

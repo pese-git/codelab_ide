@@ -1,3 +1,4 @@
+import 'package:example/file_node.dart';
 import 'package:example/main_panel_area.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'main_header.dart';
@@ -7,6 +8,7 @@ import 'bottom_panel.dart';
 import 'status_bar.dart';
 import 'horizontal_splitter.dart';
 import 'vertical_splitter.dart';
+import 'editor_panel.dart';
 
 void main() => runApp(const MyApp());
 
@@ -44,6 +46,32 @@ class _IdeRootPageState extends State<IdeRootPage> {
 
   bool _projectOpened = false;
 
+  final GlobalKey<EditorPanelState> editorPanelKey =
+      GlobalKey<EditorPanelState>();
+
+  final List<FileNode> demoProject = [
+    FileNode(
+      path: '/project',
+      name: 'project',
+      isDirectory: true,
+      children: [
+        FileNode(
+          path: '/project/lib',
+          name: 'lib',
+          isDirectory: true,
+          children: [
+            FileNode(path: '/project/lib/main.dart', name: 'main.dart'),
+            FileNode(
+              path: '/project/lib/home_page.dart',
+              name: 'home_page.dart',
+            ),
+          ],
+        ),
+        FileNode(path: '/project/README.md', name: 'README.md'),
+      ],
+    ),
+  ];
+
   @override
   Widget build(BuildContext context) {
     return ScaffoldPage(
@@ -75,7 +103,21 @@ class _IdeRootPageState extends State<IdeRootPage> {
                     SizedBox(
                       width: _sidebarVisible ? _sidebarPanelWidth : 0.0,
                       child: _sidebarVisible
-                          ? SidebarPanel(selectedIndex: _selectedSidebarIndex)
+                          ? SidebarPanel(
+                              selectedIndex: _selectedSidebarIndex,
+                              files: _projectOpened ? demoProject : [],
+                              onFileOpen: (node) {
+                                if (!node.isDirectory) {
+                                  String content =
+                                      '// Stub content for ${node.name}\nvoid main() {\n  print("Hello, ${node.name}!");\n}';
+                                  editorPanelKey.currentState?.openFile(
+                                    filePath: node.path,
+                                    title: node.name,
+                                    content: content,
+                                  );
+                                }
+                              },
+                            )
                           : null,
                     ),
                     _sidebarVisible
@@ -117,6 +159,7 @@ class _IdeRootPageState extends State<IdeRootPage> {
                                         onWizardAction: (action) => setState(
                                           () => _projectOpened = true,
                                         ),
+                                        editorPanelKey: editorPanelKey,
                                       ),
                                     ),
                                     VerticalSplitter(
@@ -152,6 +195,7 @@ class _IdeRootPageState extends State<IdeRootPage> {
                                         onWizardAction: (action) => setState(
                                           () => _projectOpened = true,
                                         ),
+                                        editorPanelKey: editorPanelKey,
                                       ),
                                     ),
                                   ],
