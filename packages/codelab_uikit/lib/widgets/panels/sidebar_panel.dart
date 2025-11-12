@@ -1,32 +1,40 @@
-import 'package:flutter/material.dart' show SizedBox, StatelessWidget, BuildContext, Widget;
-import 'explorer_panel.dart';
+import 'package:flutter/material.dart'
+    show SizedBox, StatelessWidget, BuildContext, Widget;
 import '../placeholder/sidebar_placeholder.dart';
-import '../../models/file_node.dart';
 
 class SidebarPanel extends StatelessWidget {
   final int selectedIndex;
-  final List<FileNode> files;
-  final void Function(FileNode) onFileOpen;
+
+  // Новое: кастомные слоты для каждого раздела
+  final Widget? explorerSlot;
+  final Widget? searchSlot;
+  final Widget? sourceControlSlot;
+  final Widget? runDebugSlot;
+  final Widget? extensionsSlot;
+
   const SidebarPanel({
     super.key,
     required this.selectedIndex,
-    required this.files,
-    required this.onFileOpen,
+    this.explorerSlot,
+    this.searchSlot,
+    this.sourceControlSlot,
+    this.runDebugSlot,
+    this.extensionsSlot,
   });
 
   @override
   Widget build(BuildContext context) {
     switch (selectedIndex) {
       case 0:
-        return ExplorerPanel(files: files, onFileOpen: onFileOpen);
+        return explorerSlot ?? const SidebarPlaceholder('Explorer');
       case 1:
-        return const SidebarPlaceholder('Search');
+        return searchSlot ?? const SidebarPlaceholder('Search');
       case 2:
-        return const SidebarPlaceholder('Source Control');
+        return sourceControlSlot ?? const SidebarPlaceholder('Source Control');
       case 3:
-        return const SidebarPlaceholder('Run/Debug');
+        return runDebugSlot ?? const SidebarPlaceholder('Run/Debug');
       case 4:
-        return const SidebarPlaceholder('Extensions');
+        return extensionsSlot ?? const SidebarPlaceholder('Extensions');
       default:
         return const SizedBox(width: 200);
     }
