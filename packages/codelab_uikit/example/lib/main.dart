@@ -98,18 +98,20 @@ class _IdeRootPageState extends State<IdeRootPage> {
             sidebarPanel: _sidebarVisible
                 ? SidebarPanel(
                     selectedIndex: _selectedSidebarIndex,
-                    files: _projectOpened ? demoProject : [],
-                    onFileOpen: (node) {
-                      if (!node.isDirectory) {
-                        String content =
-                            '// Stub content for ${node.name}\nvoid main() {\n  print("Hello, ${node.name}!");\n}';
-                        editorPanelKey.currentState?.openFile(
-                          filePath: node.path,
-                          title: node.name,
-                          content: content,
-                        );
-                      }
-                    },
+                    explorerSlot: ExplorerPanel(
+                      files: _projectOpened ? demoProject : [],
+                      onFileOpen: (node) {
+                        if (!node.isDirectory) {
+                          String content =
+                              '// Stub content for ${node.name}\nvoid main() {\n  print("Hello, ${node.name}!");\n}';
+                          editorPanelKey.currentState?.openFile(
+                            filePath: node.path,
+                            title: node.name,
+                            content: content,
+                          );
+                        }
+                      },
+                    ),
                   )
                 : null,
             sidebarPanelWidth: _sidebarPanelWidth,
