@@ -1,6 +1,6 @@
-import 'package:example/editor_panel.dart';
+import 'editor_panel.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'start_wizard.dart';
+import '../placeholder/start_wizard.dart';
 
 class MainPanelArea extends StatelessWidget {
   final GlobalKey<EditorPanelState> editorPanelKey;

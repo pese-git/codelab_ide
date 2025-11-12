@@ -1,6 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material show Material, Colors, BorderRadius, BoxDecoration;
-import 'file_node.dart';
+import '../../models/file_node.dart';
 
 class ExplorerPanel extends StatelessWidget {
   final List<FileNode> files;
