@@ -54,12 +54,13 @@ class _EditorTabViewState extends State<EditorTabView> {
               final idx = widget.tabs.indexOf(tab);
               widget.onTabClosed?.call(idx);
               setState(() {
-                if (_selectedIndex >= widget.tabs.length - 1 && _selectedIndex > 0) {
+                if (_selectedIndex >= widget.tabs.length - 1 &&
+                    _selectedIndex > 0) {
                   _selectedIndex--;
                 }
               });
             },
-          )
+          ),
       ],
       currentIndex: _selectedIndex,
       onChanged: (index) {
@@ -92,26 +93,16 @@ class _EditorTabViewState extends State<EditorTabView> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            FluentIcons.document,
-            size: 48,
-            color: Colors.grey[100],
-          ),
+          Icon(FluentIcons.document, size: 48, color: Colors.grey[100]),
           const SizedBox(height: 16),
           Text(
             'No files open',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[100],
-            ),
+            style: TextStyle(fontSize: 16, color: Colors.grey[100]),
           ),
           const SizedBox(height: 8),
           Text(
             'Open a file to start editing',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[80],
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey[80]),
           ),
         ],
       ),
@@ -127,7 +118,7 @@ class _EditorTabViewState extends State<EditorTabView> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'File: [1m${tab.filePath}[0m',
+              'File: ${tab.filePath}',
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.grey[100],
@@ -145,10 +136,7 @@ class _EditorTabViewState extends State<EditorTabView> {
                   maxLines: null,
                   expands: true,
                   initialValue: tab.content,
-                  style: const TextStyle(
-                    fontFamily: 'Monospace',
-                    fontSize: 14,
-                  ),
+                  style: const TextStyle(fontFamily: 'Monospace', fontSize: 14),
                   onChanged: (value) {
                     final updatedTab = tab.copyWith(
                       content: value,
