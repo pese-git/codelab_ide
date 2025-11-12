@@ -21,7 +21,6 @@ export 'widgets/panels/ai_assistant_panel.dart';
 // WIDGETS: SPLITTERS
 export 'widgets/splitters/horizontal_splitter.dart';
 export 'widgets/splitters/vertical_splitter.dart';
-export 'widgets/splitters/editor_split_view.dart';
 
 // WIDGETS: НАВИГАЦИЯ И HEADER
 export 'widgets/navigation/sidebar_navigation.dart';
