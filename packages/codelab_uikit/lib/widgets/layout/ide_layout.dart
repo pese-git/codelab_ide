@@ -6,12 +6,12 @@ class IdeLayout extends StatelessWidget {
   final double sidebarPanelWidth;
   final Widget? sidebarSplitter;
   final Widget centerPanel;
-  final Widget? aiPanel;
-  final Widget? aiSplitter;
+  final Widget? rightPanel;
+  final Widget? rightPanelSplitter;
   final Widget? statusBar;
   final bool showSidebar;
-  final bool showAiPanel;
-  final double aiPanelWidth;
+  final bool showRightPanel;
+  final double rightPanelWidth;
 
   const IdeLayout({
     super.key,
@@ -20,12 +20,12 @@ class IdeLayout extends StatelessWidget {
     this.sidebarPanelWidth = 200,
     this.sidebarSplitter,
     required this.centerPanel,
-    this.aiPanel,
-    this.aiPanelWidth = 320,
-    this.aiSplitter,
+    this.rightPanel,
+    this.rightPanelWidth = 320,
+    this.rightPanelSplitter,
     this.statusBar,
     this.showSidebar = true,
-    this.showAiPanel = false,
+    this.showRightPanel = false,
   });
 
   @override
@@ -40,9 +40,10 @@ class IdeLayout extends StatelessWidget {
                 SizedBox(width: sidebarPanelWidth, child: sidebarPanel),
               if (showSidebar && sidebarSplitter != null) sidebarSplitter!,
               Expanded(child: centerPanel),
-              if (showAiPanel && aiSplitter != null) aiSplitter!,
-              if (showAiPanel && aiPanel != null)
-                SizedBox(width: aiPanelWidth, child: aiPanel!),
+              if (showRightPanel && rightPanelSplitter != null)
+                rightPanelSplitter!,
+              if (showRightPanel && rightPanel != null)
+                SizedBox(width: rightPanelWidth, child: rightPanel!),
             ],
           ),
         ),
