@@ -213,9 +213,9 @@ class _IdeRootPageState extends State<IdeRootPage> {
                 ),
               ],
             ),
-            aiPanel: _aiPanelVisible ? const AIAssistantPanel() : null,
-            aiPanelWidth: _aiPanelWidth,
-            aiSplitter: _aiPanelVisible
+            rightPanel: RightPanel(aiSlot: const AIAssistantPanel()),
+            rightPanelWidth: _aiPanelWidth,
+            rightPanelSplitter: _aiPanelVisible
                 ? HorizontalSplitter(
                     onDrag: (dx) {
                       setState(() {
