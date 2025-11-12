@@ -36,4 +36,7 @@ export 'widgets/placeholder/start_wizard.dart';
 // WIDGETS: EDITOR
 export 'widgets/editor/editor_tab_view.dart';
 
+// WIDGETS: LAYOUTS
+export 'widgets/layout/ide_layout.dart';
+
 // TODO: Export any libraries intended for clients of this package.
