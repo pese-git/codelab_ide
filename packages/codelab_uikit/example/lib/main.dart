@@ -225,7 +225,10 @@ class _IdeRootPageState extends State<IdeRootPage> {
                     },
                   )
                 : null,
-            statusBar: const StatusBar(),
+            statusBar: StatusBar(
+              leading: Icon(FluentIcons.sync, size: 16, color: Colors.green),
+              trailing: MyProjectStatusInfo(),
+            ),
           );
         },
       ),
@@ -328,5 +331,30 @@ class BottomTerminalState extends State<BottomTerminal> {
     }
 
     return 'sh';
+  }
+}
+
+class MyProjectStatusInfo extends StatelessWidget {
+  const MyProjectStatusInfo({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(FluentIcons.sync_folder, size: 15, color: Colors.blue),
+        const SizedBox(width: 8),
+        const Text(
+          'Synced',
+          style: TextStyle(fontSize: 13, color: Colors.black),
+        ),
+        const SizedBox(width: 20),
+        Icon(FluentIcons.branch_merge, size: 15, color: Colors.green),
+        const SizedBox(width: 8),
+        const Text(
+          'main',
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+        ),
+      ],
+    );
   }
 }
