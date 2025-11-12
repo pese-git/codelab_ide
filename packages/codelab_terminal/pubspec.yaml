@@ -14,9 +14,9 @@ dependencies:
     sdk: flutter
   codelab_uikit: any
   codelab_core: any
-  flutter_bloc: ^8.1.6
+  flutter_bloc: ^9.1.1
   cherrypick: ^3.0.2
-  freezed_annotation: ^2.4.1
+  freezed_annotation: ^3.1.0
   fpdart: ^1.2.0
   xterm: ^4.0.0
   flutter_pty: ^0.4.2
@@ -30,4 +30,4 @@ dev_dependencies:
   test: ^1.25.6
 
   build_runner: ^2.4.11
-  freezed: ^2.4.7
+  freezed: ^3.1.0
