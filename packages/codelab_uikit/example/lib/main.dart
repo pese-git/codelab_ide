@@ -1,15 +1,5 @@
-import 'package:example/file_node.dart';
-import 'package:example/main_panel_area.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'main_header.dart';
-import 'sidebar_navigation.dart';
-import 'sidebar_panel.dart';
-import 'bottom_panel.dart';
-import 'status_bar.dart';
-import 'horizontal_splitter.dart';
-import 'vertical_splitter.dart';
-import 'editor_panel.dart';
-import 'ai_assistant_panel.dart';
+import 'package:codelab_uikit/codelab_uikit.dart';
 
 void main() => runApp(const MyApp());
 

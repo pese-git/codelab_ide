@@ -1,9 +1,13 @@
-import 'package:example/file_node.dart';
+import '../../models/file_node.dart';
+import '../../models/editor_tab.dart';
+import '../editor/editor_tab_view.dart';
+import '../splitters/horizontal_splitter.dart';
+import '../splitters/vertical_splitter.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'editor_tab.dart';
+
 import 'editor_panel_toolbar.dart';
-import 'horizontal_splitter.dart';
-import 'vertical_splitter.dart';
+
+// Далее остальной переносимый код из example/lib/editor_panel.dart
 
 class EditorPanel extends StatefulWidget {
   final String label;
@@ -237,7 +241,7 @@ class EditorPanelState extends State<EditorPanel> {
             filePath: fileNode.path,
             title: fileNode.name,
             content:
-                '// Stub content for drag-and-drop: \\${fileNode.name}\\nvoid main() {\\n  print(\\"Hello, \\${fileNode.name}!\\");\\n}',
+                '// Stub content for drag-and-drop: \\${fileNode.name}\\nvoid main() {\\n  print(\"Hello, \\${fileNode.name}!\");\\n}',
             targetPane: node,
           );
         },

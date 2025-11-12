@@ -1,5 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'editor_panel.dart';
+import '../panels/editor_panel.dart';
 
 class EditorSplitView extends StatefulWidget {
   final double splitFraction;
@@ -71,5 +71,3 @@ class _EditorSplitViewState extends State<EditorSplitView> {
     );
   }
 }
-
-

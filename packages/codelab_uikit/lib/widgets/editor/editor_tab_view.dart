@@ -1,37 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart' hide ButtonStyle, IconButton;
 import 'package:flutter/material.dart' hide Colors, Tab;
-
-class EditorTab {
-  final String id;
-  final String title;
-  final String filePath;
-  final String content;
-  final bool isDirty;
-
-  EditorTab({
-    required this.id,
-    required this.title,
-    required this.filePath,
-    required this.content,
-    this.isDirty = false,
-  });
-
-  EditorTab copyWith({
-    String? id,
-    String? title,
-    String? filePath,
-    String? content,
-    bool? isDirty,
-  }) {
-    return EditorTab(
-      id: id ?? this.id,
-      title: title ?? this.title,
-      filePath: filePath ?? this.filePath,
-      content: content ?? this.content,
-      isDirty: isDirty ?? this.isDirty,
-    );
-  }
-}
+import '../../models/editor_tab.dart';
 
 class EditorTabView extends StatefulWidget {
   final List<EditorTab> tabs;
@@ -158,7 +127,7 @@ class _EditorTabViewState extends State<EditorTabView> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'File: ${tab.filePath}',
+              'File: [1m${tab.filePath}[0m',
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.grey[100],

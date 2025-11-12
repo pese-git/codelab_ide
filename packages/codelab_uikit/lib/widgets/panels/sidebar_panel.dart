@@ -1,8 +1,7 @@
-import 'package:flutter/material.dart'
-    show SizedBox, StatelessWidget, BuildContext, Widget;
+import 'package:flutter/material.dart' show SizedBox, StatelessWidget, BuildContext, Widget;
 import 'explorer_panel.dart';
-import 'sidebar_placeholder.dart';
-import 'file_node.dart';
+import '../placeholder/sidebar_placeholder.dart';
+import '../../models/file_node.dart';
 
 class SidebarPanel extends StatelessWidget {
   final int selectedIndex;
