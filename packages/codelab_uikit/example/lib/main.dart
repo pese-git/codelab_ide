@@ -151,13 +151,15 @@ class _IdeRootPageState extends State<IdeRootPage> {
                                     ),
                                     child: MainPanelArea(
                                       projectOpened: _projectOpened,
-                                      editorSplitFraction: _editorSplitFraction,
-                                      onEditorDrag: (f) => setState(
-                                        () => _editorSplitFraction = f,
+                                      workspaceSlot: EditorPanel(
+                                        key: editorPanelKey,
+                                        label: 'Editor 1',
                                       ),
-                                      onWizardAction: (_) =>
-                                          setState(() => _projectOpened = true),
-                                      editorPanelKey: editorPanelKey,
+                                      emptySlot: StartWizard(
+                                        onAction: (_) => setState(
+                                          () => _projectOpened = true,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                   VerticalSplitter(
@@ -186,12 +188,14 @@ class _IdeRootPageState extends State<IdeRootPage> {
                               )
                             : MainPanelArea(
                                 projectOpened: _projectOpened,
-                                editorSplitFraction: _editorSplitFraction,
-                                onEditorDrag: (f) =>
-                                    setState(() => _editorSplitFraction = f),
-                                onWizardAction: (_) =>
-                                    setState(() => _projectOpened = true),
-                                editorPanelKey: editorPanelKey,
+                                workspaceSlot: EditorPanel(
+                                  key: editorPanelKey,
+                                  label: 'Editor 1',
+                                ),
+                                emptySlot: StartWizard(
+                                  onAction: (_) =>
+                                      setState(() => _projectOpened = true),
+                                ),
                               ),
                       ),
                       if (_aiPanelVisible)
