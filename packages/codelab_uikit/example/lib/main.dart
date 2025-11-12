@@ -88,7 +88,7 @@ class _IdeRootPageState extends State<IdeRootPage> {
           final panelHeight = constraints.maxHeight;
 
           final editorHeight = panelHeight * _editorPanelFraction;
-          final terminalHeight = panelHeight * (1 - _editorPanelFraction) - 36;
+          final terminalHeight = panelHeight * (1 - _editorPanelFraction) - 8;
 
           return IdeLayout(
             sidebarNavigation: SidebarNavigation(
@@ -229,12 +229,12 @@ class _IdeRootPageState extends State<IdeRootPage> {
                     },
                   )
                 : null,
-            statusBar: StatusBar(
-              leading: Icon(FluentIcons.sync, size: 16, color: Colors.green),
-              trailing: MyProjectStatusInfo(),
-            ),
           );
         },
+      ),
+      bottomBar: StatusBar(
+        leading: Icon(FluentIcons.sync, size: 16, color: Colors.green),
+        trailing: MyProjectStatusInfo(),
       ),
     );
   }

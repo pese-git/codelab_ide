@@ -8,7 +8,6 @@ class IdeLayout extends StatelessWidget {
   final Widget centerPanel;
   final Widget? rightPanel;
   final Widget? rightPanelSplitter;
-  final Widget? statusBar;
   final bool showSidebar;
   final bool showRightPanel;
   final double rightPanelWidth;
@@ -23,7 +22,6 @@ class IdeLayout extends StatelessWidget {
     this.rightPanel,
     this.rightPanelWidth = 320,
     this.rightPanelSplitter,
-    this.statusBar,
     this.showSidebar = true,
     this.showRightPanel = false,
   });
@@ -47,7 +45,6 @@ class IdeLayout extends StatelessWidget {
             ],
           ),
         ),
-        if (statusBar != null) statusBar!,
       ],
     );
   }
