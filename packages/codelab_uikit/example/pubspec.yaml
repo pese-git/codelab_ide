@@ -37,6 +37,8 @@ dependencies:
   fluent_ui: ^4.13.0
   codelab_uikit:
     path: ..
+  xterm: ^4.0.0
+  flutter_pty: ^0.4.2
 
 dev_dependencies:
   flutter_test:
