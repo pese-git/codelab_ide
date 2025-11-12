@@ -39,7 +39,6 @@ class _IdeRootPageState extends State<IdeRootPage> {
   int _selectedSidebarIndex = 0;
   bool _sidebarVisible = false;
   double _editorPanelFraction = 0.7;
-  double _editorSplitFraction = 0.5;
   bool _bottomPanelVisible = false;
   bool _aiPanelVisible = false;
   double _aiPanelWidth = 320.0;
