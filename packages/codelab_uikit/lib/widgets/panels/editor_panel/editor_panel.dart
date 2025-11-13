@@ -1,11 +1,12 @@
-import '../../models/file_node.dart';
-import '../../models/editor_tab.dart';
-import '../editor/editor_tab_view.dart';
-import '../splitters/horizontal_splitter.dart';
-import '../splitters/vertical_splitter.dart';
-import 'package:fluent_ui/fluent_ui.dart';
+import 'package:codelab_uikit/widgets/panels/editor_panel/editor_panel_toolbar.dart';
 
-import 'editor_panel_toolbar.dart';
+import '../../../models/editor_tab.dart';
+import '../../editor/editor_tab_view.dart';
+import '../../splitters/horizontal_splitter.dart';
+import '../../splitters/vertical_splitter.dart';
+import 'package:fluent_ui/fluent_ui.dart';
+import 'pane_node.dart';
+import 'editor_pane_drag_target.dart';
 
 // Далее остальной переносимый код из example/lib/editor_panel.dart
 
@@ -21,27 +22,6 @@ class EditorPanel extends StatefulWidget {
 
   @override
   State<EditorPanel> createState() => EditorPanelState();
-}
-
-abstract class PaneNode {}
-
-class EditorTabsPane extends PaneNode {
-  List<EditorTab> tabs;
-  int selectedIndex;
-  EditorTabsPane({required this.tabs, this.selectedIndex = 0});
-}
-
-class SplitPane extends PaneNode {
-  bool isVertical; // true = vertical, false = horizontal
-  double fraction;
-  PaneNode first;
-  PaneNode second;
-  SplitPane({
-    required this.isVertical,
-    required this.fraction,
-    required this.first,
-    required this.second,
-  });
 }
 
 class EditorPanelState extends State<EditorPanel> {
@@ -233,7 +213,7 @@ class EditorPanelState extends State<EditorPanel> {
 
   Widget _buildPane(PaneNode node, String label) {
     if (node is EditorTabsPane) {
-      return _EditorPaneDragTarget(
+      return EditorPaneDragTarget(
         pane: node,
         isActive: _lastActivePane == node,
         onOpenFile: (fileNode) {
@@ -338,58 +318,4 @@ class EditorPanelState extends State<EditorPanel> {
   }
 }
 
-// --- DragTarget wrapper for EditorTabsPane ---
-class _EditorPaneDragTarget extends StatefulWidget {
-  final EditorTabsPane pane;
-  final Widget child;
-  final bool isActive;
-  final void Function(FileNode) onOpenFile;
-  final VoidCallback? onFocused;
-  const _EditorPaneDragTarget({
-    required this.pane,
-    required this.child,
-    required this.isActive,
-    required this.onOpenFile,
-    this.onFocused,
-  });
-  @override
-  State<_EditorPaneDragTarget> createState() => _EditorPaneDragTargetState();
-}
-
-class _EditorPaneDragTargetState extends State<_EditorPaneDragTarget> {
-  bool _isDragOver = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return DragTarget<FileNode>(
-      onWillAcceptWithDetails: (details) {
-        final file = details.data;
-        setState(() => _isDragOver = true);
-        widget.onFocused?.call();
-        return !file.isDirectory;
-      },
-      onLeave: (file) => setState(() => _isDragOver = false),
-      onAcceptWithDetails: (details) {
-        final file = details.data;
-        setState(() => _isDragOver = false);
-        widget.onOpenFile(file);
-      },
-      builder: (context, candidateData, rejectedData) {
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          curve: Curves.ease,
-          decoration: BoxDecoration(
-            border: Border.all(
-              color: _isDragOver
-                  ? Colors.blue
-                  : (widget.isActive ? Colors.grey[50] : Colors.transparent),
-              width: _isDragOver ? 2.5 : (widget.isActive ? 1 : 0),
-            ),
-            borderRadius: BorderRadius.circular(3),
-          ),
-          child: widget.child,
-        );
-      },
-    );
-  }
-}
+// EditorPaneDragTarget вынесен в editor_panel/editor_pane_drag_target.dart
