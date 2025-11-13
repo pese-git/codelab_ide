@@ -1,5 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'expander_with_flexible_height.dart';
+import '../expander_with_flexible_height.dart';
 
 class VariablesSection extends StatelessWidget {
   final bool expanded;
@@ -31,9 +31,11 @@ class VariablesSection extends StatelessWidget {
         onStateChanged: onExpandedChanged,
         content: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          child: Text(
-            'No variables to show',
-            style: TextStyle(color: Colors.grey[100]),
+          child: SingleChildScrollView(
+            child: Text(
+              'No variables to show',
+              style: TextStyle(color: Colors.grey[100]),
+            ),
           ),
         ),
       ),
