@@ -61,10 +61,8 @@ class _IdeRootPageState extends State<IdeRootPage> {
                 ? uikit.SidebarPanel(
                     selectedIndex: _selectedSidebarIndex,
                     explorerSlot: ExplorerPanel(
-                      onFileOpen: (node) {
+                      onFileOpen: (node, content) {
                         if (!node.isDirectory) {
-                          String content =
-                              '// Stub content for ${node.name}\nvoid main() {\n  print("Hello, ${node.name}!");\n}';
                           editorPanelKey.currentState?.openFile(
                             filePath: node.path,
                             title: node.name,

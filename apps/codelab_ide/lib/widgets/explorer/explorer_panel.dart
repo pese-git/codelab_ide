@@ -8,7 +8,7 @@ import 'package:codelab_uikit/codelab_uikit.dart'
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class ExplorerPanel extends StatelessWidget {
-  final void Function(uikit.FileNode) onFileOpen;
+  final void Function(uikit.FileNode, String content) onFileOpen;
   const ExplorerPanel({super.key, required this.onFileOpen});
 
   @override
@@ -23,7 +23,24 @@ class ExplorerPanel extends StatelessWidget {
         builder: (context, state) {
           return uikit.ExplorerPanel(
             files: state.fileTree != null ? [state.fileTree!] : [],
-            onFileOpen: onFileOpen,
+            onFileOpen: (uikit.FileNode fileNode) async {
+              final fileService = CherryPick.openRootScope()
+                  .resolve<FileService>();
+              final result = await fileService.readFile(fileNode.path).run();
+
+              context.read<ExplorerBloc>().add(
+                ExplorerEvent.selectFile(fileNode.path),
+              );
+
+              String content = '';
+              result.match(
+                (error) => content = '// Ошибка чтения файла: $error',
+                (realContent) => content = realContent,
+              );
+
+              // <-- callback с контентом!
+              onFileOpen(fileNode, content);
+            },
           );
         },
         listener: (context, state) {},
