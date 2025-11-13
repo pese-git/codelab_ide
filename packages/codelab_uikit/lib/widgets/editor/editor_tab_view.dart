@@ -57,7 +57,9 @@ class _EditorTabViewState extends State<EditorTabView> {
     _focusNode = FocusNode();
     _codeController = CodeController(
       text: widget.tabs.isNotEmpty ? widget.tabs[0].content : '',
-      language: _getLanguage(widget.tabs[0].filePath),
+      language: _getLanguage(
+        widget.tabs.isNotEmpty ? widget.tabs[0].filePath : '',
+      ),
     );
     _codeController.addListener(_handleCodeChanged);
   }
@@ -263,7 +265,7 @@ class _EditorTabViewState extends State<EditorTabView> {
       case 'md':
         return markdown;
       default:
-        return dart;
+        return markdown;
     }
   }
 
