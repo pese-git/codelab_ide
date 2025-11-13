@@ -18,7 +18,7 @@ export 'widgets/panels/editor_panel/editor_panel.dart';
 export 'widgets/panels/editor_panel/editor_panel_toolbar.dart';
 export 'widgets/panels/ai_assistant_panel.dart';
 export 'widgets/panels/right_panel.dart';
-export 'widgets/panels/run_and_debug_panel.dart';
+export 'widgets/panels/run_and_debug/run_and_debug_panel.dart';
 
 // WIDGETS: SPLITTERS
 export 'widgets/splitters/horizontal_splitter.dart';

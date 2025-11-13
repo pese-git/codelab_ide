@@ -35,7 +35,7 @@ class IdeRootPage extends StatefulWidget {
 }
 
 class _IdeRootPageState extends State<IdeRootPage> {
-  double _sidebarPanelWidth = 200;
+  double _sidebarPanelWidth = 210;
   int _selectedSidebarIndex = 0;
   bool _sidebarVisible = false;
   double _editorPanelFraction = 0.7;
