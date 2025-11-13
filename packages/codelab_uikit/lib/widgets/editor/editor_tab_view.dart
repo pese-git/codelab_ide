@@ -1,6 +1,29 @@
 import 'package:fluent_ui/fluent_ui.dart' hide ButtonStyle, IconButton;
-import 'package:flutter/material.dart' hide Colors, Tab;
+import 'package:flutter/material.dart' as material;
+import 'package:highlight/highlight_core.dart';
 import '../../models/editor_tab.dart';
+import 'package:flutter_code_editor/flutter_code_editor.dart';
+import 'package:highlight/languages/dart.dart';
+import 'package:flutter_highlight/themes/github.dart';
+import 'package:highlight/languages/dart.dart';
+import 'package:highlight/languages/python.dart';
+import 'package:highlight/languages/javascript.dart';
+import 'package:highlight/languages/typescript.dart';
+import 'package:highlight/languages/java.dart';
+import 'package:highlight/languages/cpp.dart';
+import 'package:highlight/languages/cs.dart';
+import 'package:highlight/languages/go.dart';
+import 'package:highlight/languages/rust.dart';
+import 'package:highlight/languages/swift.dart';
+import 'package:highlight/languages/kotlin.dart';
+import 'package:highlight/languages/php.dart';
+import 'package:highlight/languages/ruby.dart';
+import 'package:highlight/languages/xml.dart';
+import 'package:highlight/languages/css.dart';
+import 'package:highlight/languages/yaml.dart';
+import 'package:highlight/languages/json.dart';
+import 'package:highlight/languages/markdown.dart';
+import 'package:flutter_highlight/themes/github.dart';
 
 class EditorTabView extends StatefulWidget {
   final List<EditorTab> tabs;
@@ -25,6 +48,38 @@ class EditorTabView extends StatefulWidget {
 class _EditorTabViewState extends State<EditorTabView> {
   int _selectedIndex = 0;
 
+  late CodeController _codeController;
+  late FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode = FocusNode();
+    _codeController = CodeController(
+      text: widget.tabs.isNotEmpty ? widget.tabs[0].content : '',
+      language: _getLanguage(widget.tabs[0].filePath),
+    );
+    _codeController.addListener(_handleCodeChanged);
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    _codeController.dispose();
+    super.dispose();
+  }
+
+  void _handleCodeChanged() {
+    if (widget.tabs.isNotEmpty) {
+      final tab = widget.tabs[_selectedIndex];
+      final updatedTab = tab.copyWith(
+        content: _codeController.text,
+        isDirty: true,
+      );
+      widget.onTabContentChanged?.call(updatedTab);
+    }
+  }
+
   @override
   void didUpdateWidget(covariant EditorTabView oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -33,6 +88,12 @@ class _EditorTabViewState extends State<EditorTabView> {
     }
     if (widget.tabs.isEmpty) {
       _selectedIndex = 0;
+    }
+    if (widget.tabs.isNotEmpty &&
+        widget.tabs[_selectedIndex].content != _codeController.text) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _codeController.text = widget.tabs[_selectedIndex].content;
+      });
     }
   }
 
@@ -129,21 +190,23 @@ class _EditorTabViewState extends State<EditorTabView> {
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey[30]),
-                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: const Color(0xFF323130)),
                 ),
-                child: TextFormBox(
-                  maxLines: null,
-                  expands: true,
-                  initialValue: tab.content,
-                  style: const TextStyle(fontFamily: 'Monospace', fontSize: 14),
-                  onChanged: (value) {
-                    final updatedTab = tab.copyWith(
-                      content: value,
-                      isDirty: true,
-                    );
-                    widget.onTabContentChanged?.call(updatedTab);
-                  },
+                child: material.Material(
+                  color: Colors.transparent,
+                  child: CodeTheme(
+                    data: CodeThemeData(styles: githubTheme),
+                    child: CodeField(
+                      controller: _codeController,
+                      focusNode: _focusNode,
+                      textStyle: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 14,
+                      ),
+                      expands: true,
+                      padding: const EdgeInsets.all(16),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -151,5 +214,60 @@ class _EditorTabViewState extends State<EditorTabView> {
         ),
       ),
     );
+  }
+
+  Mode? _getLanguage(String filePath) {
+    final fileName = filePath.split('/').last;
+    final extension = fileName.split('.').last.toLowerCase();
+    switch (extension) {
+      case 'dart':
+        return dart;
+      case 'py':
+        return python;
+      case 'js':
+      case 'jsx':
+        return javascript;
+      case 'ts':
+      case 'tsx':
+        return typescript;
+      case 'java':
+        return java;
+      case 'cpp':
+      case 'cc':
+      case 'cxx':
+      case 'c':
+        return cpp;
+      case 'cs':
+        return cs;
+      case 'go':
+        return go;
+      case 'rs':
+        return rust;
+      case 'swift':
+        return swift;
+      case 'kt':
+        return kotlin;
+      case 'php':
+        return php;
+      case 'rb':
+        return ruby;
+      case 'html':
+        return xml;
+      case 'css':
+        return css;
+      case 'yaml':
+      case 'yml':
+        return yaml;
+      case 'json':
+        return json;
+      case 'md':
+        return markdown;
+      default:
+        return dart;
+    }
+  }
+
+  String _getFileName(String filePath) {
+    return filePath.split('/').last;
   }
 }
