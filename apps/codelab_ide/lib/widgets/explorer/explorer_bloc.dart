@@ -17,26 +17,13 @@ class ExplorerEvent with _$ExplorerEvent {
   ) = SetFileTree;
 }
 
-//@freezed
-//abstract class ExplorerState with _$ExplorerState {
-//  const factory ExplorerState.initial({
-//    @Default(<String>{}) Set<String> expandedNodes,
-//    String? selectedFile,
-//    uikit.FileNode? fileTree,
-//  }) = InitialState;
-//  const factory ExplorerState.updated({
-//    @Default(<String>{}) Set<String> expandedNodes,
-//    String? selectedFile,
-//    uikit.FileNode? fileTree,
-//  }) = UpdatedState;
-//}
-
 @freezed
 abstract class ExplorerState with _$ExplorerState {
   const factory ExplorerState({
     @Default(<String>{}) Set<String> expandedNodes,
     String? projectPath,
     String? selectedFile,
+    String? selectedContent,
     uikit.FileNode? fileTree,
   }) = _ExplorerState;
 }
@@ -52,7 +39,9 @@ class ExplorerBloc extends Bloc<ExplorerEvent, ExplorerState> {
   }) : _projectManagerService = projectManagerService,
        _fileService = fileService,
        super(const ExplorerState()) {
+    // Обработка изменения раскрытых узлов
     on<ToggleExpanded>((event, emit) {
+      // Передаем в новый Set состояние, чтобы не мутировать старый
       final expanded = Set<String>.from(state.expandedNodes);
       if (expanded.contains(event.path)) {
         expanded.remove(event.path);
@@ -62,19 +51,42 @@ class ExplorerBloc extends Bloc<ExplorerEvent, ExplorerState> {
       emit(state.copyWith(expandedNodes: expanded));
     });
 
-    on<SelectFile>((event, emit) {
-      emit(state.copyWith(selectedFile: event.path));
+    // Обработка выбора файла: читаем контент и обновляем состояние
+    on<SelectFile>((event, emit) async {
+      emit(
+        state.copyWith(selectedFile: event.path, selectedContent: null),
+      ); // Сразу сбрасываем контент до обновления
+      final result = await _fileService.readFile(event.path).run();
+      result.match(
+        (error) => emit(
+          state.copyWith(
+            selectedFile: event.path,
+            selectedContent: '// Ошибка чтения файла: $error',
+          ),
+        ),
+        (realContent) => emit(
+          state.copyWith(
+            selectedFile: event.path,
+            selectedContent: realContent,
+          ),
+        ),
+      );
     });
 
+    // Обработка смены/установки дерева — сбрасываем раскрытые узлы и выбранный файл
     on<SetFileTree>((event, emit) {
       emit(
         state.copyWith(
           projectPath: event.projectPath,
           fileTree: event.fileTree,
+          expandedNodes: <String>{},
+          selectedFile: null,
+          selectedContent: null,
         ),
       );
     });
 
+    // Слушаем смену проекта — пересоздаем дерево файлов
     _projectSubscription = _projectManagerService.projectStream.listen((
       config,
     ) {
@@ -84,22 +96,20 @@ class ExplorerBloc extends Bloc<ExplorerEvent, ExplorerState> {
       }
       final fileTreeResult = _fileService.loadProjectTree(config.path);
       fileTreeResult.match(
-        (_) {}, // TODO: обработка ошибок если нужно
+        (_) {}, // В случае ошибки – можно логировать, если нужно
         (core.FileNode? fileTree) {
           if (fileTree == null) {
-            add(const ExplorerEvent.setFileTree('', null));
+            add(ExplorerEvent.setFileTree(config.path, null));
             return;
           }
-
+          // Рекурсивная конвертация дерева core → uikit
           uikit.FileNode convert(core.FileNode node) => uikit.FileNode(
             path: node.path,
             name: node.name,
             isDirectory: node.isDirectory,
             children: node.children.map(convert).toList(),
           );
-
           final resultMap = convert(fileTree);
-
           add(ExplorerEvent.setFileTree(config.path, resultMap));
         },
       );
