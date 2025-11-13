@@ -1,4 +1,3 @@
-import 'package:cherrypick/cherrypick.dart';
 import 'package:codelab_core/codelab_core.dart';
 import 'package:codelab_ide/widgets/bottom_terminal.dart';
 import 'package:codelab_ide/widgets/explorer/explorer_panel.dart';

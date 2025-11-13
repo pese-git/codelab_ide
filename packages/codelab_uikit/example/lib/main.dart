@@ -118,6 +118,7 @@ class _IdeRootPageState extends State<IdeRootPage> {
                         }
                       },
                     ),
+                    runDebugSlot: RunAndDebugPanel(),
                   )
                 : null,
             sidebarPanelWidth: _sidebarPanelWidth,

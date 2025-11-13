@@ -3,7 +3,6 @@ import 'package:flutter/material.dart' as material;
 import 'package:highlight/highlight_core.dart';
 import '../../models/editor_tab.dart';
 import 'package:flutter_code_editor/flutter_code_editor.dart';
-import 'package:highlight/languages/dart.dart';
 import 'package:flutter_highlight/themes/github.dart';
 import 'package:highlight/languages/dart.dart';
 import 'package:highlight/languages/python.dart';
@@ -23,7 +22,6 @@ import 'package:highlight/languages/css.dart';
 import 'package:highlight/languages/yaml.dart';
 import 'package:highlight/languages/json.dart';
 import 'package:highlight/languages/markdown.dart';
-import 'package:flutter_highlight/themes/github.dart';
 
 class EditorTabView extends StatefulWidget {
   final List<EditorTab> tabs;
