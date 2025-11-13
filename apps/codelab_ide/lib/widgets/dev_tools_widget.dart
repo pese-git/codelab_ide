@@ -1,6 +1,7 @@
 import 'package:codelab_engine/codelab_engine.dart';
 import 'package:flutter/material.dart';
 
+@Deprecated('old code')
 class DevToolsWidget extends StatelessWidget {
   const DevToolsWidget({super.key});
 

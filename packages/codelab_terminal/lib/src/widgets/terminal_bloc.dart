@@ -20,7 +20,7 @@ class TerminalEvent with _$TerminalEvent {
 }
 
 @freezed
-class TerminalState with _$TerminalState {
+abstract class TerminalState with _$TerminalState {
   const factory TerminalState({
     @Default(<String>[]) List<String> output,
     @Default(false) bool isRunning,

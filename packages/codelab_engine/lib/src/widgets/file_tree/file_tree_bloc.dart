@@ -12,7 +12,7 @@ class FileTreeEvent with _$FileTreeEvent {
 }
 
 @freezed
-class FileTreeState with _$FileTreeState {
+abstract class FileTreeState with _$FileTreeState {
   const factory FileTreeState({
     @Default(<String>{}) Set<String> expandedNodes,
     String? selectedFile,
