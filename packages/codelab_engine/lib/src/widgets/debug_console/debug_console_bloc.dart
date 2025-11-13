@@ -22,7 +22,7 @@ class DebugConsoleEvent with _$DebugConsoleEvent {
 }
 
 @freezed
-class DebugConsoleState with _$DebugConsoleState {
+abstract class DebugConsoleState with _$DebugConsoleState {
   const factory DebugConsoleState({
     @Default(<String>[]) List<String> output,
     @Default(false) bool isRunning,

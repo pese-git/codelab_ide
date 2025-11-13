@@ -1,7 +1,10 @@
+import 'package:cherrypick/cherrypick.dart';
+import 'package:codelab_core/codelab_core.dart';
 import 'package:codelab_ide/widgets/bottom_terminal.dart';
+import 'package:codelab_ide/widgets/explorer/explorer_panel.dart';
 import 'package:codelab_ide/widgets/project_status_info.dart';
 import 'package:codelab_ide/widgets/start_wizard/start_wizard_panel.dart';
-import 'package:codelab_uikit/codelab_uikit.dart';
+import 'package:codelab_uikit/codelab_uikit.dart' as uikit;
 import 'package:fluent_ui/fluent_ui.dart';
 
 class IdeRootPage extends StatefulWidget {
@@ -21,37 +24,13 @@ class _IdeRootPageState extends State<IdeRootPage> {
   double _aiPanelWidth = 320.0;
   bool _projectOpened = false;
 
-  final GlobalKey<EditorPanelState> editorPanelKey =
-      GlobalKey<EditorPanelState>();
-
-  // Все demo данные вынесите в отдельный файл для чистоты (опционально)
-  final List<FileNode> demoProject = [
-    FileNode(
-      path: '/project',
-      name: 'project',
-      isDirectory: true,
-      children: [
-        FileNode(
-          path: '/project/lib',
-          name: 'lib',
-          isDirectory: true,
-          children: [
-            FileNode(path: '/project/lib/main.dart', name: 'main.dart'),
-            FileNode(
-              path: '/project/lib/home_page.dart',
-              name: 'home_page.dart',
-            ),
-          ],
-        ),
-        FileNode(path: '/project/README.md', name: 'README.md'),
-      ],
-    ),
-  ];
+  final GlobalKey<uikit.EditorPanelState> editorPanelKey =
+      GlobalKey<uikit.EditorPanelState>();
 
   @override
   Widget build(BuildContext context) {
     return ScaffoldPage(
-      header: MainHeader(
+      header: uikit.MainHeader(
         bottomPanelVisible: _bottomPanelVisible,
         onToggleBottomPanel: () =>
             setState(() => _bottomPanelVisible = !_bottomPanelVisible),
@@ -66,8 +45,8 @@ class _IdeRootPageState extends State<IdeRootPage> {
           final editorHeight = panelHeight * _editorPanelFraction;
           final terminalHeight = panelHeight * (1 - _editorPanelFraction) - 8;
 
-          return IdeLayout(
-            sidebarNavigation: SidebarNavigation(
+          return uikit.IdeLayout(
+            sidebarNavigation: uikit.SidebarNavigation(
               selectedIndex: _selectedSidebarIndex,
               onSelected: (i) => setState(() {
                 if (_selectedSidebarIndex == i) {
@@ -79,10 +58,9 @@ class _IdeRootPageState extends State<IdeRootPage> {
               }),
             ),
             sidebarPanel: _sidebarVisible
-                ? SidebarPanel(
+                ? uikit.SidebarPanel(
                     selectedIndex: _selectedSidebarIndex,
                     explorerSlot: ExplorerPanel(
-                      files: _projectOpened ? demoProject : [],
                       onFileOpen: (node) {
                         if (!node.isDirectory) {
                           String content =
@@ -99,7 +77,7 @@ class _IdeRootPageState extends State<IdeRootPage> {
                 : null,
             sidebarPanelWidth: _sidebarPanelWidth,
             sidebarSplitter: _sidebarVisible
-                ? HorizontalSplitter(
+                ? uikit.HorizontalSplitter(
                     onDrag: (delta) {
                       setState(() {
                         _sidebarPanelWidth += delta;
@@ -125,9 +103,9 @@ class _IdeRootPageState extends State<IdeRootPage> {
                                       100,
                                       panelHeight - 100,
                                     ),
-                                    child: MainPanelArea(
+                                    child: uikit.MainPanelArea(
                                       projectOpened: _projectOpened,
-                                      workspaceSlot: EditorPanel(
+                                      workspaceSlot: uikit.EditorPanel(
                                         key: editorPanelKey,
                                         label: 'Editor 1',
                                       ),
@@ -138,7 +116,7 @@ class _IdeRootPageState extends State<IdeRootPage> {
                                       ),
                                     ),
                                   ),
-                                  VerticalSplitter(
+                                  uikit.VerticalSplitter(
                                     onDrag: (delta) {
                                       setState(() {
                                         _editorPanelFraction +=
@@ -156,26 +134,26 @@ class _IdeRootPageState extends State<IdeRootPage> {
                                       50,
                                       panelHeight - 100,
                                     ),
-                                    child: const BottomPanel(
+                                    child: const uikit.BottomPanel(
                                       terminalSlot: BottomTerminal(),
                                     ),
                                   ),
                                 ],
                               )
-                            : MainPanelArea(
+                            : uikit.MainPanelArea(
                                 projectOpened: _projectOpened,
-                                workspaceSlot: EditorPanel(
+                                workspaceSlot: uikit.EditorPanel(
                                   key: editorPanelKey,
                                   label: 'Editor 1',
                                 ),
-                                emptySlot: StartWizard(
+                                emptySlot: StartWizardPanel(
                                   onAction: (_) =>
                                       setState(() => _projectOpened = true),
                                 ),
                               ),
                       ),
                       if (_aiPanelVisible)
-                        HorizontalSplitter(
+                        uikit.HorizontalSplitter(
                           onDrag: (dx) {
                             setState(() {
                               _aiPanelWidth -= dx;
@@ -186,17 +164,19 @@ class _IdeRootPageState extends State<IdeRootPage> {
                       if (_aiPanelVisible)
                         SizedBox(
                           width: _aiPanelWidth,
-                          child: const AIAssistantPanel(),
+                          child: const uikit.AIAssistantPanel(),
                         ),
                     ],
                   ),
                 ),
               ],
             ),
-            rightPanel: RightPanel(aiSlot: const AIAssistantPanel()),
+            rightPanel: uikit.RightPanel(
+              aiSlot: const uikit.AIAssistantPanel(),
+            ),
             rightPanelWidth: _aiPanelWidth,
             rightPanelSplitter: _aiPanelVisible
-                ? HorizontalSplitter(
+                ? uikit.HorizontalSplitter(
                     onDrag: (dx) {
                       setState(() {
                         _aiPanelWidth -= dx;
@@ -208,7 +188,7 @@ class _IdeRootPageState extends State<IdeRootPage> {
           );
         },
       ),
-      bottomBar: StatusBar(
+      bottomBar: uikit.StatusBar(
         leading: Icon(FluentIcons.sync, size: 16, color: Colors.green),
         trailing: ProjectStatusInfo(),
       ),

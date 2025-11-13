@@ -20,7 +20,7 @@ class ProjectEvent with _$ProjectEvent {
 }
 
 @freezed
-class ProjectState with _$ProjectState {
+abstract class ProjectState with _$ProjectState {
   const factory ProjectState({
     String? projectPath,
     FileNode? fileTree,
@@ -40,21 +40,23 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
   final FileService _fileService;
   final RunService _runService;
 
-  ProjectBloc({required FileService fileService, required RunService runService})
-    : _fileService = fileService,
-    _runService = runService,
-      super(ProjectState.initial()) {
+  ProjectBloc({
+    required FileService fileService,
+    required RunService runService,
+  }) : _fileService = fileService,
+       _runService = runService,
+       super(ProjectState.initial()) {
     on<OpenProject>((event, emit) async {
       emit(state.copyWith(isLoading: true, error: null, saveSuccess: false));
-      
+
       final result = await _fileService.pickProjectDirectory().run();
-      
+
       result.match(
         (error) {
           emit(
             state.copyWith(
-              isLoading: false, 
-              error: 'Failed to open project: $error'
+              isLoading: false,
+              error: 'Failed to open project: $error',
             ),
           );
         },
@@ -63,15 +65,15 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
             emit(state.copyWith(isLoading: false));
             return;
           }
-          
+
           final fileTreeResult = _fileService.loadProjectTree(projectPath);
-          
+
           fileTreeResult.match(
             (error) {
               emit(
                 state.copyWith(
-                  isLoading: false, 
-                  error: 'Failed to load project tree: $error'
+                  isLoading: false,
+                  error: 'Failed to load project tree: $error',
                 ),
               );
             },
@@ -98,12 +100,7 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
         final command = _runService.getRunCommand(state.currentFile!);
 
         logger.i("Command: $command");
-          emit(
-          state.copyWith(
-            isLoading: false,
-  
-          ),
-        );
+        emit(state.copyWith(isLoading: false));
       } catch (e) {
         emit(
           state.copyWith(isLoading: false, error: 'Failed to open project: $e'),
@@ -124,9 +121,9 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
           currentFile: event.filePath,
         ),
       );
-      
+
       final result = await _fileService.readFile(event.filePath).run();
-      
+
       // 2. После await состояние блока могло измениться — используем последнее:
       final latestState = state;
 
@@ -134,8 +131,8 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
         (error) {
           emit(
             latestState.copyWith(
-              isLoading: false, 
-              error: 'Failed to open file: $error'
+              isLoading: false,
+              error: 'Failed to open file: $error',
             ),
           );
         },
@@ -159,15 +156,15 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
 
     on<LoadFileContent>((event, emit) async {
       emit(state.copyWith(isLoading: true, error: null));
-      
+
       final result = await _fileService.readFile(event.filePath).run();
-      
+
       result.match(
         (error) {
           emit(
             state.copyWith(
-              isLoading: false, 
-              error: 'Failed to read file: $error'
+              isLoading: false,
+              error: 'Failed to read file: $error',
             ),
           );
         },
@@ -184,12 +181,11 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
     on<SaveCurrentFile>((SaveCurrentFile event, emit) async {
       if (state.currentFile == null) return;
       emit(state.copyWith(isSaving: true, saveSuccess: false));
-      
-      final result = await _fileService.writeFile(
-        event.currentFile,
-        event.fileContent,
-      ).run();
-      
+
+      final result = await _fileService
+          .writeFile(event.currentFile, event.fileContent)
+          .run();
+
       result.match(
         (error) {
           emit(

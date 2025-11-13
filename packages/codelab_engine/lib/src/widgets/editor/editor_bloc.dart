@@ -19,7 +19,7 @@ class EditorEvent with _$EditorEvent {
 }
 
 @freezed
-class EditorState with _$EditorState {
+abstract class EditorState with _$EditorState {
   const factory EditorState({
     required String filePath,
     required String content,
@@ -28,29 +28,28 @@ class EditorState with _$EditorState {
   }) = _EditorState;
 
   factory EditorState.initial() => const EditorState(
-        filePath: '',
-        content: '',
-        isDirty: false,
-        isSaving: false,
-      );
+    filePath: '',
+    content: '',
+    isDirty: false,
+    isSaving: false,
+  );
 }
 
 class EditorBloc extends Bloc<EditorEvent, EditorState> {
   EditorBloc() : super(EditorState.initial()) {
     on<SetFile>((event, emit) {
-      emit(EditorState(
-        filePath: event.filePath,
-        content: event.content,
-        isDirty: false,
-        isSaving: false,
-      ));
+      emit(
+        EditorState(
+          filePath: event.filePath,
+          content: event.content,
+          isDirty: false,
+          isSaving: false,
+        ),
+      );
     });
 
     on<UpdateContent>((event, emit) {
-      emit(state.copyWith(
-        content: event.content,
-        isDirty: true,
-      ));
+      emit(state.copyWith(content: event.content, isDirty: true));
     });
 
     on<SaveContent>((event, emit) async {

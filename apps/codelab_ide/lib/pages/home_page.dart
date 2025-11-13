@@ -5,6 +5,7 @@ import 'package:codelab_ide/widgets/dev_tools_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+@Deprecated('old code')
 class IDEHomePage extends StatefulWidget {
   const IDEHomePage({super.key});
 
@@ -12,6 +13,7 @@ class IDEHomePage extends StatefulWidget {
   IDEHomePageState createState() => IDEHomePageState();
 }
 
+@Deprecated('old code')
 class IDEHomePageState extends State<IDEHomePage> {
   double _fileTreeWidth = 250.0;
   double _terminalHeight = 200.0;
