@@ -1,10 +1,10 @@
 import 'package:codelab_uikit/widgets/panels/run_and_debug/header_section.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import '../../splitters/vertical_splitter.dart';
 import 'variables_section.dart';
 import 'watch_section.dart';
 import 'call_stack_section.dart';
 import 'breakpoints_section.dart';
-import '../../splitters/vertical_splitter.dart';
 
 class RunAndDebugPanel extends StatefulWidget {
   final Widget? headerSection;

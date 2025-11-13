@@ -25,9 +25,11 @@ class _BreakpointsSectionState extends State<BreakpointsSection> {
         }),
         content: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          child: Text(
-            'No breakpoints',
-            style: TextStyle(color: Colors.grey[100]),
+          child: SingleChildScrollView(
+            child: Text(
+              'No breakpoints',
+              style: TextStyle(color: Colors.grey[100]),
+            ),
           ),
         ),
       ),
