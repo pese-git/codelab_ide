@@ -38,11 +38,14 @@ class EditorPanelToolbar extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          IconButton(
-            icon: const Icon(FluentIcons.add, size: 16),
-            onPressed: onAddTab,
-            style: ButtonStyle(
-              padding: WidgetStateProperty.all(const EdgeInsets.all(6)),
+          Visibility(
+            visible: false,
+            child: IconButton(
+              icon: const Icon(FluentIcons.add, size: 16),
+              onPressed: onAddTab,
+              style: ButtonStyle(
+                padding: WidgetStateProperty.all(const EdgeInsets.all(6)),
+              ),
             ),
           ),
           const SizedBox(width: 8),
