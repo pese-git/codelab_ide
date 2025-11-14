@@ -1,4 +1,4 @@
-import 'package:codelab_engine/codelab_engine.dart';
+import 'package:codelab_engine/deprecate/widgets/debug_console/debug_console_widget.dart';
 import 'package:flutter/material.dart';
 
 @Deprecated('old code')

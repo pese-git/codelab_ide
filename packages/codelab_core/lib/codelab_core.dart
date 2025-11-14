@@ -3,8 +3,6 @@
 /// More dartdocs go here.
 library;
 
-export 'src/codelab_core_base.dart';
-
 export 'src/errors/app_errors.dart';
 export 'src/models/file_node.dart';
 export 'src/models/project_config.dart';
