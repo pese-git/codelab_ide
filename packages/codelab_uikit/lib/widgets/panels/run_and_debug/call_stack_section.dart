@@ -1,5 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import '../expander_with_flexible_height.dart';
+
+import 'expander_with_flexible_height.dart';
 
 class CallStackSection extends StatelessWidget {
   final bool expanded;
