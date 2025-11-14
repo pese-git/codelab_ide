@@ -3,7 +3,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 class EditorPanelToolbar extends StatelessWidget {
   final String label;
   final VoidCallback onAddTab;
-  final VoidCallback onSaveTabs;
+  final VoidCallback onCloseTabs;
   final VoidCallback? onSplitVertical;
   final VoidCallback? onSplitHorizontal;
   final bool canSplit;
@@ -12,7 +12,7 @@ class EditorPanelToolbar extends StatelessWidget {
     super.key,
     required this.label,
     required this.onAddTab,
-    required this.onSaveTabs,
+    required this.onCloseTabs,
     this.onSplitVertical,
     this.onSplitHorizontal,
     this.canSplit = true,
@@ -49,7 +49,7 @@ class EditorPanelToolbar extends StatelessWidget {
           Tooltip(
             message: 'Split vertically',
             child: IconButton(
-              icon: const Icon(FluentIcons.split, size: 16),
+              icon: const Icon(FluentIcons.table_total_row, size: 16),
               onPressed: canSplit ? onSplitVertical : null,
               style: ButtonStyle(
                 padding: WidgetStateProperty.all(const EdgeInsets.all(6)),
@@ -60,7 +60,7 @@ class EditorPanelToolbar extends StatelessWidget {
           Tooltip(
             message: 'Split horizontally',
             child: IconButton(
-              icon: const Icon(FluentIcons.gripper_bar_horizontal, size: 16),
+              icon: const Icon(FluentIcons.table_last_column, size: 16),
               onPressed: canSplit ? onSplitHorizontal : null,
               style: ButtonStyle(
                 padding: WidgetStateProperty.all(const EdgeInsets.all(6)),
@@ -69,8 +69,8 @@ class EditorPanelToolbar extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           IconButton(
-            icon: const Icon(FluentIcons.save, size: 16),
-            onPressed: onSaveTabs,
+            icon: const Icon(FluentIcons.chrome_close, size: 16),
+            onPressed: onCloseTabs,
             style: ButtonStyle(
               padding: WidgetStateProperty.all(const EdgeInsets.all(6)),
             ),
