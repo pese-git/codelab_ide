@@ -260,6 +260,7 @@ class EditorPanelState extends State<EditorPanel> {
                 Expanded(
                   child: EditorTabView(
                     tabs: node.tabs,
+                    selectedIndex: node.selectedIndex,
                     onTabSelected: (i) => setState(() {
                       node.selectedIndex = i;
                       _lastActivePane = node;
