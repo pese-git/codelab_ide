@@ -49,6 +49,7 @@ class EditorPanelState extends State<EditorPanel> {
     });
   }
 
+  // ignore: unused_element
   void _saveTabsInPane(EditorTabsPane pane) {
     displayInfoBar(
       context,
@@ -246,7 +247,12 @@ class EditorPanelState extends State<EditorPanel> {
                 EditorPanelToolbar(
                   label: label,
                   onAddTab: () => _addTabInPane(node),
-                  onSaveTabs: () => _saveTabsInPane(node),
+                  onCloseTabs: () {
+                    // Закрыть все вкладки по одной, чтобы корректно работала очистка панели
+                    while (node.tabs.isNotEmpty) {
+                      _closeTabInPane(node, 0);
+                    }
+                  },
                   onSplitVertical: () => _splitPane(node, isVertical: true),
                   onSplitHorizontal: () => _splitPane(node, isVertical: false),
                   canSplit: true,
