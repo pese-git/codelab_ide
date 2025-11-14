@@ -6,10 +6,10 @@ class AIAssistantMessageBubble extends StatelessWidget {
   final bool isUser;
 
   const AIAssistantMessageBubble({
-    Key? key,
+    super.key,
     required this.content,
     this.isUser = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -26,8 +26,8 @@ class AIAssistantMessageBubble extends StatelessWidget {
         child: SelectableText(
           content,
           style: FluentTheme.of(context).typography.body!.copyWith(
-                color: isUser ? Colors.blue.darker : null,
-              ),
+            color: isUser ? Colors.blue.darker : null,
+          ),
         ),
       ),
     );

@@ -4,7 +4,11 @@ import 'package:fluent_ui/fluent_ui.dart';
 class AIAssistantHeader extends StatelessWidget {
   final VoidCallback? onClear;
   final String title;
-  const AIAssistantHeader({Key? key, this.onClear, this.title = 'AI Assistant'}) : super(key: key);
+  const AIAssistantHeader({
+    super.key,
+    this.onClear,
+    this.title = 'AI Assistant',
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -18,10 +22,7 @@ class AIAssistantHeader extends StatelessWidget {
             child: Icon(FluentIcons.chat, size: 20),
           ),
           const SizedBox(width: 10),
-          Text(
-            title,
-            style: FluentTheme.of(context).typography.title,
-          ),
+          Text(title, style: FluentTheme.of(context).typography.title),
           const Spacer(),
           IconButton(
             icon: const Icon(FluentIcons.clear),

@@ -267,6 +267,7 @@ class _EditorTabViewState extends State<EditorTabView> {
     }
   }
 
+  // ignore: unused_element
   String _getFileName(String filePath) {
     return filePath.split('/').last;
   }

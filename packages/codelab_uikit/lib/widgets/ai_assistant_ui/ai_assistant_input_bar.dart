@@ -8,12 +8,12 @@ class AIAssistantInputBar extends StatelessWidget {
   final bool sending;
 
   const AIAssistantInputBar({
-    Key? key,
+    super.key,
     this.controller,
     this.onSend,
     this.onSuggestion,
     this.sending = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -45,9 +45,9 @@ class AIAssistantInputBar extends StatelessWidget {
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 ),
               ),
-              child: sending 
-                ? const ProgressRing(strokeWidth: 2,)
-                : const Icon(FluentIcons.send),
+              child: sending
+                  ? const ProgressRing(strokeWidth: 2)
+                  : const Icon(FluentIcons.send),
             ),
           ),
         ],
