@@ -1,6 +1,6 @@
 import 'package:cherrypick/cherrypick.dart';
 import 'package:codelab_core/codelab_core.dart';
-import 'package:codelab_engine/src/widgets/project_management/project_management_bloc.dart';
+import 'package:codelab_engine/deprecate/widgets/project_management/project_management_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 

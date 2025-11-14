@@ -3,6 +3,6 @@
 /// More dartdocs go here.
 library;
 
-export 'src/codelab_ai_assistant_base.dart';
+export 'src/widgets/ai_assistent_panel.dart';
 
 // TODO: Export any libraries intended for clients of this package.

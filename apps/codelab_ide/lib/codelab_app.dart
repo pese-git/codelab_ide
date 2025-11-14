@@ -25,16 +25,16 @@ class CodeLapApp extends StatelessWidget {
         //        .resolve<ProjectManagerService>(),
         //  ),
         //),
-        BlocProvider<ProjectManagementBloc>(
-          create: (context) => ProjectManagementBloc(
-            projectService: CherryPick.openRootScope()
-                .resolve<ProjectService>(),
-            fileService: CherryPick.openRootScope().resolve<FileService>(),
-            runService: CherryPick.openRootScope().resolve<RunService>(),
-            projectManagerService: CherryPick.openRootScope()
-                .resolve<ProjectManagerService>(),
-          ),
-        ),
+        //BlocProvider<ProjectManagementBloc>(
+        //  create: (context) => ProjectManagementBloc(
+        //    projectService: CherryPick.openRootScope()
+        //        .resolve<ProjectService>(),
+        //    fileService: CherryPick.openRootScope().resolve<FileService>(),
+        //    runService: CherryPick.openRootScope().resolve<RunService>(),
+        //    projectManagerService: CherryPick.openRootScope()
+        //        .resolve<ProjectManagerService>(),
+        //  ),
+        //),
       ],
       child: FluentApp(
         title: 'Codelab IDE',

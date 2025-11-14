@@ -34,6 +34,8 @@ dependencies:
   cherrypick: ^3.0.2
   cherrypick_annotations: ^3.0.1
   cherrypick_flutter: ^3.0.2
+  fluent_ui: ^4.13.0
+  fpdart: ^1.2.0
 
 
 dev_dependencies:

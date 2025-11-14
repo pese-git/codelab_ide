@@ -1,16 +1,13 @@
-import 'package:codelab_core/codelab_core.dart';
 import 'package:test/test.dart';
 
 void main() {
   group('A group of tests', () {
-    final awesome = Awesome();
-
     setUp(() {
       // Additional setup goes here.
     });
 
     test('First Test', () {
-      expect(awesome.isAwesome, isTrue);
+      expect(1, 1);
     });
   });
 }

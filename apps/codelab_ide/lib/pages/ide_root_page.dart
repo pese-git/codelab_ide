@@ -1,8 +1,6 @@
-import 'package:codelab_ide/widgets/ai_assistent_panel.dart';
-import 'package:codelab_ide/widgets/bottom_terminal.dart';
-import 'package:codelab_ide/widgets/explorer/explorer_panel.dart';
-import 'package:codelab_ide/widgets/project_status_info.dart';
-import 'package:codelab_ide/widgets/start_wizard/start_wizard_panel.dart';
+import 'package:codelab_ai_assistant/codelab_ai_assistant.dart';
+import 'package:codelab_engine/codelab_engine.dart';
+import 'package:codelab_terminal/codelab_terminal.dart';
 import 'package:codelab_uikit/codelab_uikit.dart' as uikit;
 import 'package:fluent_ui/fluent_ui.dart';
 
@@ -104,7 +102,7 @@ class _IdeRootPageState extends State<IdeRootPage> {
                                       projectOpened: _projectOpened,
                                       workspaceSlot: uikit.EditorPanel(
                                         key: editorPanelKey,
-                                        label: 'Editor 1',
+                                        label: 'Editor',
                                       ),
                                       emptySlot: StartWizardPanel(
                                         onAction: (_) => setState(
@@ -132,7 +130,7 @@ class _IdeRootPageState extends State<IdeRootPage> {
                                       panelHeight - 100,
                                     ),
                                     child: const uikit.BottomPanel(
-                                      terminalSlot: BottomTerminal(),
+                                      terminalSlot: TerminalWidget(),
                                     ),
                                   ),
                                 ],
@@ -141,7 +139,7 @@ class _IdeRootPageState extends State<IdeRootPage> {
                                 projectOpened: _projectOpened,
                                 workspaceSlot: uikit.EditorPanel(
                                   key: editorPanelKey,
-                                  label: 'Editor 1',
+                                  label: 'Editor',
                                 ),
                                 emptySlot: StartWizardPanel(
                                   onAction: (_) =>
