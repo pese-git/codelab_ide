@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:codelab_uikit/codelab_uikit.dart';
+import 'package:codelab_uikit/widgets/ai_assistant_ui/ai_assistant_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_pty/flutter_pty.dart';
@@ -180,7 +181,7 @@ class _IdeRootPageState extends State<IdeRootPage> {
                                       50,
                                       panelHeight - 100,
                                     ),
-                                    child: const BottomPanel(
+                                    child: BottomPanel(
                                       terminalSlot: BottomTerminal(),
                                     ),
                                   ),
@@ -210,14 +211,14 @@ class _IdeRootPageState extends State<IdeRootPage> {
                       if (_aiPanelVisible)
                         SizedBox(
                           width: _aiPanelWidth,
-                          child: const AIAssistantPanel(),
+                          child: ExampleAIAssistant(),
                         ),
                     ],
                   ),
                 ),
               ],
             ),
-            rightPanel: RightPanel(aiSlot: const AIAssistantPanel()),
+            rightPanel: RightPanel(aiSlot: ExampleAIAssistant()),
             rightPanelWidth: _aiPanelWidth,
             rightPanelSplitter: _aiPanelVisible
                 ? HorizontalSplitter(
@@ -240,9 +241,64 @@ class _IdeRootPageState extends State<IdeRootPage> {
   }
 }
 
-class BottomTerminal extends StatefulWidget {
-  const BottomTerminal({super.key});
+/// Демонстрация стейтфул-ассистента с бизнес-логикой и собранным UI
+class ExampleAIAssistant extends StatefulWidget {
+  const ExampleAIAssistant({super.key});
+  @override
+  State<ExampleAIAssistant> createState() => _ExampleAIAssistantState();
+}
 
+class _ExampleAIAssistantState extends State<ExampleAIAssistant> {
+  final TextEditingController _controller = TextEditingController();
+  final List<AIAssistantMessage> _messages = [
+    const AIAssistantMessage(role: 'ai', content: 'Привет! Я ассистент.'),
+    const AIAssistantMessage(role: 'user', content: 'Расскажи про Flutter.'),
+    const AIAssistantMessage(
+      role: 'ai',
+      content: 'Flutter — UI toolkit от Google...',
+    ),
+  ];
+  bool _sending = false;
+
+  void _send() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+    setState(() {
+      _messages.add(AIAssistantMessage(role: 'user', content: text));
+      _controller.clear();
+      _sending = true;
+    });
+    // Здесь будет вызов к LLM/AI!
+    await Future.delayed(const Duration(seconds: 1));
+    setState(() {
+      _messages.add(AIAssistantMessage(role: 'ai', content: 'Ответ на: $text'));
+      _sending = false;
+    });
+  }
+
+  void _clear() {
+    setState(() => _messages.clear());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        AIAssistantHeader(onClear: _clear),
+        const Divider(size: 1),
+        Expanded(child: AIAssistantMessageList(messages: _messages)),
+        const Divider(size: 1),
+        AIAssistantInputBar(
+          controller: _controller,
+          onSend: _send,
+          sending: _sending,
+        ),
+      ],
+    );
+  }
+}
+
+class BottomTerminal extends StatefulWidget {
   @override
   State<StatefulWidget> createState() {
     return BottomTerminalState();
