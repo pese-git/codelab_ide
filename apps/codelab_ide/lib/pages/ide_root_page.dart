@@ -100,9 +100,8 @@ class _IdeRootPageState extends State<IdeRootPage> {
                                     ),
                                     child: uikit.MainPanelArea(
                                       projectOpened: _projectOpened,
-                                      workspaceSlot: uikit.EditorPanel(
-                                        key: editorPanelKey,
-                                        label: 'Editor',
+                                      workspaceSlot: EditorPanel(
+                                        editorPanelKey: editorPanelKey,
                                       ),
                                       emptySlot: StartWizardPanel(
                                         onAction: (_) => setState(
@@ -137,9 +136,8 @@ class _IdeRootPageState extends State<IdeRootPage> {
                               )
                             : uikit.MainPanelArea(
                                 projectOpened: _projectOpened,
-                                workspaceSlot: uikit.EditorPanel(
-                                  key: editorPanelKey,
-                                  label: 'Editor',
+                                workspaceSlot: EditorPanel(
+                                  editorPanelKey: editorPanelKey,
                                 ),
                                 emptySlot: StartWizardPanel(
                                   onAction: (_) =>

@@ -1,6 +1,7 @@
 import 'package:cherrypick/cherrypick.dart';
 import 'package:codelab_core/codelab_core.dart';
 import 'package:codelab_engine/codelab_engine.dart';
+import 'package:codelab_engine/deprecate/widgets/editor/editor_bloc.dart';
 import 'package:codelab_ide/pages/ide_root_page.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -18,6 +19,7 @@ class CodeLapApp extends StatelessWidget {
             runService: CherryPick.openRootScope().resolve<RunService>(),
           ),
         ),
+        BlocProvider<EditorBloc>(create: (context) => EditorBloc()),
         //BlocProvider<ExplorerBloc>(
         //  create: (context) => ExplorerBloc(
         //    fileService: CherryPick.openRootScope().resolve<FileService>(),
