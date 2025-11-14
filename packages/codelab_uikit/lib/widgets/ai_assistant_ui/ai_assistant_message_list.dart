@@ -11,7 +11,7 @@ class AIAssistantMessage {
 /// Отображает список сообщений AI-ассистента.
 class AIAssistantMessageList extends StatelessWidget {
   final List<AIAssistantMessage> messages;
-  const AIAssistantMessageList({Key? key, required this.messages}) : super(key: key);
+  const AIAssistantMessageList({super.key, required this.messages});
 
   @override
   Widget build(BuildContext context) {
@@ -21,10 +21,7 @@ class AIAssistantMessageList extends StatelessWidget {
       itemBuilder: (context, i) {
         final msg = messages[i];
         final isUser = msg.role == 'user';
-        return AIAssistantMessageBubble(
-          content: msg.content,
-          isUser: isUser,
-        );
+        return AIAssistantMessageBubble(content: msg.content, isUser: isUser);
       },
     );
   }

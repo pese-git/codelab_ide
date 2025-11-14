@@ -221,7 +221,7 @@ class EditorPanelState extends State<EditorPanel> {
             filePath: fileNode.path,
             title: fileNode.name,
             content:
-                '// Stub content for drag-and-drop: \\${fileNode.name}\\nvoid main() {\\n  print(\"Hello, \\${fileNode.name}!\");\\n}',
+                '// Stub content for drag-and-drop: ${fileNode.name}\nvoid main() {\n  print("Hello, \\${fileNode.name}!");\n}',
             targetPane: node,
           );
         },

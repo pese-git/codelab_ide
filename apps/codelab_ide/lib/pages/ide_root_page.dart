@@ -1,4 +1,4 @@
-import 'package:codelab_core/codelab_core.dart';
+import 'package:codelab_ide/widgets/ai_assistent_panel.dart';
 import 'package:codelab_ide/widgets/bottom_terminal.dart';
 import 'package:codelab_ide/widgets/explorer/explorer_panel.dart';
 import 'package:codelab_ide/widgets/project_status_info.dart';
@@ -161,16 +161,14 @@ class _IdeRootPageState extends State<IdeRootPage> {
                       if (_aiPanelVisible)
                         SizedBox(
                           width: _aiPanelWidth,
-                          child: const uikit.AIAssistantPanel(),
+                          child: const AIAssistantPanel(),
                         ),
                     ],
                   ),
                 ),
               ],
             ),
-            rightPanel: uikit.RightPanel(
-              aiSlot: const uikit.AIAssistantPanel(),
-            ),
+            rightPanel: uikit.RightPanel(aiSlot: const AIAssistantPanel()),
             rightPanelWidth: _aiPanelWidth,
             rightPanelSplitter: _aiPanelVisible
                 ? uikit.HorizontalSplitter(

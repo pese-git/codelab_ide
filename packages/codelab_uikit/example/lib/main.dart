@@ -299,6 +299,8 @@ class _ExampleAIAssistantState extends State<ExampleAIAssistant> {
 }
 
 class BottomTerminal extends StatefulWidget {
+  const BottomTerminal({super.key});
+
   @override
   State<StatefulWidget> createState() {
     return BottomTerminalState();
