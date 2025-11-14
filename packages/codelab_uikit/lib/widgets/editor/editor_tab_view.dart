@@ -1,30 +1,11 @@
 import 'package:fluent_ui/fluent_ui.dart' hide ButtonStyle, IconButton;
-import 'package:flutter/material.dart' as material;
-import 'package:highlight/highlight_core.dart';
+// import 'package:flutter/material.dart' as material;
 import '../../models/editor_tab.dart';
-import 'package:flutter_code_editor/flutter_code_editor.dart';
-import 'package:flutter_highlight/themes/github.dart';
-import 'package:highlight/languages/dart.dart';
-import 'package:highlight/languages/python.dart';
-import 'package:highlight/languages/javascript.dart';
-import 'package:highlight/languages/typescript.dart';
-import 'package:highlight/languages/java.dart';
-import 'package:highlight/languages/cpp.dart';
-import 'package:highlight/languages/cs.dart';
-import 'package:highlight/languages/go.dart';
-import 'package:highlight/languages/rust.dart';
-import 'package:highlight/languages/swift.dart';
-import 'package:highlight/languages/kotlin.dart';
-import 'package:highlight/languages/php.dart';
-import 'package:highlight/languages/ruby.dart';
-import 'package:highlight/languages/xml.dart';
-import 'package:highlight/languages/css.dart';
-import 'package:highlight/languages/yaml.dart';
-import 'package:highlight/languages/json.dart';
-import 'package:highlight/languages/markdown.dart';
+import 'editor_code_field.dart';
 
 class EditorTabView extends StatefulWidget {
   final List<EditorTab> tabs;
+  final int selectedIndex;
   final ValueChanged<int>? onTabSelected;
   final ValueChanged<int>? onTabClosed;
   final ValueChanged<EditorTab>? onTabContentChanged;
@@ -33,6 +14,7 @@ class EditorTabView extends StatefulWidget {
   const EditorTabView({
     super.key,
     required this.tabs,
+    required this.selectedIndex,
     this.onTabSelected,
     this.onTabClosed,
     this.onTabContentChanged,
@@ -44,59 +26,6 @@ class EditorTabView extends StatefulWidget {
 }
 
 class _EditorTabViewState extends State<EditorTabView> {
-  int _selectedIndex = 0;
-
-  late CodeController _codeController;
-  late FocusNode _focusNode;
-
-  @override
-  void initState() {
-    super.initState();
-    _focusNode = FocusNode();
-    _codeController = CodeController(
-      text: widget.tabs.isNotEmpty ? widget.tabs[0].content : '',
-      language: _getLanguage(
-        widget.tabs.isNotEmpty ? widget.tabs[0].filePath : '',
-      ),
-    );
-    _codeController.addListener(_handleCodeChanged);
-  }
-
-  @override
-  void dispose() {
-    _focusNode.dispose();
-    _codeController.dispose();
-    super.dispose();
-  }
-
-  void _handleCodeChanged() {
-    if (widget.tabs.isNotEmpty) {
-      final tab = widget.tabs[_selectedIndex];
-      final updatedTab = tab.copyWith(
-        content: _codeController.text,
-        isDirty: true,
-      );
-      widget.onTabContentChanged?.call(updatedTab);
-    }
-  }
-
-  @override
-  void didUpdateWidget(covariant EditorTabView oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (_selectedIndex >= widget.tabs.length && widget.tabs.isNotEmpty) {
-      _selectedIndex = widget.tabs.length - 1;
-    }
-    if (widget.tabs.isEmpty) {
-      _selectedIndex = 0;
-    }
-    if (widget.tabs.isNotEmpty &&
-        widget.tabs[_selectedIndex].content != _codeController.text) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _codeController.text = widget.tabs[_selectedIndex].content;
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     if (widget.tabs.isEmpty) {
@@ -107,7 +36,6 @@ class _EditorTabViewState extends State<EditorTabView> {
       tabs: [
         for (final tab in widget.tabs)
           Tab(
-            key: ValueKey(tab.filePath),
             text: Text('${tab.title}${tab.isDirty ? ' •' : ''}'),
             semanticLabel: tab.title,
             icon: const Icon(FluentIcons.document),
@@ -115,37 +43,22 @@ class _EditorTabViewState extends State<EditorTabView> {
             onClosed: () {
               final idx = widget.tabs.indexOf(tab);
               widget.onTabClosed?.call(idx);
-              setState(() {
-                if (_selectedIndex >= widget.tabs.length - 1 &&
-                    _selectedIndex > 0) {
-                  _selectedIndex--;
-                }
-              });
             },
           ),
       ],
-      currentIndex: _selectedIndex,
+      currentIndex: widget.selectedIndex,
       onChanged: (index) {
-        setState(() {
-          _selectedIndex = index;
-        });
         widget.onTabSelected?.call(index);
       },
       tabWidthBehavior: TabWidthBehavior.sizeToContent,
       closeButtonVisibility: CloseButtonVisibilityMode.always,
       showScrollButtons: true,
       onReorder: (oldIndex, newIndex) {
-        setState(() {
-          var tabs = List.of(widget.tabs);
-          if (oldIndex < newIndex) newIndex -= 1;
-          final item = tabs.removeAt(oldIndex);
-          tabs.insert(newIndex, item);
-          widget.onTabsReordered?.call(tabs);
-          if (_selectedIndex == oldIndex)
-            _selectedIndex = newIndex;
-          else if (_selectedIndex == newIndex)
-            _selectedIndex = oldIndex;
-        });
+        var tabs = List.of(widget.tabs);
+        if (oldIndex < newIndex) newIndex -= 1;
+        final item = tabs.removeAt(oldIndex);
+        tabs.insert(newIndex, item);
+        widget.onTabsReordered?.call(tabs);
       },
     );
   }
@@ -180,6 +93,7 @@ class _EditorTabViewState extends State<EditorTabView> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             BreadcrumbBar<String>(
+              //key: ValueKey(tab.filePath),
               items: [
                 for (final part in tab.filePath.split('/'))
                   BreadcrumbItem(
@@ -194,21 +108,16 @@ class _EditorTabViewState extends State<EditorTabView> {
                 decoration: BoxDecoration(
                   border: Border.all(color: const Color(0xFF323130)),
                 ),
-                child: material.Material(
-                  color: Colors.transparent,
-                  child: CodeTheme(
-                    data: CodeThemeData(styles: githubTheme),
-                    child: CodeField(
-                      controller: _codeController,
-                      focusNode: _focusNode,
-                      textStyle: const TextStyle(
-                        fontFamily: 'monospace',
-                        fontSize: 14,
-                      ),
-                      expands: true,
-                      padding: const EdgeInsets.all(16),
-                    ),
-                  ),
+                child: EditorCodeField(
+                  content: tab.content,
+                  filePath: tab.filePath,
+                  onChanged: (newText) {
+                    final updatedTab = tab.copyWith(
+                      content: newText,
+                      isDirty: true,
+                    );
+                    widget.onTabContentChanged?.call(updatedTab);
+                  },
                 ),
               ),
             ),
@@ -216,61 +125,5 @@ class _EditorTabViewState extends State<EditorTabView> {
         ),
       ),
     );
-  }
-
-  Mode? _getLanguage(String filePath) {
-    final fileName = filePath.split('/').last;
-    final extension = fileName.split('.').last.toLowerCase();
-    switch (extension) {
-      case 'dart':
-        return dart;
-      case 'py':
-        return python;
-      case 'js':
-      case 'jsx':
-        return javascript;
-      case 'ts':
-      case 'tsx':
-        return typescript;
-      case 'java':
-        return java;
-      case 'cpp':
-      case 'cc':
-      case 'cxx':
-      case 'c':
-        return cpp;
-      case 'cs':
-        return cs;
-      case 'go':
-        return go;
-      case 'rs':
-        return rust;
-      case 'swift':
-        return swift;
-      case 'kt':
-        return kotlin;
-      case 'php':
-        return php;
-      case 'rb':
-        return ruby;
-      case 'html':
-        return xml;
-      case 'css':
-        return css;
-      case 'yaml':
-      case 'yml':
-        return yaml;
-      case 'json':
-        return json;
-      case 'md':
-        return markdown;
-      default:
-        return markdown;
-    }
-  }
-
-  // ignore: unused_element
-  String _getFileName(String filePath) {
-    return filePath.split('/').last;
   }
 }
