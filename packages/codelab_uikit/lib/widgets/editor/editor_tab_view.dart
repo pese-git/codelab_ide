@@ -107,6 +107,7 @@ class _EditorTabViewState extends State<EditorTabView> {
       tabs: [
         for (final tab in widget.tabs)
           Tab(
+            key: ValueKey(tab.filePath),
             text: Text('${tab.title}${tab.isDirty ? ' •' : ''}'),
             semanticLabel: tab.title,
             icon: const Icon(FluentIcons.document),
