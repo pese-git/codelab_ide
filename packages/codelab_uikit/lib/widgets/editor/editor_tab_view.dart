@@ -178,13 +178,14 @@ class _EditorTabViewState extends State<EditorTabView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'File: ${tab.filePath}',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[100],
-                fontWeight: FontWeight.bold,
-              ),
+            BreadcrumbBar<String>(
+              items: [
+                for (final part in tab.filePath.split('/'))
+                  BreadcrumbItem(
+                    label: Text(part, style: const TextStyle(fontSize: 12)),
+                    value: part,
+                  ),
+              ],
             ),
             const SizedBox(height: 16),
             Expanded(
