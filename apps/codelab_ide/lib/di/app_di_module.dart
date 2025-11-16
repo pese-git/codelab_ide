@@ -1,5 +1,6 @@
 import 'package:cherrypick/cherrypick.dart';
 import 'package:codelab_core/codelab_core.dart';
+import 'package:codelab_engine/codelab_engine.dart';
 
 class AppDiModule extends Module {
   @override
@@ -16,6 +17,16 @@ class AppDiModule extends Module {
         .singleton();
     bind<ProjectManagerService>()
         .toProvide(() => ProjectManagerServiceImpl())
+        .singleton();
+    bind<FileWatcherService>()
+        .toProvide(() => FileWatcherServiceImpl())
+        .singleton();
+    bind<FileSyncService>()
+        .toProvide(() => FileSyncService(
+              fileService: currentScope.resolve<FileService>(),
+              fileWatcherService: currentScope.resolve<FileWatcherService>(),
+              projectManagerService: currentScope.resolve<ProjectManagerService>(),
+            ))
         .singleton();
   }
 }

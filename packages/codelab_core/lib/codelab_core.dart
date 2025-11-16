@@ -7,6 +7,7 @@ export 'src/errors/app_errors.dart';
 export 'src/models/file_node.dart';
 export 'src/models/project_config.dart';
 export 'src/services/file_service.dart';
+export 'src/services/file_watcher_service.dart';
 export 'src/services/project_manager_service.dart';
 export 'src/services/project_service.dart';
 export 'src/services/run_service.dart';
