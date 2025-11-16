@@ -1,5 +1,6 @@
 import 'package:cherrypick/cherrypick.dart';
 import 'package:codelab_core/codelab_core.dart';
+import 'package:codelab_engine/codelab_engine.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:codelab_uikit/codelab_uikit.dart'
     as uikit
@@ -19,6 +20,7 @@ class ExplorerPanel extends StatelessWidget {
         projectManagerService: CherryPick.openRootScope()
             .resolve<ProjectManagerService>(),
         fileService: CherryPick.openRootScope().resolve<FileService>(),
+        fileSyncService: CherryPick.openRootScope().resolve<FileSyncService>(),
       ),
       child: BlocConsumer<ExplorerBloc, ExplorerState>(
         builder: (context, state) {
@@ -27,6 +29,9 @@ class ExplorerPanel extends StatelessWidget {
             onFileOpen: (uikit.FileNode fileNode) async {
               final fileService = CherryPick.openRootScope()
                   .resolve<FileService>();
+              final fileSyncService = CherryPick.openRootScope()
+                  .resolve<FileSyncService>();
+              
               final result = await fileService.readFile(fileNode.path).run();
 
               context.read<ExplorerBloc>().add(
@@ -38,6 +43,9 @@ class ExplorerPanel extends StatelessWidget {
                 (error) => content = '// Ошибка чтения файла: $error',
                 (realContent) => content = realContent,
               );
+
+              // Уведомляем FileSyncService об открытии файла
+              fileSyncService.openFile(fileNode.path);
 
               // <-- callback с контентом!
               onFileOpen(fileNode, content);
