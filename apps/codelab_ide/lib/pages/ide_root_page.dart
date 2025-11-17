@@ -98,58 +98,11 @@ class _IdeRootPageState extends State<IdeRootPage> {
                   child: Row(
                     children: [
                       Expanded(
-                        child: _bottomPanelVisible
-                            ? Column(
-                                children: [
-                                  SizedBox(
-                                    height: editorHeight.clamp(
-                                      100,
-                                      panelHeight - 100,
-                                    ),
-                                    child: uikit.MainPanelArea(
-                                      projectOpened: _projectOpened,
-                                      workspaceSlot: uikit.EditorPanel(
-                                        key: editorPanelKey,
-                                        label: 'Editor',
-                                      ),
-                                      emptySlot: StartWizardPanel(
-                                        onAction: (_) => setState(
-                                          () => _projectOpened = true,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  uikit.VerticalSplitter(
-                                    onDrag: (delta) {
-                                      setState(() {
-                                        _editorPanelFraction +=
-                                            delta / panelHeight;
-                                        _editorPanelFraction =
-                                            _editorPanelFraction.clamp(
-                                              0.15,
-                                              0.85,
-                                            );
-                                      });
-                                    },
-                                  ),
-                                  SizedBox(
-                                    height: terminalHeight.clamp(
-                                      50,
-                                      panelHeight - 100,
-                                    ),
-                                    child: uikit.BottomPanel(
-                                      terminalSlot: TerminalWidget(),
-                                      outputSlot: OutputWidget(
-                                        terminal: CherryPick.openRootScope()
-                                            .resolve<Terminal>(
-                                              named: 'outputTerminal',
-                                            ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              )
-                            : uikit.MainPanelArea(
+                        child: Column(
+                          children: [
+                            Expanded(
+                              // Занимает всё доступное пространство, если _bottomPanelVisible == false
+                              child: uikit.MainPanelArea(
                                 projectOpened: _projectOpened,
                                 workspaceSlot: uikit.EditorPanel(
                                   key: editorPanelKey,
@@ -160,6 +113,35 @@ class _IdeRootPageState extends State<IdeRootPage> {
                                       setState(() => _projectOpened = true),
                                 ),
                               ),
+                            ),
+                            if (_bottomPanelVisible) ...[
+                              uikit.VerticalSplitter(
+                                onDrag: (delta) {
+                                  setState(() {
+                                    _editorPanelFraction += delta / panelHeight;
+                                    _editorPanelFraction = _editorPanelFraction
+                                        .clamp(0.15, 0.85);
+                                  });
+                                },
+                              ),
+                              SizedBox(
+                                height: terminalHeight.clamp(
+                                  50,
+                                  panelHeight - 100,
+                                ),
+                                child: uikit.BottomPanel(
+                                  terminalSlot: TerminalWidget(),
+                                  outputSlot: OutputWidget(
+                                    terminal: CherryPick.openRootScope()
+                                        .resolve<Terminal>(
+                                          named: 'outputTerminal',
+                                        ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
                       if (_aiPanelVisible)
                         uikit.HorizontalSplitter(
