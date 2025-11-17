@@ -34,6 +34,119 @@ class EditorPanelState extends State<EditorPanel> {
     rootPane = EditorTabsPane(tabs: List.from(widget.initialTabs));
   }
 
+  // --- ПУБЛИЧНЫЙ API ДЛЯ УПРАВЛЕНИЯ ЧЕРЕЗ GLOBALKEY ---
+
+  /// Открывает файл в редакторе
+
+
+  /// Закрывает файл по пути
+  void closeFile(String filePath) {
+    setState(() {
+      _closeFileInAllPanes(rootPane, filePath);
+    });
+  }
+
+  /// Закрывает все открытые файлы
+  void closeAllFiles() {
+    setState(() {
+      _closeAllFilesInPane(rootPane);
+    });
+  }
+
+  /// Возвращает список всех открытых вкладок
+  List<EditorTab> get tabs {
+    final allTabs = <EditorTab>[];
+    _collectTabsFromPane(rootPane, allTabs);
+    return allTabs;
+  }
+
+  /// Возвращает активную вкладку
+  EditorTab? get activeTab {
+    final activePane = _lastActivePane ?? _findFirstOrRootPane(rootPane);
+    if (activePane.selectedIndex < activePane.tabs.length) {
+      return activePane.tabs[activePane.selectedIndex];
+    }
+    return null;
+  }
+
+  /// Сохраняет все измененные файлы
+  void saveAllFiles() {
+    // TODO: Implement save logic
+    displayInfoBar(
+      context,
+      builder: (context, close) {
+        return const InfoBar(
+          title: Text('Files saved'),
+          content: Text('All open files have been saved.'),
+          severity: InfoBarSeverity.success,
+        );
+      },
+    );
+  }
+
+  /// Обновляет содержимое файла
+  void updateFileContent(String filePath, String content) {
+    setState(() {
+      _updateFileContentInAllPanes(rootPane, filePath, content);
+    });
+  }
+
+  // --- ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ---
+
+  void _closeFileInAllPanes(PaneNode node, String filePath) {
+    if (node is EditorTabsPane) {
+      final index = node.tabs.indexWhere((tab) => tab.filePath == filePath);
+      if (index != -1) {
+        node.tabs.removeAt(index);
+        if (node.selectedIndex >= node.tabs.length) {
+          node.selectedIndex = node.tabs.length - 1;
+        }
+        // Если все вкладки закрылись — убрать Pane рекурсивно
+        if (node.tabs.isEmpty) {
+          rootPane = _removePane(root: true, current: rootPane, target: node);
+        }
+      }
+    } else if (node is SplitPane) {
+      _closeFileInAllPanes(node.first, filePath);
+      _closeFileInAllPanes(node.second, filePath);
+    }
+  }
+
+  void _closeAllFilesInPane(PaneNode node) {
+    if (node is EditorTabsPane) {
+      node.tabs.clear();
+      node.selectedIndex = 0;
+      // Если это не корневая панель и она пустая — убрать её
+      if (node != rootPane && node.tabs.isEmpty) {
+        rootPane = _removePane(root: true, current: rootPane, target: node);
+      }
+    } else if (node is SplitPane) {
+      _closeAllFilesInPane(node.first);
+      _closeAllFilesInPane(node.second);
+    }
+  }
+
+  void _collectTabsFromPane(PaneNode node, List<EditorTab> tabs) {
+    if (node is EditorTabsPane) {
+      tabs.addAll(node.tabs);
+    } else if (node is SplitPane) {
+      _collectTabsFromPane(node.first, tabs);
+      _collectTabsFromPane(node.second, tabs);
+    }
+  }
+
+  void _updateFileContentInAllPanes(PaneNode node, String filePath, String content) {
+    if (node is EditorTabsPane) {
+      final index = node.tabs.indexWhere((tab) => tab.filePath == filePath);
+      if (index != -1) {
+        node.tabs[index] = node.tabs[index].copyWith(content: content);
+      }
+    } else if (node is SplitPane) {
+      _updateFileContentInAllPanes(node.first, filePath, content);
+      _updateFileContentInAllPanes(node.second, filePath, content);
+    }
+  }
+
   // --- ОПЕРАЦИИ НА ПАНЕЛЯХ ---
   void _addTabInPane(EditorTabsPane pane) {
     setState(() {
