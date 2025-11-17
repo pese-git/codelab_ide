@@ -1,8 +1,12 @@
+import 'package:cherrypick/cherrypick.dart';
 import 'package:codelab_ai_assistant/codelab_ai_assistant.dart';
 import 'package:codelab_engine/codelab_engine.dart';
 import 'package:codelab_terminal/codelab_terminal.dart';
 import 'package:codelab_uikit/codelab_uikit.dart' as uikit;
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:xterm/xterm.dart';
+
+import '../widgets/output_widget.dart';
 
 class IdeRootPage extends StatefulWidget {
   const IdeRootPage({super.key});
@@ -133,8 +137,14 @@ class _IdeRootPageState extends State<IdeRootPage> {
                                       50,
                                       panelHeight - 100,
                                     ),
-                                    child: const uikit.BottomPanel(
+                                    child: uikit.BottomPanel(
                                       terminalSlot: TerminalWidget(),
+                                      outputSlot: OutputWidget(
+                                        terminal: CherryPick.openRootScope()
+                                            .resolve<Terminal>(
+                                              named: 'outputTerminal',
+                                            ),
+                                      ),
                                     ),
                                   ),
                                 ],

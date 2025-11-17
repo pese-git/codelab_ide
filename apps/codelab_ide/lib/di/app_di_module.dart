@@ -1,10 +1,19 @@
 import 'package:cherrypick/cherrypick.dart';
 import 'package:codelab_core/codelab_core.dart';
 import 'package:codelab_engine/codelab_engine.dart';
+import 'package:xterm/xterm.dart';
 
 class AppDiModule extends Module {
   @override
   void builder(Scope currentScope) {
+    bind<Terminal>()
+        .toProvide(
+          () => Terminal(
+            maxLines: 10000, //,width: 120
+          ),
+        )
+        .withName('outputTerminal')
+        .singleton();
     bind<FileService>().toProvide(() => FileServiceImpl()).singleton();
     bind<RunService>()
         .toProvide(
@@ -12,9 +21,7 @@ class AppDiModule extends Module {
               RunServiceImpl(fileService: currentScope.resolve<FileService>()),
         )
         .singleton();
-    bind<ProjectService>()
-        .toProvide(() => ProjectServiceImpl())
-        .singleton();
+    bind<ProjectService>().toProvide(() => ProjectServiceImpl()).singleton();
     bind<ProjectManagerService>()
         .toProvide(() => ProjectManagerServiceImpl())
         .singleton();
@@ -22,11 +29,14 @@ class AppDiModule extends Module {
         .toProvide(() => FileWatcherServiceImpl())
         .singleton();
     bind<FileSyncService>()
-        .toProvide(() => FileSyncService(
-              fileService: currentScope.resolve<FileService>(),
-              fileWatcherService: currentScope.resolve<FileWatcherService>(),
-              projectManagerService: currentScope.resolve<ProjectManagerService>(),
-            ))
+        .toProvide(
+          () => FileSyncService(
+            fileService: currentScope.resolve<FileService>(),
+            fileWatcherService: currentScope.resolve<FileWatcherService>(),
+            projectManagerService: currentScope
+                .resolve<ProjectManagerService>(),
+          ),
+        )
         .singleton();
   }
 }
