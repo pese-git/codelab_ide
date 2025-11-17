@@ -1,63 +1,168 @@
+import 'dart:async';
+import 'package:cherrypick/cherrypick.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:codelab_core/codelab_core.dart';
+import 'package:codelab_uikit/codelab_uikit.dart' as uikit;
+
+import '../../services/file_sync_service.dart';
 
 part 'editor_bloc.freezed.dart';
 
+// События EditorBloc
 @freezed
-class EditorEvent with _$EditorEvent {
-  /// Задать новый файл и его содержимое
-  const factory EditorEvent.setFile({
-    required String filePath,
-    required String content,
-  }) = SetFile;
-
-  /// Обновить контент (ручное редактирование)
-  const factory EditorEvent.updateContent(String content) = UpdateContent;
-
-  /// Сохранить файл
-  const factory EditorEvent.save() = SaveContent;
+abstract class EditorEvent with _$EditorEvent {
+  const factory EditorEvent.openFile(String filePath) = OpenFile;
+  const factory EditorEvent.fileChanged(String filePath) = FileChanged;
+  const factory EditorEvent.fileDeleted(String filePath) = FileDeleted;
 }
 
+// Состояние EditorBloc
 @freezed
-class EditorState with _$EditorState {
+abstract class EditorState with _$EditorState {
   const factory EditorState({
-    required String filePath,
-    required String content,
-    @Default(false) bool isDirty,
-    @Default(false) bool isSaving,
+    @Default([]) List<uikit.EditorTab> openTabs,
+    @Default('') String activeTab,
   }) = _EditorState;
-
-  factory EditorState.initial() => const EditorState(
-        filePath: '',
-        content: '',
-        isDirty: false,
-        isSaving: false,
-      );
 }
 
+// EditorBloc
 class EditorBloc extends Bloc<EditorEvent, EditorState> {
-  EditorBloc() : super(EditorState.initial()) {
-    on<SetFile>((event, emit) {
-      emit(EditorState(
-        filePath: event.filePath,
-        content: event.content,
-        isDirty: false,
-        isSaving: false,
-      ));
+  final FileService _fileService;
+  final FileSyncService _fileSyncService;
+  StreamSubscription<String>? _fileOpenedSubscription;
+  StreamSubscription<String>? _fileSavedSubscription;
+  StreamSubscription<String>? _fileChangedSubscription;
+  StreamSubscription<String>? _fileDeletedSubscription;
+
+  EditorBloc({required FileService fileService})
+    : _fileService = fileService,
+      _fileSyncService = CherryPick.openRootScope().resolve<FileSyncService>(),
+      super(const EditorState()) {
+    _setupFileSyncListeners();
+
+    // Обработчики событий
+    on<OpenFile>(_onOpenFile);
+    on<FileChanged>(_onFileChanged);
+    on<FileDeleted>(_onFileDeleted);
+  }
+
+  void _setupFileSyncListeners() {
+    // Слушаем события открытия файлов
+    _fileOpenedSubscription = _fileSyncService.fileOpenedStream.listen((
+      filePath,
+    ) {
+      print('EditorBloc: File opened: $filePath');
+      // TODO: Открыть файл в редакторе через EditorManagerService
     });
 
-    on<UpdateContent>((event, emit) {
-      emit(state.copyWith(
-        content: event.content,
-        isDirty: true,
-      ));
+    // Слушаем события сохранения файлов
+    _fileSavedSubscription = _fileSyncService.fileSavedStream.listen((
+      filePath,
+    ) {
+      print('EditorBloc: File saved: $filePath');
+      // TODO: Обновить состояние вкладки
     });
 
-    on<SaveContent>((event, emit) async {
-      emit(state.copyWith(isSaving: true));
-      // Здесь реализовать логику сохранения файла (например, через FileService)
-      // Предполагается success, потом:
-      emit(state.copyWith(isSaving: false, isDirty: false));
+    // Слушаем события изменения файлов
+    _fileChangedSubscription = _fileSyncService.fileChangedStream.listen((
+      filePath,
+    ) {
+      print('EditorBloc: File changed externally: $filePath');
+      add(EditorEvent.fileChanged(filePath));
     });
+
+    // Слушаем события удаления файлов
+    _fileDeletedSubscription = _fileSyncService.fileDeletedStream.listen((
+      filePath,
+    ) {
+      print('EditorBloc: File deleted: $filePath');
+      add(EditorEvent.fileDeleted(filePath));
+    });
+  }
+
+  // Обработка открытия файла
+  Future<void> _onOpenFile(OpenFile event, Emitter<EditorState> emit) async {
+    print('EditorBloc: Opening file: ${event.filePath}');
+
+    try {
+      final result = await _fileService.readFile(event.filePath).run();
+
+      result.match(
+        (error) {
+          print('EditorBloc: Error reading file: $error');
+        },
+        (content) {
+          // Проверяем, не открыт ли файл уже
+          uikit.EditorTab? existingTab;
+          for (final tab in state.openTabs) {
+            if (tab.filePath == event.filePath) {
+              existingTab = tab;
+              break;
+            }
+          }
+
+          if (existingTab == null) {
+            // Создаем новую вкладку
+            final newTab = uikit.EditorTab(
+              id: event.filePath,
+              title: event.filePath.split('/').last,
+              filePath: event.filePath,
+              content: content,
+            );
+
+            final updatedTabs = [...state.openTabs, newTab];
+            emit(
+              state.copyWith(openTabs: updatedTabs, activeTab: event.filePath),
+            );
+          } else {
+            // Файл уже открыт - переключаемся на него
+            emit(state.copyWith(activeTab: event.filePath));
+          }
+        },
+      );
+    } catch (e) {
+      print('EditorBloc: Exception opening file: $e');
+    }
+  }
+
+  // Обработка изменения файла
+  Future<void> _onFileChanged(
+    FileChanged event,
+    Emitter<EditorState> emit,
+  ) async {
+    print('EditorBloc: File changed externally: ${event.filePath}');
+
+    // TODO: Обновить содержимое вкладки если файл открыт
+    // TODO: Показать уведомление пользователю
+  }
+
+  // Обработка удаления файла
+  Future<void> _onFileDeleted(
+    FileDeleted event,
+    Emitter<EditorState> emit,
+  ) async {
+    print('EditorBloc: File deleted: ${event.filePath}');
+
+    // Убираем вкладку если файл был удален
+    final updatedTabs = state.openTabs
+        .where((tab) => tab.id != event.filePath)
+        .toList();
+
+    emit(
+      state.copyWith(
+        openTabs: updatedTabs,
+        activeTab: state.activeTab == event.filePath ? '' : state.activeTab,
+      ),
+    );
+  }
+
+  @override
+  Future<void> close() {
+    _fileOpenedSubscription?.cancel();
+    _fileSavedSubscription?.cancel();
+    _fileChangedSubscription?.cancel();
+    _fileDeletedSubscription?.cancel();
+    return super.close();
   }
 }

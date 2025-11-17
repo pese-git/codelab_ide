@@ -12,7 +12,7 @@ workspace:
   - packages/codelab_ai_assistant
 
 dev_dependencies:
-  melos: ^7.3.0
+  melos: ^7.0.0
 
 
 melos:

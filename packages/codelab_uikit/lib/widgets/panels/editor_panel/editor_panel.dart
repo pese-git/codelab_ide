@@ -1,0 +1,441 @@
+import 'package:codelab_uikit/widgets/panels/editor_panel/editor_panel_toolbar.dart';
+
+import '../../../models/editor_tab.dart';
+import '../../editor/editor_tab_view.dart';
+import '../../splitters/horizontal_splitter.dart';
+import '../../splitters/vertical_splitter.dart';
+import 'package:fluent_ui/fluent_ui.dart';
+import 'pane_node.dart';
+import 'editor_pane_drag_target.dart';
+
+// Далее остальной переносимый код из example/lib/editor_panel.dart
+
+class EditorPanel extends StatefulWidget {
+  final String label;
+  final List<EditorTab> initialTabs;
+
+  const EditorPanel({
+    super.key,
+    required this.label,
+    this.initialTabs = const [],
+  });
+
+  @override
+  State<EditorPanel> createState() => EditorPanelState();
+}
+
+class EditorPanelState extends State<EditorPanel> {
+  late PaneNode rootPane;
+  EditorTabsPane? _lastActivePane;
+
+  @override
+  void initState() {
+    super.initState();
+    rootPane = EditorTabsPane(tabs: List.from(widget.initialTabs));
+  }
+
+  // --- ПУБЛИЧНЫЙ API ДЛЯ УПРАВЛЕНИЯ ЧЕРЕЗ GLOBALKEY ---
+
+  /// Открывает файл в редакторе
+
+
+  /// Закрывает файл по пути
+  void closeFile(String filePath) {
+    setState(() {
+      _closeFileInAllPanes(rootPane, filePath);
+    });
+  }
+
+  /// Закрывает все открытые файлы
+  void closeAllFiles() {
+    setState(() {
+      _closeAllFilesInPane(rootPane);
+    });
+  }
+
+  /// Возвращает список всех открытых вкладок
+  List<EditorTab> get tabs {
+    final allTabs = <EditorTab>[];
+    _collectTabsFromPane(rootPane, allTabs);
+    return allTabs;
+  }
+
+  /// Возвращает активную вкладку
+  EditorTab? get activeTab {
+    final activePane = _lastActivePane ?? _findFirstOrRootPane(rootPane);
+    if (activePane.selectedIndex < activePane.tabs.length) {
+      return activePane.tabs[activePane.selectedIndex];
+    }
+    return null;
+  }
+
+  /// Сохраняет все измененные файлы
+  void saveAllFiles() {
+    // TODO: Implement save logic
+    displayInfoBar(
+      context,
+      builder: (context, close) {
+        return const InfoBar(
+          title: Text('Files saved'),
+          content: Text('All open files have been saved.'),
+          severity: InfoBarSeverity.success,
+        );
+      },
+    );
+  }
+
+  /// Обновляет содержимое файла
+  void updateFileContent(String filePath, String content) {
+    setState(() {
+      _updateFileContentInAllPanes(rootPane, filePath, content);
+    });
+  }
+
+  // --- ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ---
+
+  void _closeFileInAllPanes(PaneNode node, String filePath) {
+    if (node is EditorTabsPane) {
+      final index = node.tabs.indexWhere((tab) => tab.filePath == filePath);
+      if (index != -1) {
+        node.tabs.removeAt(index);
+        if (node.selectedIndex >= node.tabs.length) {
+          node.selectedIndex = node.tabs.length - 1;
+        }
+        // Если все вкладки закрылись — убрать Pane рекурсивно
+        if (node.tabs.isEmpty) {
+          rootPane = _removePane(root: true, current: rootPane, target: node);
+        }
+      }
+    } else if (node is SplitPane) {
+      _closeFileInAllPanes(node.first, filePath);
+      _closeFileInAllPanes(node.second, filePath);
+    }
+  }
+
+  void _closeAllFilesInPane(PaneNode node) {
+    if (node is EditorTabsPane) {
+      node.tabs.clear();
+      node.selectedIndex = 0;
+      // Если это не корневая панель и она пустая — убрать её
+      if (node != rootPane && node.tabs.isEmpty) {
+        rootPane = _removePane(root: true, current: rootPane, target: node);
+      }
+    } else if (node is SplitPane) {
+      _closeAllFilesInPane(node.first);
+      _closeAllFilesInPane(node.second);
+    }
+  }
+
+  void _collectTabsFromPane(PaneNode node, List<EditorTab> tabs) {
+    if (node is EditorTabsPane) {
+      tabs.addAll(node.tabs);
+    } else if (node is SplitPane) {
+      _collectTabsFromPane(node.first, tabs);
+      _collectTabsFromPane(node.second, tabs);
+    }
+  }
+
+  void _updateFileContentInAllPanes(PaneNode node, String filePath, String content) {
+    if (node is EditorTabsPane) {
+      final index = node.tabs.indexWhere((tab) => tab.filePath == filePath);
+      if (index != -1) {
+        node.tabs[index] = node.tabs[index].copyWith(content: content);
+      }
+    } else if (node is SplitPane) {
+      _updateFileContentInAllPanes(node.first, filePath, content);
+      _updateFileContentInAllPanes(node.second, filePath, content);
+    }
+  }
+
+  // --- ОПЕРАЦИИ НА ПАНЕЛЯХ ---
+  void _addTabInPane(EditorTabsPane pane) {
+    setState(() {
+      final newTab = EditorTab(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        title: 'new_file.dart',
+        filePath: 'lib/new_file.dart',
+        content:
+            '// New file content\nvoid main() {\n  print("Hello World!");\n}',
+      );
+      pane.tabs.add(newTab);
+      pane.selectedIndex = pane.tabs.length - 1;
+    });
+  }
+
+  // ignore: unused_element
+  void _saveTabsInPane(EditorTabsPane pane) {
+    displayInfoBar(
+      context,
+      builder: (context, close) {
+        return const InfoBar(
+          title: Text('Files saved'),
+          content: Text('All open files have been saved.'),
+          severity: InfoBarSeverity.success,
+        );
+      },
+    );
+  }
+
+  // --- API внешнего открытия файла ---
+  void openFile({
+    required String filePath,
+    required String title,
+    required String content,
+    EditorTabsPane? targetPane,
+  }) {
+    setState(() {
+      final pane =
+          targetPane ?? _lastActivePane ?? _findFirstOrRootPane(rootPane);
+      final existingIdx = pane.tabs.indexWhere((t) => t.filePath == filePath);
+      if (existingIdx != -1) {
+        pane.selectedIndex = existingIdx;
+      } else {
+        pane.tabs.add(
+          EditorTab(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            title: title,
+            filePath: filePath,
+            content: content,
+          ),
+        );
+        pane.selectedIndex = pane.tabs.length - 1;
+      }
+    });
+  }
+
+  EditorTabsPane _findFirstOrRootPane(PaneNode node) {
+    if (node is EditorTabsPane) return node;
+    if (node is SplitPane) {
+      final first = _findFirstOrRootPane(node.first);
+      if (first.tabs.isNotEmpty) return first;
+      return _findFirstOrRootPane(node.second);
+    }
+    return node as EditorTabsPane;
+  }
+
+  void _updateTabContentInPane(EditorTabsPane pane, EditorTab tab) {
+    setState(() {
+      final idx = pane.tabs.indexWhere((t) => t.id == tab.id);
+      if (idx != -1) pane.tabs[idx] = tab;
+    });
+  }
+
+  void _closeTabInPane(EditorTabsPane pane, int tabIndex) {
+    setState(() {
+      pane.tabs.removeAt(tabIndex);
+      if (pane.selectedIndex >= pane.tabs.length) {
+        pane.selectedIndex = pane.tabs.length - 1;
+      }
+      // Если все вкладки закрылись — убрать Pane рекурсивно
+      if (pane.tabs.isEmpty) {
+        rootPane = _removePane(root: true, current: rootPane, target: pane);
+      }
+    });
+  }
+
+  void _splitPane(EditorTabsPane pane, {required bool isVertical}) {
+    setState(() {
+      _replacePane(
+        root: true,
+        current: rootPane,
+        target: pane,
+        newPane: SplitPane(
+          isVertical: isVertical,
+          fraction: 0.5,
+          first: pane,
+          second: EditorTabsPane(tabs: []),
+        ),
+      );
+    });
+  }
+
+  void _replacePane({
+    required bool root,
+    required PaneNode current,
+    required EditorTabsPane target,
+    required PaneNode newPane,
+  }) {
+    if (current is SplitPane) {
+      if (current.first == target) {
+        current.first = newPane;
+      } else if (current.second == target) {
+        current.second = newPane;
+      } else {
+        _replacePane(
+          root: false,
+          current: current.first,
+          target: target,
+          newPane: newPane,
+        );
+        _replacePane(
+          root: false,
+          current: current.second,
+          target: target,
+          newPane: newPane,
+        );
+      }
+    } else if (root && current == target) {
+      rootPane = newPane;
+    }
+  }
+
+  PaneNode _removePane({
+    required bool root,
+    required PaneNode current,
+    required EditorTabsPane target,
+  }) {
+    if (current is SplitPane) {
+      if (current.first == target) {
+        return current.second;
+      }
+      if (current.second == target) {
+        return current.first;
+      }
+      current.first = _removePane(
+        root: false,
+        current: current.first,
+        target: target,
+      );
+      current.second = _removePane(
+        root: false,
+        current: current.second,
+        target: target,
+      );
+      // collapse если один из детей стал EditorTabsPane и пустой
+      if (current.first is EditorTabsPane &&
+          (current.first as EditorTabsPane).tabs.isEmpty) {
+        return current.second;
+      }
+      if (current.second is EditorTabsPane &&
+          (current.second as EditorTabsPane).tabs.isEmpty) {
+        return current.first;
+      }
+      return current;
+    } else if (root && current == target) {
+      return EditorTabsPane(tabs: []); // Пустой корень
+    }
+    return current;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.white,
+      child: _buildPane(rootPane, widget.label),
+    );
+  }
+
+  Widget _buildPane(PaneNode node, String label) {
+    if (node is EditorTabsPane) {
+      return EditorPaneDragTarget(
+        pane: node,
+        isActive: _lastActivePane == node,
+        onOpenFile: (fileNode) {
+          openFile(
+            filePath: fileNode.path,
+            title: fileNode.name,
+            content:
+                '// Stub content for drag-and-drop: ${fileNode.name}\nvoid main() {\n  print("Hello, \\${fileNode.name}!");\n}',
+            targetPane: node,
+          );
+        },
+        onFocused: () {
+          if (_lastActivePane != node) setState(() => _lastActivePane = node);
+        },
+        child: Focus(
+          onFocusChange: (hasFocus) {
+            if (hasFocus && _lastActivePane != node) {
+              setState(() => _lastActivePane = node);
+            }
+          },
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: () {
+              if (_lastActivePane != node) {
+                setState(() => _lastActivePane = node);
+              }
+            },
+            child: Column(
+              children: [
+                EditorPanelToolbar(
+                  label: label,
+                  onAddTab: () => _addTabInPane(node),
+                  onCloseTabs: () {
+                    // Закрыть все вкладки по одной, чтобы корректно работала очистка панели
+                    while (node.tabs.isNotEmpty) {
+                      _closeTabInPane(node, 0);
+                    }
+                  },
+                  onSplitVertical: () => _splitPane(node, isVertical: true),
+                  onSplitHorizontal: () => _splitPane(node, isVertical: false),
+                  canSplit: true,
+                ),
+                Expanded(
+                  child: EditorTabView(
+                    tabs: node.tabs,
+                    selectedIndex: node.selectedIndex,
+                    onTabSelected: (i) => setState(() {
+                      node.selectedIndex = i;
+                      _lastActivePane = node;
+                    }),
+                    onTabClosed: (i) => _closeTabInPane(node, i),
+                    onTabContentChanged: (tab) =>
+                        _updateTabContentInPane(node, tab),
+                    onTabsReordered: (newTabs) =>
+                        setState(() => node.tabs = newTabs),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } else if (node is SplitPane) {
+      return node.isVertical
+          ? Column(
+              children: [
+                Flexible(
+                  flex: (node.fraction * 1000).toInt(),
+                  child: _buildPane(node.first, label),
+                ),
+                VerticalSplitter(
+                  onDrag: (dy) {
+                    setState(() {
+                      node.fraction += dy / context.size!.height;
+                      node.fraction = node.fraction.clamp(0.2, 0.8);
+                    });
+                  },
+                ),
+                Flexible(
+                  flex: ((1 - node.fraction) * 1000).toInt(),
+                  child: _buildPane(node.second, label),
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                Flexible(
+                  flex: (node.fraction * 1000).toInt(),
+                  child: _buildPane(node.first, label),
+                ),
+                HorizontalSplitter(
+                  onDrag: (dx) {
+                    setState(() {
+                      node.fraction += dx / context.size!.width;
+                      node.fraction = node.fraction.clamp(0.2, 0.8);
+                    });
+                  },
+                ),
+                Flexible(
+                  flex: ((1 - node.fraction) * 1000).toInt(),
+                  child: _buildPane(node.second, label),
+                ),
+              ],
+            );
+    } else {
+      return const SizedBox.shrink();
+    }
+  }
+}
+
+// EditorPaneDragTarget вынесен в editor_panel/editor_pane_drag_target.dart

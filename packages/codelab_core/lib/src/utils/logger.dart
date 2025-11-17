@@ -1,3 +1,7 @@
 import 'package:logger/logger.dart';
 
-final logger = Logger();
+late Logger logger;
+
+void initLogger(LogPrinter printer, MultiOutput output) {
+  logger = Logger(printer: printer, output: output);
+}

@@ -18,6 +18,7 @@ dependencies:
   file: ^7.0.1
   logger: ^2.6.2
   fpdart: ^1.2.0
+  rxdart: ^0.28.0
 
 dev_dependencies:
   flutter_test:
