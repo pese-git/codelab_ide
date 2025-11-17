@@ -47,6 +47,66 @@ class _IdeRootPageState extends State<IdeRootPage> {
 
   final GlobalKey<EditorPanelState> editorPanelKey =
       GlobalKey<EditorPanelState>();
+  int _fileCounter = 1;
+
+  void _openFile(FileNode node, String content) {
+    if (!node.isDirectory) {
+      editorPanelKey.currentState?.openFile(
+        filePath: node.path,
+        title: node.name,
+        content: content,
+      );
+    }
+  }
+
+  void _openSampleFile() {
+    editorPanelKey.currentState?.openFile(
+      filePath: '/project/sample_${_fileCounter}.dart',
+      title: 'sample_${_fileCounter}.dart',
+      content: '// Sample file $_fileCounter\nvoid main() {\n  print("Hello from GlobalKey!");\n}',
+    );
+    setState(() {
+      _fileCounter++;
+    });
+  }
+
+  void _closeAllFiles() {
+    editorPanelKey.currentState?.closeAllFiles();
+    setState(() {
+      _fileCounter = 1;
+    });
+  }
+
+  void _saveAllFiles() {
+    editorPanelKey.currentState?.saveAllFiles();
+  }
+
+  void _showActiveTabInfo() {
+    final activeTab = editorPanelKey.currentState?.activeTab;
+    if (activeTab != null) {
+      displayInfoBar(
+        context,
+        builder: (context, close) {
+          return InfoBar(
+            title: const Text('Active Tab Info'),
+            content: Text('Active file: ${activeTab.title}\nPath: ${activeTab.filePath}'),
+            severity: InfoBarSeverity.info,
+          );
+        },
+      );
+    } else {
+      displayInfoBar(
+        context,
+        builder: (context, close) {
+          return const InfoBar(
+            title: Text('No Active Tab'),
+            content: Text('There is no active tab currently.'),
+            severity: InfoBarSeverity.warning,
+          );
+        },
+      );
+    }
+  }
 
   // Все demo данные вынесите в отдельный файл для чистоты (опционально)
   final List<FileNode> demoProject = [
