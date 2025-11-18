@@ -9,11 +9,13 @@ abstract interface class ProjectService {
     required String path,
     required String type,
   });
-  
+
   TaskEither<FileError, ProjectConfig> loadProject(String projectPath);
   TaskEither<FileError, bool> saveProjectConfig(ProjectConfig config);
   TaskEither<FileError, List<ProjectConfig>> getRecentProjects();
-  TaskEither<FileError, ProjectConfig> detectAndConfigureProject(String projectPath);
+  TaskEither<FileError, ProjectConfig> detectAndConfigureProject(
+    String projectPath,
+  );
 }
 
 class ProjectServiceImpl implements ProjectService {
@@ -29,19 +31,19 @@ class ProjectServiceImpl implements ProjectService {
       () async {
         final projectPath = '$path${Platform.pathSeparator}$name';
         final directory = Directory(projectPath);
-        
+
         if (await directory.exists()) {
           throw FileError('Project directory already exists: $projectPath');
         }
-        
+
         await directory.create(recursive: true);
-        
+
         // Создаем базовые файлы в зависимости от типа проекта
         await _createProjectStructure(projectPath, type);
-        
+
         final config = ProjectConfig.createDefault(projectPath, type);
         await _saveConfigToFile(config);
-        
+
         return config;
       },
       (error, stackTrace) {
@@ -55,8 +57,10 @@ class ProjectServiceImpl implements ProjectService {
   TaskEither<FileError, ProjectConfig> loadProject(String projectPath) {
     return TaskEither<FileError, ProjectConfig>.tryCatch(
       () async {
-        final configFile = File('$projectPath${Platform.pathSeparator}.codelab_project.json');
-        
+        final configFile = File(
+          '$projectPath${Platform.pathSeparator}.codelab_project.json',
+        );
+
         if (await configFile.exists()) {
           final content = await configFile.readAsString();
           final json = Map<String, dynamic>.from(jsonDecode(content));
@@ -73,14 +77,17 @@ class ProjectServiceImpl implements ProjectService {
 
           String projectType = 'unknown';
           if (fileNames.contains('pubspec.yaml')) {
-            projectType = fileNames.contains('android') || fileNames.contains('ios') 
-                ? 'flutter' 
+            projectType =
+                fileNames.contains('android') || fileNames.contains('ios')
+                ? 'flutter'
                 : 'dart';
           } else if (fileNames.contains('package.json')) {
             projectType = 'node';
-          } else if (fileNames.contains('requirements.txt') || fileNames.any((f) => f.endsWith('.py'))) {
+          } else if (fileNames.contains('requirements.txt') ||
+              fileNames.any((f) => f.endsWith('.py'))) {
             projectType = 'python';
-          } else if (fileNames.contains('pom.xml') || fileNames.any((f) => f.endsWith('.java'))) {
+          } else if (fileNames.contains('pom.xml') ||
+              fileNames.any((f) => f.endsWith('.java'))) {
             projectType = 'java';
           }
 
@@ -97,7 +104,9 @@ class ProjectServiceImpl implements ProjectService {
   }
 
   @override
-  TaskEither<FileError, ProjectConfig> detectAndConfigureProject(String projectPath) {
+  TaskEither<FileError, ProjectConfig> detectAndConfigureProject(
+    String projectPath,
+  ) {
     return TaskEither<FileError, ProjectConfig>.tryCatch(
       () async {
         // Простая реализация определения типа проекта
@@ -111,14 +120,17 @@ class ProjectServiceImpl implements ProjectService {
 
         String projectType = 'unknown';
         if (fileNames.contains('pubspec.yaml')) {
-          projectType = fileNames.contains('android') || fileNames.contains('ios') 
-              ? 'flutter' 
+          projectType =
+              fileNames.contains('android') || fileNames.contains('ios')
+              ? 'flutter'
               : 'dart';
         } else if (fileNames.contains('package.json')) {
           projectType = 'node';
-        } else if (fileNames.contains('requirements.txt') || fileNames.any((f) => f.endsWith('.py'))) {
+        } else if (fileNames.contains('requirements.txt') ||
+            fileNames.any((f) => f.endsWith('.py'))) {
           projectType = 'python';
-        } else if (fileNames.contains('pom.xml') || fileNames.any((f) => f.endsWith('.java'))) {
+        } else if (fileNames.contains('pom.xml') ||
+            fileNames.any((f) => f.endsWith('.java'))) {
           projectType = 'java';
         }
 
@@ -154,14 +166,17 @@ class ProjectServiceImpl implements ProjectService {
         // В реальном приложении здесь будет чтение из базы данных или файла настроек
         return [];
       },
-      (error, stackTrace) => FileError('Failed to load recent projects: $error'),
+      (error, stackTrace) =>
+          FileError('Failed to load recent projects: $error'),
     );
   }
 
   Future<void> _createProjectStructure(String projectPath, String type) async {
     switch (type) {
       case 'dart':
-        final pubspec = File('$projectPath${Platform.pathSeparator}pubspec.yaml');
+        final pubspec = File(
+          '$projectPath${Platform.pathSeparator}pubspec.yaml',
+        );
         await pubspec.writeAsString('''
 name: ${projectPath.split(Platform.pathSeparator).last}
 version: 1.0.0
@@ -174,14 +189,16 @@ dev_dependencies:
 ''');
         final binDir = Directory('$projectPath${Platform.pathSeparator}bin');
         await binDir.create();
-        final mainFile = File('$projectPath${Platform.pathSeparator}bin${Platform.pathSeparator}main.dart');
+        final mainFile = File(
+          '$projectPath${Platform.pathSeparator}bin${Platform.pathSeparator}main.dart',
+        );
         await mainFile.writeAsString('''
 void main() {
   print('Hello, World!');
 }
 ''');
         break;
-        
+
       case 'python':
         final mainFile = File('$projectPath${Platform.pathSeparator}main.py');
         await mainFile.writeAsString('''
@@ -192,9 +209,11 @@ if __name__ == "__main__":
     main()
 ''');
         break;
-        
+
       case 'node':
-        final packageJson = File('$projectPath${Platform.pathSeparator}package.json');
+        final packageJson = File(
+          '$projectPath${Platform.pathSeparator}package.json',
+        );
         await packageJson.writeAsString('''
 {
   "name": "${projectPath.split(Platform.pathSeparator).last}",
@@ -215,7 +234,9 @@ console.log("Hello, World!");
   }
 
   Future<void> _saveConfigToFile(ProjectConfig config) async {
-    final configFile = File('${config.path}${Platform.pathSeparator}.codelab_project.json');
+    final configFile = File(
+      '${config.path}${Platform.pathSeparator}.codelab_project.json',
+    );
     await configFile.writeAsString(jsonEncode(config.toJson()));
   }
 }

@@ -22,10 +22,12 @@ class _EditorPanelState extends State<EditorPanel> {
   @override
   void initState() {
     super.initState();
-    _internalEditorPanelKey = widget.editorPanelKey ?? GlobalKey<uikit.EditorPanelState>();
-    
+    _internalEditorPanelKey =
+        widget.editorPanelKey ?? GlobalKey<uikit.EditorPanelState>();
+
     // Регистрируем ключ в сервисе управления редактором
-    final editorManagerService = CherryPick.openRootScope().resolve<EditorManagerService>();
+    final editorManagerService = CherryPick.openRootScope()
+        .resolve<EditorManagerService>();
     editorManagerService.setEditorPanelKey(_internalEditorPanelKey);
   }
 
@@ -37,7 +39,10 @@ class _EditorPanelState extends State<EditorPanel> {
       ),
       child: BlocBuilder<EditorBloc, EditorState>(
         builder: (context, state) {
-          print('EditorPanel: Building with ${state.openTabs.length} tabs');
+          codelabLogger.d(
+            'EditorPanel: Building with ${state.openTabs.length} tabs',
+            tag: 'editor_panel',
+          );
           return uikit.EditorPanel(
             key: _internalEditorPanelKey,
             label: 'Editor',

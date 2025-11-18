@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:codelab_core/codelab_core.dart' show codelabLogger;
 import 'package:codelab_core/assets/settings_default.dart';
 
 /// GlobalConfigService watches a directory with config files (e.g., ~/.codelab_ide/) and reloads configs on any change.
@@ -40,8 +41,13 @@ class GlobalConfigService {
         try {
           final content = await entity.readAsString();
           _configs[filename] = jsonDecode(content);
-        } catch (_) {
-          // log/skip bad file
+        } catch (e, s) {
+          codelabLogger.e(
+            'Ошибка при чтении конфига $filename',
+            tag: 'global_config_service',
+            error: e,
+            stackTrace: s,
+          );
         }
       }
     }
@@ -66,8 +72,13 @@ class GlobalConfigService {
             try {
               final content = await file.readAsString();
               _configs[filename] = jsonDecode(content);
-            } catch (_) {
-              // skip if unreadable
+            } catch (e, s) {
+              codelabLogger.e(
+                'Ошибка при обновлении/чтении конфига $filename',
+                tag: 'global_config_service',
+                error: e,
+                stackTrace: s,
+              );
             }
           }
           _onChanged.add(filename);
