@@ -99,7 +99,7 @@ class ProjectBloc extends Bloc<ProjectEvent, ProjectState> {
       try {
         final command = _runService.getRunCommand(state.currentFile!);
 
-        logger.i("Command: $command");
+        codelabLogger.i("Command: $command", tag: 'project_bloc');
         emit(state.copyWith(isLoading: false));
       } catch (e) {
         emit(

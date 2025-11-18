@@ -121,8 +121,8 @@ class EditorBloc extends Bloc<EditorEvent, EditorState> {
           }
         },
       );
-    } catch (e) {
-      print('EditorBloc: Exception opening file: $e');
+    } catch (e, s) {
+      codelabLogger.e('EditorBloc: Exception opening file: $e', tag: 'editor_bloc', error: e, stackTrace: s);
     }
   }
 

@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:codelab_core/src/utils/logger.dart';
+import 'package:codelab_core/codelab_core.dart';
 
 class FileNode {
   final String name;
@@ -35,7 +35,7 @@ class FileNode {
         }
       }
     } catch (e) {
-      logger.e('Error reading directory ${directory.path}: $e');
+      codelabLogger.e('Error reading directory ${directory.path}: $e', tag: 'file_node');
     }
 
     // Sort: directories first, then files

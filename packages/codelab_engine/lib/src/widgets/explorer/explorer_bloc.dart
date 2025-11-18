@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:codelab_core/codelab_core.dart' as core;
 import 'package:codelab_engine/codelab_engine.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:codelab_core/codelab_core.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:codelab_uikit/codelab_uikit.dart' as uikit show FileNode;
 
@@ -128,7 +129,7 @@ class ExplorerBloc extends Bloc<ExplorerEvent, ExplorerState> {
     fileTreeResult.match(
       (error) {
         // В случае ошибки – можно логировать
-        print('Error loading file tree: $error');
+        codelabLogger.e('Error loading file tree', tag: 'explorer_bloc', error: error);
       },
       (core.FileNode? fileTree) {
         if (fileTree == null) {
