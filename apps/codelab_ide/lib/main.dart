@@ -5,7 +5,6 @@ import 'package:codelab_core/codelab_core.dart';
 import 'package:codelab_ide/codelab_app.dart';
 import 'package:codelab_ide/di/app_di_module.dart';
 import 'package:codelab_engine/codelab_engine.dart';
-import 'package:codelab_ide/utils/rotation_file_log_output.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:xterm/core.dart';
 
