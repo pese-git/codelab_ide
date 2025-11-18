@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:cherrypick/cherrypick.dart';
 import 'package:codelab_core/codelab_core.dart';
 import 'package:codelab_engine/codelab_engine.dart';
@@ -6,6 +8,15 @@ import 'package:xterm/xterm.dart';
 class AppDiModule extends Module {
   @override
   void builder(Scope currentScope) {
+    // Регистрируем GlobalConfigService с инициализацией
+    bind<GlobalConfigService>().toProvideAsync(() async {
+      final service = GlobalConfigService(
+        configDirPath: '${Platform.environment['HOME']}/.codelab_ide/',
+      );
+      await service.init(); // Не ждем Future - init() сам запустит watcher
+      return service;
+    }).singleton();
+
     bind<Terminal>()
         .toProvide(
           () => Terminal(
