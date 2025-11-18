@@ -3,7 +3,10 @@ import 'package:codelab_core/codelab_core.dart';
 import 'package:codelab_engine/codelab_engine.dart';
 import 'package:codelab_ide/pages/ide_root_page.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+class SaveIntent extends Intent {}
 
 class CodeLapApp extends StatelessWidget {
   const CodeLapApp({super.key});
@@ -36,14 +39,27 @@ class CodeLapApp extends StatelessWidget {
         //  ),
         //),
       ],
-      child: FluentApp(
-        title: 'Codelab IDE',
-        theme: FluentThemeData(
-          brightness: Brightness.light,
-          accentColor: Colors.blue,
+      child: Shortcuts(
+        shortcuts: {
+          LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyS):
+              SaveIntent(),
+        },
+        child: Actions(
+          actions: {
+            SaveIntent: CallbackAction<SaveIntent>(
+              onInvoke: (_) => codelabLogger.d('shortcut action call'),
+            ),
+          },
+          child: FluentApp(
+            title: 'Codelab IDE',
+            theme: FluentThemeData(
+              brightness: Brightness.light,
+              accentColor: Colors.blue,
+            ),
+            home: const IdeRootPage(),
+            debugShowCheckedModeBanner: false,
+          ),
         ),
-        home: const IdeRootPage(),
-        debugShowCheckedModeBanner: false,
       ),
     );
   }
