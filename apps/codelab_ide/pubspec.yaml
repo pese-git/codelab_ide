@@ -64,6 +64,8 @@ dependencies:
   cherrypick_flutter: ^3.0.2
   flutter_pty: ^0.4.2
   ansicolor: ^2.0.3
+  synchronized: ^3.4.0
+  intl: ^0.20.2
 
 dependency_overrides:
   flutter_code_editor:
