@@ -11,7 +11,7 @@ class AppDiModule extends Module {
     // Регистрируем GlobalConfigService с инициализацией
     bind<GlobalConfigService>().toProvideAsync(() async {
       final service = GlobalConfigService(
-        configDirPath: '${Platform.environment['HOME']}/.codelab_ide/',
+        configDirPath: '${Platform.environment['HOME']}/.codelab_ide/logs/',
       );
       await service.init(); // Не ждем Future - init() сам запустит watcher
       return service;
