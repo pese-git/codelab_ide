@@ -63,7 +63,8 @@ class _IdeRootPageState extends State<IdeRootPage> {
     editorPanelKey.currentState?.openFile(
       filePath: '/project/sample_${_fileCounter}.dart',
       title: 'sample_${_fileCounter}.dart',
-      content: '// Sample file $_fileCounter\nvoid main() {\n  print("Hello from GlobalKey!");\n}',
+      content:
+          '// Sample file $_fileCounter\nvoid main() {\n  print("Hello from GlobalKey!");\n}',
     );
     setState(() {
       _fileCounter++;
@@ -89,7 +90,9 @@ class _IdeRootPageState extends State<IdeRootPage> {
         builder: (context, close) {
           return InfoBar(
             title: const Text('Active Tab Info'),
-            content: Text('Active file: ${activeTab.title}\nPath: ${activeTab.filePath}'),
+            content: Text(
+              'Active file: ${activeTab.title}\nPath: ${activeTab.filePath}',
+            ),
             severity: InfoBarSeverity.info,
           );
         },
@@ -109,28 +112,23 @@ class _IdeRootPageState extends State<IdeRootPage> {
   }
 
   // Все demo данные вынесите в отдельный файл для чистоты (опционально)
-  final List<FileNode> demoProject = [
-    FileNode(
-      path: '/project',
-      name: 'project',
-      isDirectory: true,
-      children: [
-        FileNode(
-          path: '/project/lib',
-          name: 'lib',
-          isDirectory: true,
-          children: [
-            FileNode(path: '/project/lib/main.dart', name: 'main.dart'),
-            FileNode(
-              path: '/project/lib/home_page.dart',
-              name: 'home_page.dart',
-            ),
-          ],
-        ),
-        FileNode(path: '/project/README.md', name: 'README.md'),
-      ],
-    ),
-  ];
+  final FileNode demoProject = FileNode(
+    path: '/project',
+    name: 'project',
+    isDirectory: true,
+    children: [
+      FileNode(
+        path: '/project/lib',
+        name: 'lib',
+        isDirectory: true,
+        children: [
+          FileNode(path: '/project/lib/main.dart', name: 'main.dart'),
+          FileNode(path: '/project/lib/home_page.dart', name: 'home_page.dart'),
+        ],
+      ),
+      FileNode(path: '/project/README.md', name: 'README.md'),
+    ],
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -166,8 +164,8 @@ class _IdeRootPageState extends State<IdeRootPage> {
                 ? SidebarPanel(
                     selectedIndex: _selectedSidebarIndex,
                     explorerSlot: ExplorerPanel(
-                      files: _projectOpened ? demoProject : [],
-                      onFileOpen: (node) {
+                      initialFileTree: _projectOpened ? demoProject : null,
+                      onOpenFile: (node) {
                         if (!node.isDirectory) {
                           String content =
                               '// Stub content for ${node.name}\nvoid main() {\n  print("Hello, ${node.name}!");\n}';
