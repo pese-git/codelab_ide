@@ -7,6 +7,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../services/editor_manager_service.dart';
 import 'editor_bloc.dart';
 
+import 'package:flutter/services.dart';
+
+class SaveTabIntent extends Intent {
+  const SaveTabIntent();
+}
+
 class EditorPanel extends StatefulWidget {
   final GlobalKey<uikit.EditorPanelState>? editorPanelKey;
 
@@ -38,60 +44,116 @@ class EditorPanelState extends State<EditorPanel> {
   Widget build(BuildContext context) {
     return BlocProvider<EditorBloc>(
       create: (context) => _bloc,
-      child: BlocConsumer<EditorBloc, EditorState>(
-        builder: (context, state) {
-          codelabLogger.d('EditorPanel: build with state: ${state.runtimeType}', tag: 'editor_panel');
-          return uikit.EditorPanel(
-            key: _internalEditorPanelKey,
-            initialTabs: [],
-            label: 'Editor',
-            onTabSave: (tab) async {
-              codelabLogger.d('EditorPanel: Save tab pressed for file ${tab.filePath}', tag: 'editor_panel');
-              context.read<EditorBloc>().add(EditorEvent.saveFile(tab));
-            },
-          );
+      child: Shortcuts(
+        shortcuts: <LogicalKeySet, Intent>{
+          LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyS):
+              const SaveTabIntent(),
+          LogicalKeySet(LogicalKeyboardKey.meta, LogicalKeyboardKey.keyS):
+              const SaveTabIntent(),
         },
-        listener: (BuildContext context, EditorState state) {
-          codelabLogger.d('EditorPanel: BlocConsumer listener got state: ${state.runtimeType}', tag: 'editor_panel');
-          state.mapOrNull(
-            openedFile: (s) {
-              codelabLogger.d('EditorPanel: openedFile for ${s.filePath}', tag: 'editor_panel');
-              _internalEditorPanelKey.currentState?.openFile(
-                filePath: s.filePath,
-                title: s.filePath.split('/').last,
-                content: s.content,
+        child: Actions(
+          actions: <Type, Action<Intent>>{
+            SaveTabIntent: CallbackAction<SaveTabIntent>(
+              onInvoke: (intent) => _saveActiveTab(context),
+            ),
+          },
+          child: BlocConsumer<EditorBloc, EditorState>(
+            builder: (context, state) {
+              codelabLogger.d(
+                'EditorPanel: build with state: ${state.runtimeType}',
+                tag: 'editor_panel',
+              );
+              return uikit.EditorPanel(
+                key: _internalEditorPanelKey,
+                initialTabs: [],
+                label: 'Editor',
+                onTabSave: (tab) async {
+                  codelabLogger.d(
+                    'EditorPanel: Save tab pressed for file ${tab.filePath}',
+                    tag: 'editor_panel',
+                  );
+                  context.read<EditorBloc>().add(EditorEvent.saveFile(tab));
+                },
               );
             },
-            fileChanged: (s) {
-              codelabLogger.d('EditorPanel: fileChanged for ${s.filePath}', tag: 'editor_panel');
-              _internalEditorPanelKey.currentState?.openFile(
-                filePath: s.filePath,
-                title: s.filePath.split('/').last,
-                content: s.content,
+            listener: (BuildContext context, EditorState state) {
+              codelabLogger.d(
+                'EditorPanel: BlocConsumer listener got state: ${state.runtimeType}',
+                tag: 'editor_panel',
               );
-              // Можно добавить уведомление/snackbar о том, что файл изменён
+              state.mapOrNull(
+                openedFile: (s) {
+                  codelabLogger.d(
+                    'EditorPanel: openedFile for ${s.filePath}',
+                    tag: 'editor_panel',
+                  );
+                  _internalEditorPanelKey.currentState?.openFile(
+                    filePath: s.filePath,
+                    title: s.filePath.split('/').last,
+                    content: s.content,
+                  );
+                },
+                fileChanged: (s) {
+                  codelabLogger.d(
+                    'EditorPanel: fileChanged for ${s.filePath}',
+                    tag: 'editor_panel',
+                  );
+                  //_internalEditorPanelKey.currentState?.openFile(
+                  //  filePath: s.filePath,
+                  //  title: s.filePath.split('/').last,
+                  //  content: s.content,
+                  //);
+                  // Можно добавить уведомление/snackbar о том, что файл изменён
+                },
+                fileDeleted: (s) {
+                  codelabLogger.d(
+                    'EditorPanel: fileDeleted for ${s.filePath}',
+                    tag: 'editor_panel',
+                  );
+                  //_internalEditorPanelKey.currentState?.closeFile(s.filePath);
+                },
+                savedFile: (s) {
+                  codelabLogger.d(
+                    'EditorPanel: savedFile for ${s.filePath}',
+                    tag: 'editor_panel',
+                  );
+                  // Здесь можно подсветить/показать toast сохранения
+                },
+                error: (s) {
+                  codelabLogger.e(
+                    'EditorPanel: error for ${s.filePath} - ${s.message}',
+                    tag: 'editor_panel',
+                    error: s.error,
+                  );
+                  // Показать ошибку (snackbar/dialog/log)
+                },
+              );
             },
-            fileDeleted: (s) {
-              codelabLogger.d('EditorPanel: fileDeleted for ${s.filePath}', tag: 'editor_panel');
-              //_internalEditorPanelKey.currentState?.closeFile(s.filePath);
-            },
-            savedFile: (s) {
-              codelabLogger.d('EditorPanel: savedFile for ${s.filePath}', tag: 'editor_panel');
-              // Здесь можно подсветить/показать toast сохранения
-            },
-            error: (s) {
-              codelabLogger.e('EditorPanel: error for ${s.filePath} - ${s.message}', tag: 'editor_panel', error: s.error);
-              // Показать ошибку (snackbar/dialog/log)
-            },
-          );
-        },
+          ),
+        ),
       ),
     );
   }
 
   void openFile({required String filePath}) {
-    codelabLogger.d('EditorPanel: openFile called for $filePath', tag: 'editor_panel');
+    codelabLogger.d(
+      'EditorPanel: openFile called for $filePath',
+      tag: 'editor_panel',
+    );
     // Делегируем открытие файла бизнес-логике
     _bloc.add(EditorEvent.openFile(filePath));
+  }
+
+  void _saveActiveTab(BuildContext context) {
+    final activeTab = _internalEditorPanelKey.currentState?.activeTab;
+    if (activeTab != null) {
+      codelabLogger.d(
+        'Shortcut: Saving active tab ${activeTab.filePath}',
+        tag: 'editor_panel',
+      );
+      _bloc.add(EditorEvent.saveFile(activeTab));
+    } else {
+      codelabLogger.d('Shortcut: No active tab to save.', tag: 'editor_panel');
+    }
   }
 }
