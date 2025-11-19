@@ -91,6 +91,8 @@ class ExplorerPanelState extends State<ExplorerPanel> {
     return TreeView(
       items: [_fileNodeToTreeViewItem(_fileTree!)],
       selectionMode: TreeViewSelectionMode.single,
+      scrollPrimary: true,
+      shrinkWrap: false,
     );
   }
 }
