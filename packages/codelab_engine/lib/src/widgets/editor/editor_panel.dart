@@ -18,6 +18,9 @@ class EditorPanel extends StatefulWidget {
 
 class EditorPanelState extends State<EditorPanel> {
   late final GlobalKey<uikit.EditorPanelState> _internalEditorPanelKey;
+  final _bloc = EditorBloc(
+    fileService: CherryPick.openRootScope().resolve<FileService>(),
+  );
 
   @override
   void initState() {
@@ -34,60 +37,61 @@ class EditorPanelState extends State<EditorPanel> {
   @override
   Widget build(BuildContext context) {
     return BlocProvider<EditorBloc>(
-      create: (context) => EditorBloc(
-        fileService: CherryPick.openRootScope().resolve<FileService>(),
-      ),
+      create: (context) => _bloc,
       child: BlocConsumer<EditorBloc, EditorState>(
         builder: (context, state) {
-          codelabLogger.d(
-            'EditorPanel: Building with ${state.openTabs.length} tabs',
-            tag: 'editor_panel',
-          );
+          codelabLogger.d('EditorPanel: build with state: ${state.runtimeType}', tag: 'editor_panel');
           return uikit.EditorPanel(
             key: _internalEditorPanelKey,
+            initialTabs: [],
             label: 'Editor',
-            initialTabs: state.openTabs,
             onTabSave: (tab) async {
+              codelabLogger.d('EditorPanel: Save tab pressed for file ${tab.filePath}', tag: 'editor_panel');
               context.read<EditorBloc>().add(EditorEvent.saveFile(tab));
             },
           );
         },
         listener: (BuildContext context, EditorState state) {
-          //if (state.activeTab != null) {
-          //  _internalEditorPanelKey.currentState?.openFile(
-          //    filePath: state.activeTab!.filePath,
-          //    title: state.activeTab!.title,
-          //    content: state.activeTab!.content,
-          //  );
-          //}
+          codelabLogger.d('EditorPanel: BlocConsumer listener got state: ${state.runtimeType}', tag: 'editor_panel');
+          state.mapOrNull(
+            openedFile: (s) {
+              codelabLogger.d('EditorPanel: openedFile for ${s.filePath}', tag: 'editor_panel');
+              _internalEditorPanelKey.currentState?.openFile(
+                filePath: s.filePath,
+                title: s.filePath.split('/').last,
+                content: s.content,
+              );
+            },
+            fileChanged: (s) {
+              codelabLogger.d('EditorPanel: fileChanged for ${s.filePath}', tag: 'editor_panel');
+              _internalEditorPanelKey.currentState?.openFile(
+                filePath: s.filePath,
+                title: s.filePath.split('/').last,
+                content: s.content,
+              );
+              // Можно добавить уведомление/snackbar о том, что файл изменён
+            },
+            fileDeleted: (s) {
+              codelabLogger.d('EditorPanel: fileDeleted for ${s.filePath}', tag: 'editor_panel');
+              //_internalEditorPanelKey.currentState?.closeFile(s.filePath);
+            },
+            savedFile: (s) {
+              codelabLogger.d('EditorPanel: savedFile for ${s.filePath}', tag: 'editor_panel');
+              // Здесь можно подсветить/показать toast сохранения
+            },
+            error: (s) {
+              codelabLogger.e('EditorPanel: error for ${s.filePath} - ${s.message}', tag: 'editor_panel', error: s.error);
+              // Показать ошибку (snackbar/dialog/log)
+            },
+          );
         },
       ),
     );
   }
 
-  void openFile({
-    required String filePath,
-    //uikit.EditorTabsPane? targetPane,
-  }) async {
-    //_bloc.add(EditorEvent.openFile(filePath));
-    final fileService = CherryPick.openRootScope().resolve<FileService>();
-    final result = await fileService.readFile(filePath).run();
-
-    result.match(
-      (error) {
-        codelabLogger.e(
-          'EditorBloc: Error reading file: $error',
-          tag: 'editor_bloc',
-          error: error,
-        );
-      },
-      (content) {
-        _internalEditorPanelKey.currentState?.openFile(
-          filePath: filePath,
-          title: filePath.split('/').last,
-          content: content,
-        );
-      },
-    );
+  void openFile({required String filePath}) {
+    codelabLogger.d('EditorPanel: openFile called for $filePath', tag: 'editor_panel');
+    // Делегируем открытие файла бизнес-логике
+    _bloc.add(EditorEvent.openFile(filePath));
   }
 }
