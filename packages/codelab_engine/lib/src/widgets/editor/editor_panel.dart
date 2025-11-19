@@ -1,6 +1,7 @@
 import 'package:cherrypick/cherrypick.dart';
 import 'package:codelab_core/codelab_core.dart';
 import 'package:codelab_uikit/codelab_uikit.dart' as uikit;
+import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -118,6 +119,18 @@ class EditorPanelState extends State<EditorPanel> {
                     tag: 'editor_panel',
                   );
                   // Здесь можно подсветить/показать toast сохранения
+                  displayInfoBar(
+                    context,
+                    builder: (context, close) {
+                      return InfoBar(
+                        title: Text('Info'),
+                        content: Text(
+                          'EditorPanel: savedFile for ${s.filePath}',
+                        ),
+                        severity: InfoBarSeverity.success,
+                      );
+                    },
+                  );
                 },
                 error: (s) {
                   codelabLogger.e(
@@ -126,6 +139,18 @@ class EditorPanelState extends State<EditorPanel> {
                     error: s.error,
                   );
                   // Показать ошибку (snackbar/dialog/log)
+                  displayInfoBar(
+                    context,
+                    builder: (context, close) {
+                      return InfoBar(
+                        title: Text('Error'),
+                        content: Text(
+                          'EditorPanel: error for ${s.filePath} - ${s.message}',
+                        ),
+                        severity: InfoBarSeverity.error,
+                      );
+                    },
+                  );
                 },
               );
             },
