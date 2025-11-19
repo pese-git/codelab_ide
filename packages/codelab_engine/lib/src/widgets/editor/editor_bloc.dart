@@ -15,6 +15,7 @@ abstract class EditorEvent with _$EditorEvent {
   const factory EditorEvent.openFile(String filePath) = OpenFile;
   const factory EditorEvent.fileChanged(String filePath) = FileChanged;
   const factory EditorEvent.fileDeleted(String filePath) = FileDeleted;
+  const factory EditorEvent.saveFile(uikit.EditorTab tab) = SaveFile;
 }
 
 // Состояние EditorBloc
@@ -22,7 +23,7 @@ abstract class EditorEvent with _$EditorEvent {
 abstract class EditorState with _$EditorState {
   const factory EditorState({
     @Default([]) List<uikit.EditorTab> openTabs,
-    @Default('') String activeTab,
+    uikit.EditorTab? activeTab,
   }) = _EditorState;
 }
 
@@ -45,6 +46,7 @@ class EditorBloc extends Bloc<EditorEvent, EditorState> {
     on<OpenFile>(_onOpenFile);
     on<FileChanged>(_onFileChanged);
     on<FileDeleted>(_onFileDeleted);
+    on<SaveFile>(_onSaveFile);
   }
 
   void _setupFileSyncListeners() {
@@ -52,7 +54,7 @@ class EditorBloc extends Bloc<EditorEvent, EditorState> {
     _fileOpenedSubscription = _fileSyncService.fileOpenedStream.listen((
       filePath,
     ) {
-      print('EditorBloc: File opened: $filePath');
+      codelabLogger.d('EditorBloc: File opened: $filePath', tag: 'editor_bloc');
       // TODO: Открыть файл в редакторе через EditorManagerService
     });
 
@@ -60,7 +62,7 @@ class EditorBloc extends Bloc<EditorEvent, EditorState> {
     _fileSavedSubscription = _fileSyncService.fileSavedStream.listen((
       filePath,
     ) {
-      print('EditorBloc: File saved: $filePath');
+      codelabLogger.d('EditorBloc: File saved: $filePath', tag: 'editor_bloc');
       // TODO: Обновить состояние вкладки
     });
 
@@ -68,7 +70,10 @@ class EditorBloc extends Bloc<EditorEvent, EditorState> {
     _fileChangedSubscription = _fileSyncService.fileChangedStream.listen((
       filePath,
     ) {
-      print('EditorBloc: File changed externally: $filePath');
+      codelabLogger.d(
+        'EditorBloc: File changed externally: $filePath',
+        tag: 'editor_bloc',
+      );
       add(EditorEvent.fileChanged(filePath));
     });
 
@@ -76,21 +81,31 @@ class EditorBloc extends Bloc<EditorEvent, EditorState> {
     _fileDeletedSubscription = _fileSyncService.fileDeletedStream.listen((
       filePath,
     ) {
-      print('EditorBloc: File deleted: $filePath');
+      codelabLogger.d(
+        'EditorBloc: File deleted: $filePath',
+        tag: 'editor_bloc',
+      );
       add(EditorEvent.fileDeleted(filePath));
     });
   }
 
   // Обработка открытия файла
   Future<void> _onOpenFile(OpenFile event, Emitter<EditorState> emit) async {
-    print('EditorBloc: Opening file: ${event.filePath}');
+    codelabLogger.d(
+      'EditorBloc: Opening file: ${event.filePath}',
+      tag: 'editor_bloc',
+    );
 
     try {
       final result = await _fileService.readFile(event.filePath).run();
 
       result.match(
         (error) {
-          print('EditorBloc: Error reading file: $error');
+          codelabLogger.e(
+            'EditorBloc: Error reading file: $error',
+            tag: 'editor_bloc',
+            error: error,
+          );
         },
         (content) {
           // Проверяем, не открыт ли файл уже
@@ -112,17 +127,20 @@ class EditorBloc extends Bloc<EditorEvent, EditorState> {
             );
 
             final updatedTabs = [...state.openTabs, newTab];
-            emit(
-              state.copyWith(openTabs: updatedTabs, activeTab: event.filePath),
-            );
+            emit(state.copyWith(openTabs: updatedTabs, activeTab: newTab));
           } else {
             // Файл уже открыт - переключаемся на него
-            emit(state.copyWith(activeTab: event.filePath));
+            emit(state.copyWith(activeTab: existingTab));
           }
         },
       );
     } catch (e, s) {
-      codelabLogger.e('EditorBloc: Exception opening file: $e', tag: 'editor_bloc', error: e, stackTrace: s);
+      codelabLogger.e(
+        'EditorBloc: Exception opening file: $e',
+        tag: 'editor_bloc',
+        error: e,
+        stackTrace: s,
+      );
     }
   }
 
@@ -131,7 +149,10 @@ class EditorBloc extends Bloc<EditorEvent, EditorState> {
     FileChanged event,
     Emitter<EditorState> emit,
   ) async {
-    print('EditorBloc: File changed externally: ${event.filePath}');
+    codelabLogger.d(
+      'EditorBloc: File changed externally: ${event.filePath}',
+      tag: 'editor_bloc',
+    );
 
     // TODO: Обновить содержимое вкладки если файл открыт
     // TODO: Показать уведомление пользователю
@@ -142,18 +163,52 @@ class EditorBloc extends Bloc<EditorEvent, EditorState> {
     FileDeleted event,
     Emitter<EditorState> emit,
   ) async {
-    print('EditorBloc: File deleted: ${event.filePath}');
+    codelabLogger.d(
+      'EditorBloc: File deleted: ${event.filePath}',
+      tag: 'editor_bloc',
+    );
 
     // Убираем вкладку если файл был удален
     final updatedTabs = state.openTabs
         .where((tab) => tab.id != event.filePath)
         .toList();
 
-    emit(
-      state.copyWith(
-        openTabs: updatedTabs,
-        activeTab: state.activeTab == event.filePath ? '' : state.activeTab,
-      ),
+    emit(state.copyWith(openTabs: updatedTabs, activeTab: null));
+  }
+
+  // Обработка сохранения файла
+  Future<void> _onSaveFile(SaveFile event, Emitter<EditorState> emit) async {
+    final tab = event.tab;
+    codelabLogger.d(
+      'EditorBloc: Saving file: ${tab.filePath}',
+      tag: 'editor_bloc',
+    );
+    final result = await _fileService
+        .writeFile(tab.filePath, tab.content)
+        .run();
+    result.match(
+      (err) {
+        // Здесь можно добавить показ ошибки пользователю
+        codelabLogger.e(
+          'EditorBloc: Ошибка сохранения файла: $err',
+          tag: 'editor_bloc',
+          error: err,
+        );
+      },
+      (_) {
+        // После успешного сохранения сбрасываем dirty-метку
+        final updatedTabs = state.openTabs.map((t) {
+          if (t.id == tab.id) {
+            return t.copyWith(isDirty: false);
+          }
+          return t;
+        }).toList();
+        emit(state.copyWith(openTabs: updatedTabs));
+        codelabLogger.d(
+          'EditorBloc: Файл успешно сохранён: ${tab.filePath}',
+          tag: 'editor_bloc',
+        );
+      },
     );
   }
 

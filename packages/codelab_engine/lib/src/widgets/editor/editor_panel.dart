@@ -13,10 +13,10 @@ class EditorPanel extends StatefulWidget {
   const EditorPanel({super.key, this.editorPanelKey});
 
   @override
-  State<EditorPanel> createState() => _EditorPanelState();
+  State<EditorPanel> createState() => EditorPanelState();
 }
 
-class _EditorPanelState extends State<EditorPanel> {
+class EditorPanelState extends State<EditorPanel> {
   late final GlobalKey<uikit.EditorPanelState> _internalEditorPanelKey;
 
   @override
@@ -37,7 +37,7 @@ class _EditorPanelState extends State<EditorPanel> {
       create: (context) => EditorBloc(
         fileService: CherryPick.openRootScope().resolve<FileService>(),
       ),
-      child: BlocBuilder<EditorBloc, EditorState>(
+      child: BlocConsumer<EditorBloc, EditorState>(
         builder: (context, state) {
           codelabLogger.d(
             'EditorPanel: Building with ${state.openTabs.length} tabs',
@@ -47,9 +47,47 @@ class _EditorPanelState extends State<EditorPanel> {
             key: _internalEditorPanelKey,
             label: 'Editor',
             initialTabs: state.openTabs,
+            onTabSave: (tab) async {
+              context.read<EditorBloc>().add(EditorEvent.saveFile(tab));
+            },
           );
         },
+        listener: (BuildContext context, EditorState state) {
+          //if (state.activeTab != null) {
+          //  _internalEditorPanelKey.currentState?.openFile(
+          //    filePath: state.activeTab!.filePath,
+          //    title: state.activeTab!.title,
+          //    content: state.activeTab!.content,
+          //  );
+          //}
+        },
       ),
+    );
+  }
+
+  void openFile({
+    required String filePath,
+    //uikit.EditorTabsPane? targetPane,
+  }) async {
+    //_bloc.add(EditorEvent.openFile(filePath));
+    final fileService = CherryPick.openRootScope().resolve<FileService>();
+    final result = await fileService.readFile(filePath).run();
+
+    result.match(
+      (error) {
+        codelabLogger.e(
+          'EditorBloc: Error reading file: $error',
+          tag: 'editor_bloc',
+          error: error,
+        );
+      },
+      (content) {
+        _internalEditorPanelKey.currentState?.openFile(
+          filePath: filePath,
+          title: filePath.split('/').last,
+          content: content,
+        );
+      },
     );
   }
 }
