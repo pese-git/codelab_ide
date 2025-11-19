@@ -1,6 +1,6 @@
 import 'package:cherrypick/cherrypick.dart';
 import 'package:codelab_ai_assistant/codelab_ai_assistant.dart';
-import 'package:codelab_engine/codelab_engine.dart';
+import 'package:codelab_engine/codelab_engine.dart' as engine;
 import 'package:codelab_terminal/codelab_terminal.dart';
 import 'package:codelab_uikit/codelab_uikit.dart' as uikit;
 import 'package:fluent_ui/fluent_ui.dart';
@@ -25,8 +25,8 @@ class _IdeRootPageState extends State<IdeRootPage> {
   double _aiPanelWidth = 320.0;
   bool _projectOpened = false;
 
-  final GlobalKey<uikit.EditorPanelState> editorPanelKey =
-      GlobalKey<uikit.EditorPanelState>();
+  final GlobalKey<engine.EditorPanelState> editorPanelKey =
+      GlobalKey<engine.EditorPanelState>();
 
   final GlobalKey<uikit.ExplorerPanelState> explorerKey =
       GlobalKey<uikit.ExplorerPanelState>();
@@ -64,14 +64,12 @@ class _IdeRootPageState extends State<IdeRootPage> {
             sidebarPanel: _sidebarVisible
                 ? uikit.SidebarPanel(
                     selectedIndex: _selectedSidebarIndex,
-                    explorerSlot: ExplorerPanel(
+                    explorerSlot: engine.ExplorerPanel(
                       explorerKey: explorerKey,
                       onFileOpen: (node, content) {
                         if (!node.isDirectory) {
                           editorPanelKey.currentState?.openFile(
                             filePath: node.path,
-                            title: node.name,
-                            content: content,
                           );
                         }
                       },
@@ -104,11 +102,10 @@ class _IdeRootPageState extends State<IdeRootPage> {
                               // Занимает всё доступное пространство, если _bottomPanelVisible == false
                               child: uikit.MainPanelArea(
                                 projectOpened: _projectOpened,
-                                workspaceSlot: uikit.EditorPanel(
+                                workspaceSlot: engine.EditorPanel(
                                   key: editorPanelKey,
-                                  label: 'Editor',
                                 ),
-                                emptySlot: StartWizardPanel(
+                                emptySlot: engine.StartWizardPanel(
                                   onAction: (_) =>
                                       setState(() => _projectOpened = true),
                                 ),
@@ -179,7 +176,7 @@ class _IdeRootPageState extends State<IdeRootPage> {
       ),
       bottomBar: uikit.StatusBar(
         leading: Icon(FluentIcons.sync, size: 16, color: Colors.green),
-        trailing: ProjectStatusInfo(),
+        trailing: engine.ProjectStatusInfo(),
       ),
     );
   }

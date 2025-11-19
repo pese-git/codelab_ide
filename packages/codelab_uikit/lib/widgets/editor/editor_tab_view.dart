@@ -1,4 +1,4 @@
-import 'package:fluent_ui/fluent_ui.dart' hide ButtonStyle, IconButton;
+import 'package:fluent_ui/fluent_ui.dart';
 // import 'package:flutter/material.dart' as material;
 import '../../models/editor_tab.dart';
 import 'editor_code_field.dart';
@@ -10,6 +10,7 @@ class EditorTabView extends StatefulWidget {
   final ValueChanged<int>? onTabClosed;
   final ValueChanged<EditorTab>? onTabContentChanged;
   final ValueChanged<List<EditorTab>>? onTabsReordered;
+  final ValueChanged<EditorTab>? onTabSave;
 
   const EditorTabView({
     super.key,
@@ -19,6 +20,7 @@ class EditorTabView extends StatefulWidget {
     this.onTabClosed,
     this.onTabContentChanged,
     this.onTabsReordered,
+    this.onTabSave,
   });
 
   @override
@@ -92,14 +94,27 @@ class _EditorTabViewState extends State<EditorTabView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            BreadcrumbBar<String>(
-              //key: ValueKey(tab.filePath),
-              items: [
-                for (final part in tab.filePath.split('/'))
-                  BreadcrumbItem(
-                    label: Text(part, style: const TextStyle(fontSize: 12)),
-                    value: part,
+            Row(
+              children: [
+                Expanded(
+                  child: BreadcrumbBar<String>(
+                    //key: ValueKey(tab.filePath),
+                    items: [
+                      for (final part in tab.filePath.split('/'))
+                        BreadcrumbItem(
+                          label: Text(
+                            part,
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          value: part,
+                        ),
+                    ],
                   ),
+                ),
+                IconButton(
+                  icon: const WindowsIcon(WindowsIcons.save, size: 18.0),
+                  onPressed: () => widget.onTabSave?.call(tab),
+                ),
               ],
             ),
             const SizedBox(height: 16),
