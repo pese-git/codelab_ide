@@ -9,56 +9,82 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'explorer_bloc.dart';
 
-class ExplorerPanel extends StatelessWidget {
-  final GlobalKey<uikit.ExplorerPanelState> explorerKey;
-  final void Function(uikit.FileNode, String content) onFileOpen;
-  ExplorerPanel({
-    super.key,
-    required this.explorerKey,
-    required this.onFileOpen,
-  });
+class ExplorerPanel extends StatefulWidget {
+  final GlobalKey<uikit.ExplorerPanelState>? explorerKey;
+  final void Function(String filePath) onFileOpen;
+
+  ExplorerPanel({super.key, this.explorerKey, required this.onFileOpen});
+
+  @override
+  State<StatefulWidget> createState() => ExplorerPanelState();
+}
+
+class ExplorerPanelState extends State<ExplorerPanel> {
+  late final GlobalKey<uikit.ExplorerPanelState> _internalExplorerPanelKey;
+  final ExplorerBloc _bloc = ExplorerBloc(
+    projectManagerService: CherryPick.openRootScope()
+        .resolve<ProjectManagerService>(),
+    fileService: CherryPick.openRootScope().resolve<FileService>(),
+    fileSyncService: CherryPick.openRootScope().resolve<FileSyncService>(),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _internalExplorerPanelKey =
+        widget.explorerKey ?? GlobalKey<uikit.ExplorerPanelState>();
+  }
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider<ExplorerBloc>(
-      create: (context) => ExplorerBloc(
-        projectManagerService: CherryPick.openRootScope()
-            .resolve<ProjectManagerService>(),
-        fileService: CherryPick.openRootScope().resolve<FileService>(),
-        fileSyncService: CherryPick.openRootScope().resolve<FileSyncService>(),
-      ),
-      child: BlocConsumer<ExplorerBloc, ExplorerState>(
-        builder: (context, state) {
-          return uikit.ExplorerPanel(
-            key: explorerKey,
-            files: state.fileTree != null ? [state.fileTree!] : [],
-            onFileOpen: (uikit.FileNode fileNode) async {
-              final fileService = CherryPick.openRootScope()
-                  .resolve<FileService>();
-              final fileSyncService = CherryPick.openRootScope()
-                  .resolve<FileSyncService>();
-
-              final result = await fileService.readFile(fileNode.path).run();
-
-              context.read<ExplorerBloc>().add(
-                ExplorerEvent.selectFile(fileNode.path),
+      create: (context) => _bloc,
+      child: BlocListener<ExplorerBloc, ExplorerState>(
+        listener: (context, state) {
+          state.mapOrNull(
+            fileTreeLoaded: (s) {
+              _internalExplorerPanelKey.currentState?.updateFileTree(
+                s.fileTree,
               );
-
-              String content = '';
-              result.match(
-                (error) => content = '// Ошибка чтения файла: $error',
-                (realContent) => content = realContent,
+            },
+            openedFile: (s) {
+              if (!s.node.isDirectory) {
+                widget.onFileOpen.call(s.node.path);
+              }
+            },
+            nodeExpanded: (s) {
+              //explorerKey.currentState?.expandNode?.call(s.path);
+            },
+            nodeCollapsed: (s) {
+              //explorerKey.currentState?.collapseNode?.call(s.path);
+            },
+            error: (s) {
+              displayInfoBar(
+                context,
+                builder: (ctx, _) => InfoBar(
+                  title: const Text('Error'),
+                  content: Text(s.message),
+                  severity: InfoBarSeverity.error,
+                ),
               );
-
-              // Уведомляем FileSyncService об открытии файла
-              fileSyncService.openFile(fileNode.path);
-
-              // <-- callback с контентом!
-              onFileOpen(fileNode, content);
             },
           );
         },
-        listener: (context, state) {},
+        child: uikit.ExplorerPanel(
+          key: _internalExplorerPanelKey,
+          onOpenFile: (uikit.FileNode fileNode) {
+            _bloc.add(ExplorerEvent.openFile(fileNode));
+          },
+          // Больше не надо передавать files — панель сама всё хранит.
+          // Управляет деревом и selection внутри себя.
+          //onFileOpen: (uikit.FileNode fileNode) async {
+          //  // Отправляем только команду открыть файл (обработка теперь только через сигнал openedFile)
+          //  context.read<ExplorerBloc>().add(
+          //    ExplorerEvent.openFile(fileNode.path),
+          //  );
+          //  // Автоматически после openedFile будет вызван mapOrNull.openedFile, который прокинет данные в showFile и/или onFileOpen дальше!
+          //},
+        ),
       ),
     );
   }

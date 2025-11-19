@@ -28,8 +28,8 @@ class _IdeRootPageState extends State<IdeRootPage> {
   final GlobalKey<engine.EditorPanelState> editorPanelKey =
       GlobalKey<engine.EditorPanelState>();
 
-  final GlobalKey<uikit.ExplorerPanelState> explorerKey =
-      GlobalKey<uikit.ExplorerPanelState>();
+  final GlobalKey<engine.ExplorerPanelState> explorerKey =
+      GlobalKey<engine.ExplorerPanelState>();
 
   @override
   Widget build(BuildContext context) {
@@ -65,13 +65,11 @@ class _IdeRootPageState extends State<IdeRootPage> {
                 ? uikit.SidebarPanel(
                     selectedIndex: _selectedSidebarIndex,
                     explorerSlot: engine.ExplorerPanel(
-                      explorerKey: explorerKey,
-                      onFileOpen: (node, content) {
-                        if (!node.isDirectory) {
-                          editorPanelKey.currentState?.openFile(
-                            filePath: node.path,
-                          );
-                        }
+                      key: explorerKey,
+                      onFileOpen: (String filePath) {
+                        editorPanelKey.currentState?.openFile(
+                          filePath: filePath,
+                        );
                       },
                     ),
                   )
