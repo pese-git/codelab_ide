@@ -1,101 +1,98 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/material.dart'
-    as material
-    show Material, Colors, BorderRadius, BoxDecoration;
+
 import '../../models/file_node.dart';
 
 class ExplorerPanel extends StatefulWidget {
-  final List<FileNode> files;
-  final void Function(FileNode) onFileOpen;
-  const ExplorerPanel({
-    super.key,
-    required this.files,
-    required this.onFileOpen,
-  });
+  final FileNode? initialFileTree;
+  final ValueChanged<FileNode> onOpenFile;
+  ExplorerPanel({super.key, this.initialFileTree, required this.onOpenFile});
 
   @override
   State<ExplorerPanel> createState() => ExplorerPanelState();
 }
 
 class ExplorerPanelState extends State<ExplorerPanel> {
-  final Set<String> expandedDirs = {};
+  FileNode? _fileTree;
+  Set<String> _expandedNodes = {};
+  String? _selectedFile;
+  String? _selectedContent;
 
-  void _toggleDir(FileNode node) {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialFileTree != null) {
+      _fileTree = widget.initialFileTree;
+    }
+  }
+
+  // Рекурсивное преобразование твоей модели в TreeViewItem
+  TreeViewItem _fileNodeToTreeViewItem(FileNode node) {
+    final isDir = node.isDirectory;
+    return TreeViewItem(
+      key: ValueKey(node.path),
+      leading: Icon(isDir ? FluentIcons.folder : FluentIcons.page),
+      content: Text(node.name),
+      expanded: _expandedNodes.contains(node.path),
+      value: node.path,
+      children: node.children.map(_fileNodeToTreeViewItem).toList(),
+      onInvoked: (item, reason) async {
+        if (!isDir && reason == TreeViewItemInvokeReason.pressed) {
+          _onFileTap(node);
+        }
+      },
+      onExpandToggle: (item, getsExpanded) async {
+        setState(() {
+          if (getsExpanded) {
+            _expandedNodes.add(node.path);
+          } else {
+            _expandedNodes.remove(node.path);
+          }
+        });
+      },
+      selected: _selectedFile == node.path,
+    );
+  }
+
+  /// Публичный метод для внешнего обновления дерева файлов (вызывается из блока)
+  void updateFileTree(FileNode fileTree) {
     setState(() {
-      if (expandedDirs.contains(node.path)) {
-        expandedDirs.remove(node.path);
-      } else {
-        expandedDirs.add(node.path);
-      }
+      _fileTree = fileTree;
+      _expandedNodes = {};
+      _selectedFile = null;
+      _selectedContent = null;
     });
   }
 
-  List<TreeViewItem> _buildTree(List<FileNode> nodes) {
-    return nodes.map((node) {
-      if (node.isDirectory) {
-        return TreeViewItem(
-          leading: const Icon(FluentIcons.folder_horizontal),
-          content: GestureDetector(
-            onTap: () => _toggleDir(node),
-            child: Text(node.name),
-          ),
-          expanded: expandedDirs.contains(node.path),
-          children: _buildTree(node.children),
-        );
-      } else {
-        return TreeViewItem(
-          leading: const Icon(FluentIcons.page),
-          content: Draggable<FileNode>(
-            data: node,
-            feedback: material.Material(
-              color: material.Colors.transparent,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: material.BoxDecoration(
-                  color: material.Colors.grey[200],
-                  borderRadius: material.BorderRadius.circular(2),
-                ),
-                child: Text(
-                  node.name,
-                  style: const TextStyle(
-                    color: material.Colors.black,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ),
-            childWhenDragging: Opacity(opacity: 0.4, child: Text(node.name)),
-            child: GestureDetector(
-              onTap: () => widget.onFileOpen(node),
-              child: Text(node.name),
-            ),
-          ),
-        );
-      }
-    }).toList();
+  void expandNode(String path) {
+    setState(() {
+      _expandedNodes.add(path);
+    });
+  }
+
+  void collapseNode(String path) {
+    setState(() {
+      _expandedNodes.remove(path);
+    });
+  }
+
+  void _onFileTap(FileNode node) async {
+    // Чтение содержимого файла, выделение, вызов callback...
+    //setState(() => _selectedFile = node.path);
+    // ...
+    widget.onOpenFile.call(node);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 200,
-      color: Colors.grey[20],
-      padding: const EdgeInsets.all(8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            child: Text(
-              'EXPLORER',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Expanded(child: TreeView(items: _buildTree(widget.files))),
-        ],
-      ),
+    if (_fileTree == null) {
+      return const Center(child: Text('No project or file tree loaded'));
+    }
+
+    return TreeView(
+      items: [_fileNodeToTreeViewItem(_fileTree!)],
+      selectionMode: TreeViewSelectionMode.single,
+      scrollPrimary: true,
+      shrinkWrap: false,
     );
   }
 }

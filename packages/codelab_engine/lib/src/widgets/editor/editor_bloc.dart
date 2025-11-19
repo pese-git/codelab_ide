@@ -15,15 +15,45 @@ abstract class EditorEvent with _$EditorEvent {
   const factory EditorEvent.openFile(String filePath) = OpenFile;
   const factory EditorEvent.fileChanged(String filePath) = FileChanged;
   const factory EditorEvent.fileDeleted(String filePath) = FileDeleted;
+  const factory EditorEvent.saveFile(uikit.EditorTab tab) = SaveFile;
 }
 
 // Состояние EditorBloc
 @freezed
 abstract class EditorState with _$EditorState {
-  const factory EditorState({
-    @Default([]) List<uikit.EditorTab> openTabs,
-    @Default('') String activeTab,
-  }) = _EditorState;
+  /// Initial state: nothing opened yet
+  const factory EditorState.initial() = EditorInitial;
+
+  const factory EditorState.loading() = EditorLoading;
+
+  /// File opened successfully
+  const factory EditorState.openedFile({
+    required String filePath,
+    required String content,
+  }) = EditorOpenedFile;
+
+  /// File changed (external or internal modification)
+  const factory EditorState.fileChanged({
+    required String filePath,
+    required String content,
+  }) = EditorFileChanged;
+
+  /// File deleted
+  const factory EditorState.fileDeleted({required String filePath}) =
+      EditorFileDeleted;
+
+  /// File saved successfully
+  const factory EditorState.savedFile({
+    required String filePath,
+    required String content,
+  }) = EditorSavedFile;
+
+  /// Error state: operation failed
+  const factory EditorState.error({
+    required String filePath,
+    required String message,
+    Object? error,
+  }) = EditorError;
 }
 
 // EditorBloc
@@ -38,121 +68,148 @@ class EditorBloc extends Bloc<EditorEvent, EditorState> {
   EditorBloc({required FileService fileService})
     : _fileService = fileService,
       _fileSyncService = CherryPick.openRootScope().resolve<FileSyncService>(),
-      super(const EditorState()) {
+      super(const EditorState.initial()) {
     _setupFileSyncListeners();
-
-    // Обработчики событий
     on<OpenFile>(_onOpenFile);
     on<FileChanged>(_onFileChanged);
     on<FileDeleted>(_onFileDeleted);
+    on<SaveFile>(_onSaveFile);
   }
 
   void _setupFileSyncListeners() {
-    // Слушаем события открытия файлов
     _fileOpenedSubscription = _fileSyncService.fileOpenedStream.listen((
       filePath,
     ) {
-      print('EditorBloc: File opened: $filePath');
-      // TODO: Открыть файл в редакторе через EditorManagerService
+      codelabLogger.d('EditorBloc: File opened: $filePath', tag: 'editor_bloc');
+      // Можешь тут добавить обработку, если нужно реагировать на это событие
     });
-
-    // Слушаем события сохранения файлов
     _fileSavedSubscription = _fileSyncService.fileSavedStream.listen((
       filePath,
     ) {
-      print('EditorBloc: File saved: $filePath');
-      // TODO: Обновить состояние вкладки
+      codelabLogger.d('EditorBloc: File saved: $filePath', tag: 'editor_bloc');
     });
-
-    // Слушаем события изменения файлов
     _fileChangedSubscription = _fileSyncService.fileChangedStream.listen((
       filePath,
     ) {
-      print('EditorBloc: File changed externally: $filePath');
+      codelabLogger.d(
+        'EditorBloc: File changed externally: $filePath',
+        tag: 'editor_bloc',
+      );
       add(EditorEvent.fileChanged(filePath));
     });
-
-    // Слушаем события удаления файлов
     _fileDeletedSubscription = _fileSyncService.fileDeletedStream.listen((
       filePath,
     ) {
-      print('EditorBloc: File deleted: $filePath');
+      codelabLogger.d(
+        'EditorBloc: File deleted: $filePath',
+        tag: 'editor_bloc',
+      );
       add(EditorEvent.fileDeleted(filePath));
     });
   }
 
-  // Обработка открытия файла
   Future<void> _onOpenFile(OpenFile event, Emitter<EditorState> emit) async {
-    print('EditorBloc: Opening file: ${event.filePath}');
-
+    codelabLogger.d(
+      'EditorBloc: Opening file: ${event.filePath}',
+      tag: 'editor_bloc',
+    );
+    emit(EditorState.loading());
     try {
       final result = await _fileService.readFile(event.filePath).run();
-
       result.match(
         (error) {
-          print('EditorBloc: Error reading file: $error');
+          codelabLogger.e(
+            'EditorBloc: Error reading file: $error',
+            tag: 'editor_bloc',
+            error: error,
+          );
+          emit(
+            EditorState.error(
+              filePath: event.filePath,
+              message: 'Error reading file',
+              error: error,
+            ),
+          );
         },
         (content) {
-          // Проверяем, не открыт ли файл уже
-          uikit.EditorTab? existingTab;
-          for (final tab in state.openTabs) {
-            if (tab.filePath == event.filePath) {
-              existingTab = tab;
-              break;
-            }
-          }
-
-          if (existingTab == null) {
-            // Создаем новую вкладку
-            final newTab = uikit.EditorTab(
-              id: event.filePath,
-              title: event.filePath.split('/').last,
-              filePath: event.filePath,
-              content: content,
-            );
-
-            final updatedTabs = [...state.openTabs, newTab];
-            emit(
-              state.copyWith(openTabs: updatedTabs, activeTab: event.filePath),
-            );
-          } else {
-            // Файл уже открыт - переключаемся на него
-            emit(state.copyWith(activeTab: event.filePath));
-          }
+          emit(
+            EditorState.openedFile(filePath: event.filePath, content: content),
+          );
         },
       );
     } catch (e, s) {
-      codelabLogger.e('EditorBloc: Exception opening file: $e', tag: 'editor_bloc', error: e, stackTrace: s);
+      emit(
+        EditorState.error(
+          filePath: event.filePath,
+          message: 'Exception while opening file',
+          error: e,
+        ),
+      );
+      codelabLogger.e(
+        'EditorBloc: Exception opening file: $e',
+        tag: 'editor_bloc',
+        error: e,
+        stackTrace: s,
+      );
     }
   }
 
-  // Обработка изменения файла
   Future<void> _onFileChanged(
     FileChanged event,
     Emitter<EditorState> emit,
   ) async {
-    print('EditorBloc: File changed externally: ${event.filePath}');
-
-    // TODO: Обновить содержимое вкладки если файл открыт
-    // TODO: Показать уведомление пользователю
+    codelabLogger.d(
+      'EditorBloc: File changed externally: ${event.filePath}',
+      tag: 'editor_bloc',
+    );
+    emit(EditorState.loading());
+    final result = await _fileService.readFile(event.filePath).run();
+    result.match(
+      (error) => emit(
+        EditorState.error(
+          filePath: event.filePath,
+          message: 'Error reading file after external change',
+          error: error,
+        ),
+      ),
+      (content) => emit(
+        EditorState.fileChanged(filePath: event.filePath, content: content),
+      ),
+    );
   }
 
-  // Обработка удаления файла
   Future<void> _onFileDeleted(
     FileDeleted event,
     Emitter<EditorState> emit,
   ) async {
-    print('EditorBloc: File deleted: ${event.filePath}');
+    emit(EditorState.loading());
+    codelabLogger.d(
+      'EditorBloc: File deleted: ${event.filePath}',
+      tag: 'editor_bloc',
+    );
+    emit(EditorState.fileDeleted(filePath: event.filePath));
+  }
 
-    // Убираем вкладку если файл был удален
-    final updatedTabs = state.openTabs
-        .where((tab) => tab.id != event.filePath)
-        .toList();
-
-    emit(
-      state.copyWith(
-        openTabs: updatedTabs,
-        activeTab: state.activeTab == event.filePath ? '' : state.activeTab,
+  Future<void> _onSaveFile(SaveFile event, Emitter<EditorState> emit) async {
+    final tab = event.tab;
+    codelabLogger.d(
+      'EditorBloc: Saving file: ${tab.filePath}',
+      tag: 'editor_bloc',
+    );
+    emit(EditorState.loading());
+    final result = await _fileService
+        .writeFile(tab.filePath, tab.content)
+        .run();
+    result.match(
+      (error) => emit(
+        EditorState.error(
+          filePath: tab.filePath,
+          message: 'Error saving file',
+          error: error,
+        ),
+      ),
+      (_) => emit(
+        EditorState.savedFile(filePath: tab.filePath, content: tab.content),
       ),
     );
   }

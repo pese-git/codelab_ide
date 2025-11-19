@@ -13,11 +13,13 @@ import 'editor_pane_drag_target.dart';
 class EditorPanel extends StatefulWidget {
   final String label;
   final List<EditorTab> initialTabs;
+  final ValueChanged<EditorTab>? onTabSave;
 
   const EditorPanel({
     super.key,
     required this.label,
     this.initialTabs = const [],
+    this.onTabSave,
   });
 
   @override
@@ -37,7 +39,6 @@ class EditorPanelState extends State<EditorPanel> {
   // --- ПУБЛИЧНЫЙ API ДЛЯ УПРАВЛЕНИЯ ЧЕРЕЗ GLOBALKEY ---
 
   /// Открывает файл в редакторе
-
 
   /// Закрывает файл по пути
   void closeFile(String filePath) {
@@ -135,7 +136,11 @@ class EditorPanelState extends State<EditorPanel> {
     }
   }
 
-  void _updateFileContentInAllPanes(PaneNode node, String filePath, String content) {
+  void _updateFileContentInAllPanes(
+    PaneNode node,
+    String filePath,
+    String content,
+  ) {
     if (node is EditorTabsPane) {
       final index = node.tabs.indexWhere((tab) => tab.filePath == filePath);
       if (index != -1) {
@@ -383,6 +388,7 @@ class EditorPanelState extends State<EditorPanel> {
                         _updateTabContentInPane(node, tab),
                     onTabsReordered: (newTabs) =>
                         setState(() => node.tabs = newTabs),
+                    onTabSave: (tab) => widget.onTabSave?.call(tab),
                   ),
                 ),
               ],
