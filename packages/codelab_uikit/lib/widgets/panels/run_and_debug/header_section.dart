@@ -4,11 +4,15 @@ class HeaderSection extends StatelessWidget {
   final VoidCallback? onPlay;
   final VoidCallback? onStop;
   final String title;
+  final String selectedMode;
+  final ValueChanged<String>? onModeChanged;
 
   const HeaderSection({
     this.onPlay,
     this.onStop,
     this.title = 'RUN AND DEBUG',
+    this.selectedMode = 'debug',
+    this.onModeChanged,
     super.key,
   });
 
@@ -35,15 +39,24 @@ class HeaderSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 4),
-          SizedBox(
-            width: double.infinity,
-            child: ComboBox<String>(
-              placeholder: const Text('Select configuration'),
-              items: const [
-                ComboBoxItem(child: Text('Launch main.dart'), value: 'main'),
-              ],
-              onChanged: (val) {},
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: ComboBox<String>(
+                  placeholder: const Text('Запуск'),
+                  value: selectedMode,
+                  items: const [
+                    ComboBoxItem(child: Text('Debug'), value: 'debug'),
+                    ComboBoxItem(child: Text('Release'), value: 'release'),
+                  ],
+                  onChanged: (val) {
+                    if (val != null && onModeChanged != null) {
+                      onModeChanged!(val);
+                    }
+                  },
+                ),
+              )
+            ],
           ),
         ],
       ),
