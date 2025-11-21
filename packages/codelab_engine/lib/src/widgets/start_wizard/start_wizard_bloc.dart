@@ -90,7 +90,7 @@ class StartWizardBloc extends Bloc<StartWizardEvent, StartWizardState> {
           if (projectPath == null) {
             // Операцию отменили — эмулируем "успешный, но бездействие"
             return TaskEither<FileError, ProjectConfig>.right(
-              ProjectConfig.createDefault('', 'unknown'),
+              ProjectConfig.createDefault(''),
             ); // Вернем null, ниже обработаем
           }
           return _projectService.loadProject(projectPath);

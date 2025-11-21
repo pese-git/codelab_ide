@@ -41,7 +41,7 @@ class ProjectServiceImpl implements ProjectService {
         // Создаем базовые файлы в зависимости от типа проекта
         await _createProjectStructure(projectPath, type);
 
-        final config = ProjectConfig.createDefault(projectPath, type);
+        final config = ProjectConfig.createDefault(projectPath);
         await _saveConfigToFile(config);
 
         return config;
@@ -91,7 +91,7 @@ class ProjectServiceImpl implements ProjectService {
             projectType = 'java';
           }
 
-          final config = ProjectConfig.createDefault(projectPath, projectType);
+          final config = ProjectConfig.createDefault(projectPath);
           await _saveConfigToFile(config);
           return config;
         }
@@ -134,7 +134,7 @@ class ProjectServiceImpl implements ProjectService {
           projectType = 'java';
         }
 
-        final config = ProjectConfig.createDefault(projectPath, projectType);
+        final config = ProjectConfig.createDefault(projectPath);
         await _saveConfigToFile(config);
         return config;
       },
@@ -196,38 +196,6 @@ dev_dependencies:
 void main() {
   print('Hello, World!');
 }
-''');
-        break;
-
-      case 'python':
-        final mainFile = File('$projectPath${Platform.pathSeparator}main.py');
-        await mainFile.writeAsString('''
-def main():
-    print("Hello, World!")
-
-if __name__ == "__main__":
-    main()
-''');
-        break;
-
-      case 'node':
-        final packageJson = File(
-          '$projectPath${Platform.pathSeparator}package.json',
-        );
-        await packageJson.writeAsString('''
-{
-  "name": "${projectPath.split(Platform.pathSeparator).last}",
-  "version": "1.0.0",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js",
-    "test": "echo \\"Error: no test specified\\" && exit 1"
-  }
-}
-''');
-        final indexFile = File('$projectPath${Platform.pathSeparator}index.js');
-        await indexFile.writeAsString('''
-console.log("Hello, World!");
 ''');
         break;
     }
