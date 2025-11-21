@@ -32,6 +32,8 @@ class _RunAndDebugPanelState extends State<RunAndDebugPanel> {
   bool _watchExpanded = false;
   bool _callStackExpanded = false;
 
+  String _selectedMode = 'debug';
+
   double _variablesHeight = 100;
   double _watchHeight = 64;
   double _callStackHeight = 80;
@@ -51,7 +53,14 @@ class _RunAndDebugPanelState extends State<RunAndDebugPanel> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header row (slot or default)
-          widget.headerSection ?? const HeaderSection(),
+          widget.headerSection ?? HeaderSection(
+            selectedMode: _selectedMode,
+            onModeChanged: (val) {
+              setState(() {
+                _selectedMode = val;
+              });
+            },
+          ),
           const Divider(style: DividerThemeData(thickness: 1)),
           const SizedBox(height: 10),
           Expanded(
