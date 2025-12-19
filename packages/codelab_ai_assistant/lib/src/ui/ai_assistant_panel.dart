@@ -2,6 +2,7 @@
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:gpt_markdown/gpt_markdown.dart';
 import '../bloc/ai_agent_bloc.dart';
 import '../models/ws_message.dart';
 
@@ -87,7 +88,7 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
           error: (_) => Colors.red.normal,
         ),
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-        child: Text(
+        child: GptMarkdown(
           msg.when(
             userMessage: (c, __) => c,
             assistantMessage: (t, _) => t,
