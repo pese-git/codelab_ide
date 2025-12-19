@@ -31,6 +31,10 @@ class _IdeRootPageState extends State<IdeRootPage> {
   final GlobalKey<engine.ExplorerPanelState> explorerKey =
       GlobalKey<engine.ExplorerPanelState>();
 
+  // Создаём новый инстанс блока из DI (factory!)
+  late AiAgentBloc aiAgentBloc = CherryPick.openRootScope()
+      .resolve<AiAgentBloc>();
+
   @override
   Widget build(BuildContext context) {
     return ScaffoldPage(
@@ -150,14 +154,16 @@ class _IdeRootPageState extends State<IdeRootPage> {
                       if (_aiPanelVisible)
                         SizedBox(
                           width: _aiPanelWidth,
-                          child: const AIAssistantPanel(),
+                          child: AiAssistantPanel(bloc: aiAgentBloc),
                         ),
                     ],
                   ),
                 ),
               ],
             ),
-            rightPanel: uikit.RightPanel(aiSlot: const AIAssistantPanel()),
+            rightPanel: uikit.RightPanel(
+              aiSlot: AiAssistantPanel(bloc: aiAgentBloc),
+            ),
             rightPanelWidth: _aiPanelWidth,
             rightPanelSplitter: _aiPanelVisible
                 ? uikit.HorizontalSplitter(

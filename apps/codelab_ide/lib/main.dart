@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:cherrypick/cherrypick.dart';
+import 'package:codelab_ai_assistant/codelab_ai_assistant.dart';
 import 'package:codelab_core/codelab_core.dart';
 import 'package:codelab_ide/codelab_app.dart';
 import 'package:codelab_ide/di/app_di_module.dart';
@@ -19,7 +20,14 @@ void main() async {
   final logDir = Directory('${Platform.environment['HOME']}/.codelab_ide/logs/')
     ..createSync(recursive: true); // обязательно создать поддиректорию!
 
-  CherryPick.openRootScope().installModules([AppDiModule(), EngineDiModule()]);
+  CherryPick.openRootScope().installModules([
+    AppDiModule(),
+    EngineDiModule(),
+    AiAssistantModule(
+      wsUrl: 'ws://localhost:8000/ws/ide-session',
+      useMockApi: false,
+    ),
+  ]);
   // Настройка CodelabLogger вместо initLogger
   codelabLogger.configure(
     level: Level.debug, // уровень логирования, можно повысить в релизе
