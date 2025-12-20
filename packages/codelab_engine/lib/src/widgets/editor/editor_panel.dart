@@ -84,15 +84,16 @@ class EditorPanelState extends State<EditorPanel> {
               );
               state.mapOrNull(
                 openedFile: (s) {
-                  codelabLogger.d(
-                    'EditorPanel: openedFile for ${s.filePath}',
-                    tag: 'editor_panel',
-                  );
-                  _internalEditorPanelKey.currentState?.openFile(
-                    filePath: s.filePath,
-                    title: s.filePath.split('/').last,
-                    content: s.content,
-                  );
+                  //codelabLogger.d(
+                  //  'EditorPanel: openedFile for ${s.filePath}',
+                  //  tag: 'editor_panel',
+                  //);
+                  //_internalEditorPanelKey.currentState?.openFile(
+                  //  filePath: s.filePath,
+                  //  title: s.filePath.split('/').last,
+                  //  content: s.content,
+                  //  workspacePath: s.workspacePath,
+                  //);
                 },
                 fileChanged: (s) {
                   codelabLogger.d(
@@ -160,15 +161,22 @@ class EditorPanelState extends State<EditorPanel> {
     );
   }
 
-  void openFile({required String filePath}) {
+  void openFile({required String filePath, required String workspacePath}) {
     codelabLogger.d(
       'EditorPanel: openFile called for $filePath',
       tag: 'editor_panel',
     );
+    _internalEditorPanelKey.currentState?.openFile(
+      filePath: filePath,
+      title: filePath.split('/').last,
+      content: '',
+      workspacePath: workspacePath,
+    );
     // Делегируем открытие файла бизнес-логике
-    _bloc.add(EditorEvent.openFile(filePath));
+    //_bloc.add(EditorEvent.openFile(filePath, workspacePath));
   }
 
+  @Deprecated('Do not use')
   void _saveActiveTab(BuildContext context) {
     final activeTab = _internalEditorPanelKey.currentState?.activeTab;
     if (activeTab != null) {

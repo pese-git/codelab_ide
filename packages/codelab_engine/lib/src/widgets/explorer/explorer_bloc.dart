@@ -107,5 +107,6 @@ class ExplorerBloc extends Bloc<ExplorerEvent, ExplorerState> {
     name: node.name,
     isDirectory: node.isDirectory,
     children: node.children.map(_coreToUikit).toList(),
+    workspacePath: node.workspacePath,
   );
 }

@@ -70,9 +70,10 @@ class _IdeRootPageState extends State<IdeRootPage> {
                     selectedIndex: _selectedSidebarIndex,
                     explorerSlot: engine.ExplorerPanel(
                       key: explorerKey,
-                      onFileOpen: (String filePath) {
+                      onFileOpen: (String filePath, String workspacePath) {
                         editorPanelKey.currentState?.openFile(
                           filePath: filePath,
+                          workspacePath: workspacePath,
                         );
                       },
                     ),

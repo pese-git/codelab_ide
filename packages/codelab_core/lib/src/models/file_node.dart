@@ -3,6 +3,7 @@ import 'package:codelab_core/codelab_core.dart';
 
 class FileNode {
   final String name;
+  final String workspacePath;
   final String path;
   final bool isDirectory;
   final List<FileNode> children;
@@ -12,9 +13,10 @@ class FileNode {
     required this.path,
     required this.isDirectory,
     this.children = const [],
+    required this.workspacePath,
   });
 
-  factory FileNode.fromDirectory(Directory directory) {
+  factory FileNode.fromDirectory(Directory directory, {String? workspacePath}) {
     final children = <FileNode>[];
 
     try {
@@ -27,15 +29,28 @@ class FileNode {
         }
 
         if (entity is Directory) {
-          children.add(FileNode.fromDirectory(entity));
+          children.add(
+            FileNode.fromDirectory(
+              entity,
+              workspacePath: workspacePath ?? directory.path,
+            ),
+          );
         } else {
           children.add(
-            FileNode(name: name, path: entity.path, isDirectory: false),
+            FileNode(
+              name: name,
+              path: entity.path,
+              isDirectory: false,
+              workspacePath: workspacePath ?? directory.path,
+            ),
           );
         }
       }
     } catch (e) {
-      codelabLogger.e('Error reading directory ${directory.path}: $e', tag: 'file_node');
+      codelabLogger.e(
+        'Error reading directory ${directory.path}: $e',
+        tag: 'file_node',
+      );
     }
 
     // Sort: directories first, then files
@@ -50,6 +65,7 @@ class FileNode {
       path: directory.path,
       isDirectory: true,
       children: children,
+      workspacePath: directory.path,
     );
   }
 }

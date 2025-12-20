@@ -10,6 +10,7 @@ class EditorTabView extends StatefulWidget {
   final ValueChanged<int>? onTabClosed;
   final ValueChanged<EditorTab>? onTabContentChanged;
   final ValueChanged<List<EditorTab>>? onTabsReordered;
+  @Deprecated('Do not use')
   final ValueChanged<EditorTab>? onTabSave;
 
   const EditorTabView({
@@ -124,8 +125,10 @@ class _EditorTabViewState extends State<EditorTabView> {
                   border: Border.all(color: const Color(0xFF323130)),
                 ),
                 child: EditorCodeField(
+                  key: ValueKey(tab.filePath),
                   content: tab.content,
                   filePath: tab.filePath,
+                  workspacePath: tab.workspacePath,
                   onChanged: (newText) {
                     final updatedTab = tab.copyWith(
                       content: newText,

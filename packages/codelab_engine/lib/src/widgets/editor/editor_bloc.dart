@@ -12,7 +12,8 @@ part 'editor_bloc.freezed.dart';
 // События EditorBloc
 @freezed
 abstract class EditorEvent with _$EditorEvent {
-  const factory EditorEvent.openFile(String filePath) = OpenFile;
+  const factory EditorEvent.openFile(String filePath, String workspacePath) =
+      OpenFile;
   const factory EditorEvent.fileChanged(String filePath) = FileChanged;
   const factory EditorEvent.fileDeleted(String filePath) = FileDeleted;
   const factory EditorEvent.saveFile(uikit.EditorTab tab) = SaveFile;
@@ -29,6 +30,7 @@ abstract class EditorState with _$EditorState {
   /// File opened successfully
   const factory EditorState.openedFile({
     required String filePath,
+    required String workspacePath,
     required String content,
   }) = EditorOpenedFile;
 
@@ -115,6 +117,7 @@ class EditorBloc extends Bloc<EditorEvent, EditorState> {
     );
     emit(EditorState.loading());
     try {
+      /*
       final result = await _fileService.readFile(event.filePath).run();
       result.match(
         (error) {
@@ -133,9 +136,21 @@ class EditorBloc extends Bloc<EditorEvent, EditorState> {
         },
         (content) {
           emit(
-            EditorState.openedFile(filePath: event.filePath, content: content),
+            EditorState.openedFile(
+              filePath: event.filePath,
+              workspacePath: event.workspacePath,
+              content: content,
+            ),
           );
         },
+      );
+      */
+      emit(
+        EditorState.openedFile(
+          filePath: event.filePath,
+          workspacePath: event.workspacePath,
+          content: '',
+        ),
       );
     } catch (e, s) {
       emit(

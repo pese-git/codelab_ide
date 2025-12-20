@@ -11,7 +11,7 @@ import 'explorer_bloc.dart';
 
 class ExplorerPanel extends StatefulWidget {
   final GlobalKey<uikit.ExplorerPanelState>? explorerKey;
-  final void Function(String filePath) onFileOpen;
+  final void Function(String filePath, String workspacePath) onFileOpen;
 
   ExplorerPanel({super.key, this.explorerKey, required this.onFileOpen});
 
@@ -49,7 +49,7 @@ class ExplorerPanelState extends State<ExplorerPanel> {
             },
             openedFile: (s) {
               if (!s.node.isDirectory) {
-                widget.onFileOpen.call(s.node.path);
+                widget.onFileOpen.call(s.node.path, s.node.workspacePath);
               }
             },
             nodeExpanded: (s) {

@@ -161,6 +161,7 @@ class EditorPanelState extends State<EditorPanel> {
         filePath: 'lib/new_file.dart',
         content:
             '// New file content\nvoid main() {\n  print("Hello World!");\n}',
+        workspacePath: '',
       );
       pane.tabs.add(newTab);
       pane.selectedIndex = pane.tabs.length - 1;
@@ -184,6 +185,7 @@ class EditorPanelState extends State<EditorPanel> {
   // --- API внешнего открытия файла ---
   void openFile({
     required String filePath,
+    required String workspacePath,
     required String title,
     required String content,
     EditorTabsPane? targetPane,
@@ -201,6 +203,7 @@ class EditorPanelState extends State<EditorPanel> {
             title: title,
             filePath: filePath,
             content: content,
+            workspacePath: workspacePath,
           ),
         );
         pane.selectedIndex = pane.tabs.length - 1;
@@ -338,6 +341,7 @@ class EditorPanelState extends State<EditorPanel> {
         onOpenFile: (fileNode) {
           openFile(
             filePath: fileNode.path,
+            workspacePath: fileNode.workspacePath,
             title: fileNode.name,
             content:
                 '// Stub content for drag-and-drop: ${fileNode.name}\nvoid main() {\n  print("Hello, \\${fileNode.name}!");\n}',

@@ -13,13 +13,15 @@ class EditorManagerService {
   /// Открывает файл в редакторе
   void openFile({
     required String filePath,
+    required String workspacePath,
     required String title,
-    required String content,
+    @Deprecated('Do not use') required String content,
   }) {
     _editorPanelKey?.currentState?.openFile(
       filePath: filePath,
       title: title,
       content: content,
+      workspacePath: workspacePath,
     );
   }
 
@@ -62,7 +64,7 @@ class EditorManagerService {
   }
 
   /// Переключается на вкладку с указанным файлом
-  void switchToFile(String filePath) {
+  void switchToFile(String filePath, String workspacePath) {
     final tabs = _editorPanelKey?.currentState?.tabs ?? [];
     for (final tab in tabs) {
       if (tab.filePath == filePath) {
@@ -70,6 +72,7 @@ class EditorManagerService {
           filePath: filePath,
           title: tab.title,
           content: tab.content,
+          workspacePath: workspacePath,
         );
         return;
       }
