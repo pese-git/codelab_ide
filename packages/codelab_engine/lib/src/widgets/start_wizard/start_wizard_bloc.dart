@@ -3,6 +3,8 @@ import 'package:codelab_core/codelab_core.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
+import '../../services/lsp_service.dart';
+
 part 'start_wizard_bloc.freezed.dart';
 
 @freezed
@@ -44,14 +46,17 @@ class StartWizardBloc extends Bloc<StartWizardEvent, StartWizardState> {
   final FileService _fileService;
   final ProjectService _projectService;
   final ProjectManagerService _projectManagerService;
+  final LspService _lspService;
 
   StartWizardBloc({
     required FileService fileService,
     required ProjectService projectService,
     required ProjectManagerService projectManagerService,
+    required LspService lspService,
   }) : _projectService = projectService,
        _projectManagerService = projectManagerService,
        _fileService = fileService,
+       _lspService = lspService,
        super(const StartWizardState.initial()) {
     //on<CreateProjectEvent>(_onCreateProject);
     on<OpenProjectEvent>(_onOpenProject);
@@ -101,6 +106,21 @@ class StartWizardBloc extends Bloc<StartWizardEvent, StartWizardState> {
             (error) => emit(StartWizardState.error(error.toString())),
             (project) {
               _projectManagerService.setCurrentProject(project);
+              // Инициализируем LSP для проекта
+              if (project.path.isNotEmpty) {
+                _lspService.initialize(project.path).then((_) {
+                  codelabLogger.d(
+                    'LSP initialized for project: ${project.path}',
+                    tag: 'start_wizard_bloc',
+                  );
+                }).catchError((error) {
+                  codelabLogger.e(
+                    'Failed to initialize LSP',
+                    tag: 'start_wizard_bloc',
+                    error: error,
+                  );
+                });
+              }
               emit(StartWizardState.opened(project));
             },
           );

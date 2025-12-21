@@ -31,20 +31,16 @@ class LspService {
 
       final dartPath = await _getDartSdkPath();
       if (dartPath == null) {
-        codelabLogger.e(
-          'Failed to find Dart SDK path',
-          tag: 'lsp_service',
-        );
+        codelabLogger.e('Failed to find Dart SDK path', tag: 'lsp_service');
         return;
       }
 
-      codelabLogger.d(
-        'Found Dart SDK at: $dartPath',
-        tag: 'lsp_service',
-      );
+      codelabLogger.d('Found Dart SDK at: $dartPath', tag: 'lsp_service');
 
+      //  dart language-server --diagnostic-port=8080
       _lspConfig = await LspStdioConfig.start(
         executable: '$dartPath/bin/dart',
+        args: ["language-server", "--diagnostic-port=8080"],
         workspacePath: workspacePath,
         languageId: 'dart',
       );
@@ -52,10 +48,7 @@ class LspService {
       _isInitialized = true;
       _workspacePath = workspacePath;
 
-      codelabLogger.d(
-        'LSP initialized successfully',
-        tag: 'lsp_service',
-      );
+      codelabLogger.d('LSP initialized successfully', tag: 'lsp_service');
     } catch (e, stack) {
       codelabLogger.e(
         'Error initializing LSP',
@@ -75,7 +68,9 @@ class LspService {
       final result = await Process.run('flutter', ['doctor', '-v']);
       if (result.exitCode == 0) {
         final output = result.stdout as String;
-        final match = RegExp(r'Dart SDK version: .* at ([^\n]+)').firstMatch(output);
+        final match = RegExp(
+          r'Dart SDK version: .* at ([^\n]+)',
+        ).firstMatch(output);
         if (match != null) {
           final sdkPath = match.group(1)?.trim();
           codelabLogger.d(
@@ -91,7 +86,10 @@ class LspService {
       if (dartResult.exitCode == 0) {
         final dartPath = (dartResult.stdout as String).trim();
         if (dartPath.isNotEmpty) {
-          final sdkPath = dartPath.substring(0, dartPath.lastIndexOf('/bin/dart'));
+          final sdkPath = dartPath.substring(
+            0,
+            dartPath.lastIndexOf('/bin/dart'),
+          );
           codelabLogger.d(
             'Found Dart SDK through which: $sdkPath',
             tag: 'lsp_service',

@@ -75,14 +75,14 @@ class EditorBloc extends Bloc<EditorEvent, EditorState> {
   StreamSubscription<String>? _fileChangedSubscription;
   StreamSubscription<String>? _fileDeletedSubscription;
 
-  EditorBloc({required FileService fileService})
+  EditorBloc({required FileService fileService, required LspService lspService})
     : _fileService = fileService,
       _fileSyncService = CherryPick.openRootScope().resolve<FileSyncService>(),
-      _lspService = LspService(),
+      _lspService = lspService,
       super(const EditorState.initial()) {
     _setupFileSyncListeners();
     on<OpenFile>(_onOpenFile);
-    //on<FileChanged>(_onFileChanged);
+    on<FileChanged>(_onFileChanged);
     on<FileDeleted>(_onFileDeleted);
     //on<SaveFile>(_onSaveFile);
   }
@@ -126,8 +126,6 @@ class EditorBloc extends Bloc<EditorEvent, EditorState> {
     );
     emit(EditorState.loading());
     try {
-      // Инициализируем LSP для рабочего пространства
-      await _lspService.initialize(event.workspacePath);
       /*
       final result = await _fileService.readFile(event.filePath).run();
       result.match(

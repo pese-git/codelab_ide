@@ -1,4 +1,5 @@
 import 'package:cherrypick/cherrypick.dart';
+import 'package:code_forge/code_forge.dart';
 import 'package:codelab_ai_assistant/codelab_ai_assistant.dart';
 import 'package:codelab_engine/codelab_engine.dart' as engine;
 import 'package:codelab_terminal/codelab_terminal.dart';
@@ -71,12 +72,18 @@ class _IdeRootPageState extends State<IdeRootPage> {
                     selectedIndex: _selectedSidebarIndex,
                     explorerSlot: engine.ExplorerPanel(
                       key: explorerKey,
-                      onFileOpen: (String filePath, String workspacePath) {
-                        editorPanelKey.currentState?.openFile(
-                          filePath: filePath,
-                          workspacePath: workspacePath,
-                        );
-                      },
+                      onFileOpen:
+                          (
+                            String filePath,
+                            String workspacePath,
+                            LspConfig? lspConfig,
+                          ) {
+                            editorPanelKey.currentState?.openFile(
+                              filePath: filePath,
+                              workspacePath: workspacePath,
+                              lspConfig: lspConfig,
+                            );
+                          },
                     ),
                   )
                 : null,

@@ -1,5 +1,6 @@
 import 'package:cherrypick/cherrypick.dart';
 import 'package:codelab_core/codelab_core.dart';
+import 'package:codelab_engine/src/services/lsp_service.dart';
 import 'package:codelab_uikit/widgets/placeholder/start_wizard.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -19,6 +20,7 @@ class StartWizardPanel extends StatelessWidget {
         projectManagerService: CherryPick.openRootScope()
             .resolve<ProjectManagerService>(),
         fileService: CherryPick.openRootScope().resolve<FileService>(),
+        lspService: CherryPick.openRootScope().resolve<LspService>(),
       ),
       child: BlocConsumer<StartWizardBloc, StartWizardState>(
         builder: (context, state) {
