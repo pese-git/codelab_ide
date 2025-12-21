@@ -8,6 +8,7 @@ class EditorCodeField extends StatefulWidget {
   @Deprecated('Do not use')
   final ValueChanged<String>? onChanged;
   final void Function(EditorCodeFieldState)? onStateCreated;
+  final LspConfig? lspConfig;
 
   const EditorCodeField({
     super.key,
@@ -15,6 +16,7 @@ class EditorCodeField extends StatefulWidget {
     @Deprecated('Do not use') this.onChanged,
     required this.workspacePath,
     this.onStateCreated,
+    this.lspConfig,
   });
 
   @override
@@ -24,7 +26,6 @@ class EditorCodeField extends StatefulWidget {
 class EditorCodeFieldState extends State<EditorCodeField> {
   late CodeForgeController _controller;
   late UndoRedoController _undoController;
-  late LspConfig _lspConfig;
 
   void saveFile() {
     print('Saving file: ${widget.filePath}');
@@ -50,28 +51,6 @@ class EditorCodeFieldState extends State<EditorCodeField> {
     });
     _undoController = UndoRedoController();
     widget.onStateCreated?.call(this);
-
-    //LspStdioConfig.start(
-    //  executable: 'dart',
-    //  workspacePath: widget.workspacePath,
-    //  languageId: 'dart',
-    //).then((config) {
-    //  setState(() {
-    //    _lspConfig = config;
-    //  });
-    //});
-
-    //WidgetsBinding.instance.addPersistentFrameCallback((oldWidget) {
-    //  LspStdioConfig.start(
-    //    executable: 'dart',
-    //    workspacePath: widget.workspacePath,
-    //    languageId: 'dart',
-    //  ).then((config) {
-    //    setState(() {
-    //      _lspConfig = config;
-    //    });
-    //  });
-    //});
   }
 
   @override
@@ -99,7 +78,7 @@ class EditorCodeFieldState extends State<EditorCodeField> {
   Widget build(BuildContext context) {
     return CodeForge(
       key: ValueKey(widget.filePath),
-      //lspConfig: _lspConfig,
+      lspConfig: widget.lspConfig,
       filePath: widget.filePath,
       controller: _controller,
       undoController: _undoController,

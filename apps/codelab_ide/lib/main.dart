@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:cherrypick/cherrypick.dart';
+import 'package:code_forge/code_forge.dart';
 import 'package:codelab_ai_assistant/codelab_ai_assistant.dart';
 import 'package:codelab_core/codelab_core.dart';
 import 'package:codelab_ide/codelab_app.dart';
@@ -60,5 +61,6 @@ void main() async {
     final settings = service.getConfig('settings.json');
     codelabLogger.i("Settings: $settings", tag: 'main');
   });
+
   runApp(const CodeLapApp());
 }

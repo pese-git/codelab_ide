@@ -174,6 +174,7 @@ class _EditorTabViewState extends State<EditorTabView> {
                   key: ValueKey(tab.filePath),
                   filePath: tab.filePath,
                   workspacePath: tab.workspacePath,
+                  lspConfig: tab.lspConfig,
                   onStateCreated: (state) =>
                       _registerEditorState(tab.filePath, state),
                   onChanged: (newText) {

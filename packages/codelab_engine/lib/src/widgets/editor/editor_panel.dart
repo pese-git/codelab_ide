@@ -84,27 +84,30 @@ class EditorPanelState extends State<EditorPanel> {
               );
               state.mapOrNull(
                 openedFile: (s) {
-                  //codelabLogger.d(
-                  //  'EditorPanel: openedFile for ${s.filePath}',
-                  //  tag: 'editor_panel',
-                  //);
-                  //_internalEditorPanelKey.currentState?.openFile(
-                  //  filePath: s.filePath,
-                  //  title: s.filePath.split('/').last,
-                  //  content: s.content,
-                  //  workspacePath: s.workspacePath,
-                  //);
+                  codelabLogger.d(
+                    'EditorPanel: openedFile for ${s.filePath}',
+                    tag: 'editor_panel',
+                  );
+                  _internalEditorPanelKey.currentState?.openFile(
+                    filePath: s.filePath,
+                    title: s.filePath.split('/').last,
+                    content: s.content,
+                    workspacePath: s.workspacePath,
+                    lspConfig: s.lspConfig,
+                  );
                 },
                 fileChanged: (s) {
                   codelabLogger.d(
                     'EditorPanel: fileChanged for ${s.filePath}',
                     tag: 'editor_panel',
                   );
-                  //_internalEditorPanelKey.currentState?.openFile(
-                  //  filePath: s.filePath,
-                  //  title: s.filePath.split('/').last,
-                  //  content: s.content,
-                  //);
+                  _internalEditorPanelKey.currentState?.openFile(
+                    filePath: s.filePath,
+                    title: s.filePath.split('/').last,
+                    content: s.content,
+                    workspacePath: s.workspacePath,
+                    lspConfig: s.lspConfig,
+                  );
                   // Можно добавить уведомление/snackbar о том, что файл изменён
                 },
                 fileDeleted: (s) {

@@ -4,8 +4,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:codelab_core/codelab_core.dart';
 import 'package:codelab_uikit/codelab_uikit.dart' as uikit;
+import 'package:code_forge/code_forge.dart';
 
 import '../../services/file_sync_service.dart';
+import '../../services/lsp_service.dart';
 
 part 'editor_bloc.freezed.dart';
 
@@ -14,7 +16,8 @@ part 'editor_bloc.freezed.dart';
 abstract class EditorEvent with _$EditorEvent {
   const factory EditorEvent.openFile(String filePath, String workspacePath) =
       OpenFile;
-  const factory EditorEvent.fileChanged(String filePath) = FileChanged;
+  const factory EditorEvent.fileChanged(String filePath, String workspacePath) =
+      FileChanged;
   const factory EditorEvent.fileDeleted(String filePath) = FileDeleted;
   const factory EditorEvent.saveFile(uikit.EditorTab tab) = SaveFile;
 }
@@ -32,12 +35,15 @@ abstract class EditorState with _$EditorState {
     required String filePath,
     required String workspacePath,
     required String content,
+    @Default(null) LspConfig? lspConfig,
   }) = EditorOpenedFile;
 
   /// File changed (external or internal modification)
   const factory EditorState.fileChanged({
     required String filePath,
+    required String workspacePath,
     required String content,
+    @Default(null) LspConfig? lspConfig,
   }) = EditorFileChanged;
 
   /// File deleted
@@ -48,6 +54,7 @@ abstract class EditorState with _$EditorState {
   const factory EditorState.savedFile({
     required String filePath,
     required String content,
+    @Default(null) LspConfig? lspConfig,
   }) = EditorSavedFile;
 
   /// Error state: operation failed
@@ -62,6 +69,7 @@ abstract class EditorState with _$EditorState {
 class EditorBloc extends Bloc<EditorEvent, EditorState> {
   final FileService _fileService;
   final FileSyncService _fileSyncService;
+  final LspService _lspService;
   StreamSubscription<String>? _fileOpenedSubscription;
   StreamSubscription<String>? _fileSavedSubscription;
   StreamSubscription<String>? _fileChangedSubscription;
@@ -70,12 +78,13 @@ class EditorBloc extends Bloc<EditorEvent, EditorState> {
   EditorBloc({required FileService fileService})
     : _fileService = fileService,
       _fileSyncService = CherryPick.openRootScope().resolve<FileSyncService>(),
+      _lspService = LspService(),
       super(const EditorState.initial()) {
     _setupFileSyncListeners();
     on<OpenFile>(_onOpenFile);
-    on<FileChanged>(_onFileChanged);
+    //on<FileChanged>(_onFileChanged);
     on<FileDeleted>(_onFileDeleted);
-    on<SaveFile>(_onSaveFile);
+    //on<SaveFile>(_onSaveFile);
   }
 
   void _setupFileSyncListeners() {
@@ -97,7 +106,7 @@ class EditorBloc extends Bloc<EditorEvent, EditorState> {
         'EditorBloc: File changed externally: $filePath',
         tag: 'editor_bloc',
       );
-      add(EditorEvent.fileChanged(filePath));
+      add(EditorEvent.fileChanged(filePath, ''));
     });
     _fileDeletedSubscription = _fileSyncService.fileDeletedStream.listen((
       filePath,
@@ -117,6 +126,8 @@ class EditorBloc extends Bloc<EditorEvent, EditorState> {
     );
     emit(EditorState.loading());
     try {
+      // Инициализируем LSP для рабочего пространства
+      await _lspService.initialize(event.workspacePath);
       /*
       final result = await _fileService.readFile(event.filePath).run();
       result.match(
@@ -150,6 +161,7 @@ class EditorBloc extends Bloc<EditorEvent, EditorState> {
           filePath: event.filePath,
           workspacePath: event.workspacePath,
           content: '',
+          lspConfig: _lspService.config,
         ),
       );
     } catch (e, s) {
@@ -188,7 +200,12 @@ class EditorBloc extends Bloc<EditorEvent, EditorState> {
         ),
       ),
       (content) => emit(
-        EditorState.fileChanged(filePath: event.filePath, content: content),
+        EditorState.fileChanged(
+          filePath: event.filePath,
+          content: content,
+          lspConfig: _lspService.config,
+          workspacePath: event.workspacePath,
+        ),
       ),
     );
   }
@@ -224,7 +241,11 @@ class EditorBloc extends Bloc<EditorEvent, EditorState> {
         ),
       ),
       (_) => emit(
-        EditorState.savedFile(filePath: tab.filePath, content: tab.content),
+        EditorState.savedFile(
+          filePath: tab.filePath,
+          content: tab.content,
+          lspConfig: _lspService.config,
+        ),
       ),
     );
   }
