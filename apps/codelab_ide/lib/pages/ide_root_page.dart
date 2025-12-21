@@ -50,6 +50,7 @@ class _IdeRootPageState extends State<IdeRootPage> {
         builder: (context, constraints) {
           final panelHeight = constraints.maxHeight;
 
+          // ignore: unused_local_variable
           final editorHeight = panelHeight * _editorPanelFraction;
           final terminalHeight = panelHeight * (1 - _editorPanelFraction) - 8;
 

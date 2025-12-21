@@ -14,6 +14,7 @@ sealed class WSMessage with _$WSMessage {
 
   const factory WSMessage.assistantMessage({
     required String token,
+    // ignore: invalid_annotation_target
     @JsonKey(name: 'is_final', defaultValue: false) required bool isFinal,
   }) = WSAssistantMessage;
 

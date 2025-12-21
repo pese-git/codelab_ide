@@ -73,24 +73,24 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
   Widget _msgBubble(WSMessage msg) {
     return Align(
       alignment: msg.when(
-        userMessage: (_, __) => Alignment.centerRight,
-        assistantMessage: (_, __) => Alignment.centerLeft,
-        toolCall: (_, __, ___) => Alignment.centerLeft,
-        toolResult: (_, __, ___) => Alignment.centerLeft,
+        userMessage: (_, _) => Alignment.centerRight,
+        assistantMessage: (_, _) => Alignment.centerLeft,
+        toolCall: (_, _, _) => Alignment.centerLeft,
+        toolResult: (_, _, _) => Alignment.centerLeft,
         error: (_) => Alignment.center,
       ),
       child: Card(
         backgroundColor: msg.when(
-          userMessage: (_, __) => Colors.blue.normal,
-          assistantMessage: (_, __) => Colors.grey[30],
-          toolCall: (_, __, ___) => Colors.orange.normal,
-          toolResult: (_, __, ___) => Colors.green.normal,
+          userMessage: (_, _) => Colors.blue.normal,
+          assistantMessage: (_, _) => Colors.grey[30],
+          toolCall: (_, _, _) => Colors.orange.normal,
+          toolResult: (_, _, _) => Colors.green.normal,
           error: (_) => Colors.red.normal,
         ),
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
         child: GptMarkdown(
           msg.when(
-            userMessage: (c, __) => c,
+            userMessage: (c, _) => c,
             assistantMessage: (t, _) => t,
             toolCall: (callId, tool, args) => 'tool_call: $tool ($args)',
             toolResult: (callId, result, error) => error ?? result.toString(),

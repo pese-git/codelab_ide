@@ -1,7 +1,7 @@
 #!/bin/sh
 # This is a generated file; do not edit or check into version control.
-export "FLUTTER_ROOT=/Users/penkovsky_sa/fvm/versions/3.38.5"
-export "FLUTTER_APPLICATION_PATH=/Users/penkovsky_sa/Projects/OpenSource/codelab-workspace/codelab_ide"
+export "FLUTTER_ROOT=/Users/sergey/fvm/versions/3.38.5"
+export "FLUTTER_APPLICATION_PATH=/Users/sergey/Projects/OpenIdeaLab/codelab-workspace/codelab_ide"
 export "COCOAPODS_PARALLEL_CODE_SIGN=true"
 export "FLUTTER_BUILD_DIR=build"
 export "FLUTTER_BUILD_NAME=1.0.0"

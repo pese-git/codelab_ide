@@ -73,7 +73,7 @@ class EditorPanelState extends State<EditorPanel> {
                     'EditorPanel: Save tab pressed for file ${tab.filePath}',
                     tag: 'editor_panel',
                   );
-                  context.read<EditorBloc>().add(EditorEvent.saveFile(tab));
+                  //context.read<EditorBloc>().add(EditorEvent.saveFile(tab));
                 },
               );
             },
