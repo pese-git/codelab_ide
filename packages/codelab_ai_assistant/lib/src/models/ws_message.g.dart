@@ -22,30 +22,32 @@ Map<String, dynamic> _$WSUserMessageToJson(WSUserMessage instance) =>
 
 WSAssistantMessage _$WSAssistantMessageFromJson(Map<String, dynamic> json) =>
     WSAssistantMessage(
-      token: json['token'] as String,
+      content: json['content'] as String?,
       isFinal: json['is_final'] as bool? ?? false,
       $type: json['type'] as String?,
     );
 
 Map<String, dynamic> _$WSAssistantMessageToJson(WSAssistantMessage instance) =>
     <String, dynamic>{
-      'token': instance.token,
+      'content': instance.content,
       'is_final': instance.isFinal,
       'type': instance.$type,
     };
 
 WSToolCall _$WSToolCallFromJson(Map<String, dynamic> json) => WSToolCall(
-  callId: json['callId'] as String,
-  toolName: json['toolName'] as String,
+  callId: json['call_id'] as String,
+  toolName: json['tool_name'] as String,
   arguments: json['arguments'] as Map<String, dynamic>,
+  requiresApproval: json['requires_approval'] as bool? ?? false,
   $type: json['type'] as String?,
 );
 
 Map<String, dynamic> _$WSToolCallToJson(WSToolCall instance) =>
     <String, dynamic>{
-      'callId': instance.callId,
-      'toolName': instance.toolName,
+      'call_id': instance.callId,
+      'tool_name': instance.toolName,
       'arguments': instance.arguments,
+      'requires_approval': instance.requiresApproval,
       'type': instance.$type,
     };
 

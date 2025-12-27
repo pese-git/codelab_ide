@@ -13,15 +13,19 @@ sealed class WSMessage with _$WSMessage {
   }) = WSUserMessage;
 
   const factory WSMessage.assistantMessage({
-    required String token,
+    String? content,
     // ignore: invalid_annotation_target
     @JsonKey(name: 'is_final', defaultValue: false) required bool isFinal,
   }) = WSAssistantMessage;
 
   const factory WSMessage.toolCall({
-    required String callId,
-    required String toolName,
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'call_id') required String callId,
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'tool_name') required String toolName,
     required Map<String, dynamic> arguments,
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'requires_approval', defaultValue: false) @Default(false) bool requiresApproval,
   }) = WSToolCall;
 
   const factory WSMessage.toolResult({

@@ -75,7 +75,7 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
       alignment: msg.when(
         userMessage: (_, _) => Alignment.centerRight,
         assistantMessage: (_, _) => Alignment.centerLeft,
-        toolCall: (_, _, _) => Alignment.centerLeft,
+        toolCall: (_, _, _, _) => Alignment.centerLeft,
         toolResult: (_, _, _) => Alignment.centerLeft,
         error: (_) => Alignment.center,
       ),
@@ -83,7 +83,7 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
         backgroundColor: msg.when(
           userMessage: (_, _) => Colors.blue.normal,
           assistantMessage: (_, _) => Colors.grey[30],
-          toolCall: (_, _, _) => Colors.orange.normal,
+          toolCall: (_, _, _, _) => Colors.orange.normal,
           toolResult: (_, _, _) => Colors.green.normal,
           error: (_) => Colors.red.normal,
         ),
@@ -91,8 +91,9 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
         child: GptMarkdown(
           msg.when(
             userMessage: (c, _) => c,
-            assistantMessage: (t, _) => t,
-            toolCall: (callId, tool, args) => 'tool_call: $tool ($args)',
+            assistantMessage: (content, _) => content ?? '',
+            toolCall: (callId, tool, args, requiresApproval) =>
+              'tool_call: $tool ($args)${requiresApproval ? " [requires approval]" : ""}',
             toolResult: (callId, result, error) => error ?? result.toString(),
             error: (content) => 'Ошибка: $content',
           ),

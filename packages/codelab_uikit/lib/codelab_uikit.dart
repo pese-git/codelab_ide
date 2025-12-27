@@ -40,4 +40,7 @@ export 'widgets/editor/editor_tab_view.dart';
 // WIDGETS: LAYOUTS
 export 'widgets/layout/ide_layout.dart';
 
+// WIDGETS: DIALOGS
+export 'widgets/dialogs/tool_approval_dialog.dart';
+
 // TODO: Export any libraries intended for clients of this package.
