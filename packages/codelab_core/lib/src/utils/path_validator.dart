@@ -65,8 +65,16 @@ class PathValidator {
       );
     }
 
+    // Удаляем префикс ./ если есть
+    String cleanPath = path;
+    if (cleanPath.startsWith('./')) {
+      cleanPath = cleanPath.substring(2);
+    } else if (cleanPath == '.') {
+      cleanPath = '';
+    }
+    
     // Нормализация пути
-    final normalizedPath = p.normalize(path);
+    final normalizedPath = p.normalize(cleanPath);
 
     // Построение полного пути
     final fullPath = p.join(workspaceRoot, normalizedPath);
@@ -153,10 +161,20 @@ class PathValidator {
   /// 
   /// Выбрасывает [PathValidationException] если путь небезопасен.
   String validateAndGetFullPath(String path) {
+    print('[PathValidator] Validating path: "$path"');
+    print('[PathValidator] Workspace root: "$workspaceRoot"');
+    
     final result = isPathSafe(path);
+    
     if (!result.isValid) {
+      print('[PathValidator] Validation failed: ${result.error}');
       throw PathValidationException(result.error!);
     }
+    
+    print('[PathValidator] Validation successful');
+    print('[PathValidator] Normalized path: "${result.normalizedPath}"');
+    print('[PathValidator] Full path: "${result.fullPath}"');
+    
     return result.fullPath!;
   }
 }

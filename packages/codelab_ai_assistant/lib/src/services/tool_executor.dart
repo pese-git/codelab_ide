@@ -1,21 +1,35 @@
 import 'dart:io';
 import 'package:codelab_core/codelab_core.dart';
 import 'package:path/path.dart' as p;
+import 'package:cherrypick/cherrypick.dart';
 import '../models/tool_models.dart';
 
 /// Сервис для выполнения tool calls на стороне IDE
 class ToolExecutor {
-  /// Валидатор путей
-  final PathValidator _pathValidator;
-
   /// Максимальный размер читаемого файла (10MB)
   static const int maxReadFileSize = 10 * 1024 * 1024;
 
   /// Максимальный размер записываемого файла (5MB)
   static const int maxWriteFileSize = 5 * 1024 * 1024;
 
-  ToolExecutor({required PathValidator pathValidator})
-    : _pathValidator = pathValidator;
+  ToolExecutor();
+
+  /// Получает PathValidator с актуальным workspace root
+  PathValidator _getPathValidator() {
+    try {
+      final projectManager = CherryPick.openRootScope().resolve<ProjectManagerService>();
+      final project = projectManager.currentProject;
+      if (project != null) {
+        return PathValidator(workspaceRoot: project.path);
+      }
+    } catch (e) {
+      print('[ToolExecutor] Failed to resolve ProjectManagerService: $e');
+    }
+    
+    // Fallback: используем временную директорию
+    print('[ToolExecutor] Using fallback workspace root: /tmp');
+    return PathValidator(workspaceRoot: '/tmp');
+  }
 
   /// Выполняет tool call и возвращает результат
   ///
@@ -54,7 +68,8 @@ class ToolExecutor {
       final args = ReadFileArgs.fromJson(arguments);
 
       // Валидация пути
-      final fullPath = _pathValidator.validateAndGetFullPath(args.path);
+      final pathValidator = _getPathValidator();
+      final fullPath = pathValidator.validateAndGetFullPath(args.path);
 
       // Проверка существования файла
       final file = File(fullPath);
@@ -155,7 +170,8 @@ class ToolExecutor {
       }
 
       // Валидация пути
-      final fullPath = _pathValidator.validateAndGetFullPath(args.path);
+      final pathValidator = _getPathValidator();
+      final fullPath = pathValidator.validateAndGetFullPath(args.path);
 
       final file = File(fullPath);
       final fileExists = await file.exists();
@@ -199,7 +215,7 @@ class ToolExecutor {
       return FileOperationResult.writeSuccess(
         bytesWritten: bytesWritten,
         backupPath: backupPath != null
-            ? p.relative(backupPath, from: _pathValidator.workspaceRoot)
+            ? p.relative(backupPath, from: pathValidator.workspaceRoot)
             : null,
       );
     } on ToolExecutionException {

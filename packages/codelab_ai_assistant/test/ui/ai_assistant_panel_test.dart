@@ -88,7 +88,7 @@ void main() {
 
       // Act
       bloc.add(const AiAgentEvent.messageReceived(
-        WSMessage.assistantMessage(token: 'Hello User', isFinal: true),
+        WSMessage.assistantMessage(content: 'Hello User', isFinal: true),
       ));
       await tester.pumpAndSettle();
 
@@ -302,7 +302,7 @@ void main() {
       await tester.pumpAndSettle();
 
       bloc.add(const AiAgentEvent.messageReceived(
-        WSMessage.assistantMessage(token: 'Second message', isFinal: true),
+        WSMessage.assistantMessage(content: 'Second message', isFinal: true),
       ));
       await tester.pumpAndSettle();
 
@@ -351,7 +351,7 @@ void main() {
 
       // Act
       bloc.add(const AiAgentEvent.messageReceived(
-        WSMessage.assistantMessage(token: 'Assistant message', isFinal: true),
+        WSMessage.assistantMessage(content: 'Assistant message', isFinal: true),
       ));
       await tester.pumpAndSettle();
 
@@ -399,7 +399,7 @@ void main() {
       await tester.pumpAndSettle();
 
       bloc.add(const AiAgentEvent.messageReceived(
-        WSMessage.assistantMessage(token: 'Message 2', isFinal: true),
+        WSMessage.assistantMessage(content: 'Message 2', isFinal: true),
       ));
       await tester.pumpAndSettle();
 

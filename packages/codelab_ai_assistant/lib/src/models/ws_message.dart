@@ -34,7 +34,7 @@ sealed class WSMessage with _$WSMessage {
     String? error,
   }) = WSToolResult;
 
-  const factory WSMessage.error({required String content}) = WSError;
+  const factory WSMessage.error({String? content}) = WSError;
 
   factory WSMessage.fromJson(Map<String, dynamic> json) =>
       _$WSMessageFromJson(json);

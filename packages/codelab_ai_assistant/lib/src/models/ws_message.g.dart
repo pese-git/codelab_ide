@@ -66,8 +66,10 @@ Map<String, dynamic> _$WSToolResultToJson(WSToolResult instance) =>
       'type': instance.$type,
     };
 
-WSError _$WSErrorFromJson(Map<String, dynamic> json) =>
-    WSError(content: json['content'] as String, $type: json['type'] as String?);
+WSError _$WSErrorFromJson(Map<String, dynamic> json) => WSError(
+  content: json['content'] as String?,
+  $type: json['type'] as String?,
+);
 
 Map<String, dynamic> _$WSErrorToJson(WSError instance) => <String, dynamic>{
   'content': instance.content,

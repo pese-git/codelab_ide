@@ -334,7 +334,7 @@ void main() {
       act: (bloc) async {
         messageController.add(
           const WSMessage.assistantMessage(
-            token: 'Let me read that file for you.',
+            content: 'Let me read that file for you.',
             isFinal: false,
           ),
         );
@@ -354,7 +354,7 @@ void main() {
 
         messageController.add(
           const WSMessage.assistantMessage(
-            token: 'Here is the content.',
+            content: 'Here is the content.',
             isFinal: true,
           ),
         );
@@ -451,7 +451,7 @@ void main() {
       act: (bloc) {
         messageController.add(
           const WSMessage.assistantMessage(
-            token: 'Hello',
+            content: 'Hello',
             isFinal: false,
           ),
         );

@@ -37,34 +37,10 @@ class AiAssistantModule extends Module {
         )
         .singleton();
 
-    // PathValidator — factory
-    // Создается динамически с текущим workspace root из ProjectManagerService
-    // Это позволяет поддерживать смену проекта без перезапуска приложения
-    bind<PathValidator>().toProvide(() {
-      // Пытаемся получить ProjectManagerService из scope
-      // Если не найден, используем fallback значение
-      try {
-        final projectManager = currentScope.resolve<ProjectManagerService>();
-        final project = projectManager.currentProject;
-        if (project != null) {
-          return PathValidator(workspaceRoot: project.path);
-        }
-      } catch (e) {
-        // ProjectManagerService не зарегистрирован или проект не выбран
-      }
-      
-      // Fallback: используем временную директорию
-      // В production это должно вызывать ошибку, но для разработки допустимо
-      return PathValidator(workspaceRoot: '/tmp');
-    });
-
     // ToolExecutor — factory
-    // Создается с новым PathValidator при каждом вызове
-    // Это гарантирует актуальность workspace root
-    bind<ToolExecutor>()
-        .toProvide(() => ToolExecutor(
-              pathValidator: currentScope.resolve<PathValidator>(),
-            ));
+    // Создается при каждом вызове и динамически получает workspace root
+    // из ProjectManagerService при выполнении каждого tool call
+    bind<ToolExecutor>().toProvide(() => ToolExecutor());
 
     // ToolApprovalService — singleton
     // Обрабатывает запросы на подтверждение HITL операций
