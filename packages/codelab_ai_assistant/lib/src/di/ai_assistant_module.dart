@@ -67,6 +67,7 @@ class AiAssistantModule extends Module {
       () => AiAgentBloc(
         protocol: currentScope.resolve<AgentProtocolService>(),
         toolApi: currentScope.resolve<ToolApi>(),
+        approvalService: currentScope.resolve<ToolApprovalService>(),
       ),
     );
   }

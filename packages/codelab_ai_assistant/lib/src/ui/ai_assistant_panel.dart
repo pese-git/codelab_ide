@@ -27,6 +27,7 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
           orElse: () => null,
         );
         final waiting = chat?.waitingResponse ?? false;
+        final pendingApproval = chat?.pendingApproval;
         final List<WSMessage> history = (chat != null) ? chat.history : [];
 
         return Column(
@@ -39,13 +40,18 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
               ),
             ),
             Divider(),
+            // Кнопки подтверждения tool call
+            if (pendingApproval != null) ...[
+              _buildApprovalButtons(context, pendingApproval),
+              const SizedBox(height: 8),
+            ],
             Row(
               children: [
                 Expanded(
                   child: TextBox(
                     controller: _controller,
                     placeholder: 'Введите ваш вопрос...',
-                    enabled: !waiting,
+                    enabled: !waiting && pendingApproval == null,
                     onSubmitted: (_) => _send(),
                   ),
                 ),
@@ -53,13 +59,63 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
                   icon: waiting
                       ? const ProgressRing()
                       : const Icon(FluentIcons.send),
-                  onPressed: waiting ? null : _send,
+                  onPressed: (waiting || pendingApproval != null)
+                      ? null
+                      : _send,
                 ),
               ],
             ),
           ],
         );
       },
+    );
+  }
+
+  Widget _buildApprovalButtons(BuildContext context, dynamic pendingApproval) {
+    final toolCall = pendingApproval.toolCall;
+    final toolName = toolCall.toolName;
+    final arguments = toolCall.arguments;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.orange.withOpacity(0.1),
+        border: Border.all(color: Colors.orange),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Для подтверждения: Создать файл $toolName с содержимым "${arguments['content'] ?? arguments}"?',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Пожалуйста, подтвердите, чтобы я мог выполнить эту операцию.',
+            style: TextStyle(color: Colors.grey[100]),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Button(
+                onPressed: () {
+                  widget.bloc.add(const AiAgentEvent.rejectToolCall());
+                },
+                child: const Text('Reject'),
+              ),
+              const SizedBox(width: 8),
+              FilledButton(
+                onPressed: () {
+                  widget.bloc.add(const AiAgentEvent.approveToolCall());
+                },
+                child: const Text('Approve'),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -93,9 +149,9 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
             userMessage: (c, _) => c,
             assistantMessage: (content, _) => content ?? '',
             toolCall: (callId, tool, args, requiresApproval) =>
-              'tool_call: $tool ($args)${requiresApproval ? " [requires approval]" : ""}',
+                'tool_call: $tool ($args)${requiresApproval ? " [requires approval]" : ""}',
             toolResult: (callId, toolName, result, error) =>
-              error ?? (result != null ? result.toString() : 'No result'),
+                error ?? (result != null ? result.toString() : 'No result'),
             error: (content) => 'Ошибка: ${content ?? "Unknown error"}',
           ),
         ),

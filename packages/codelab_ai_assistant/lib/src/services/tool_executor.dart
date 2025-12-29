@@ -477,17 +477,25 @@ class ToolExecutor {
       // Validate command safety
       _validateCommandSafety(args.command);
 
-      // Validate and resolve working directory
+      // Resolve working directory
       final validator = _getPathValidator();
-      final validationResult = validator.isPathSafe(args.cwd);
-      if (!validationResult.isValid) {
-        throw ToolExecutionException(
-          code: 'invalid_path',
-          message: validationResult.error ?? 'Invalid working directory',
-        );
+      String workingDirectory;
+      
+      // If cwd is '.' or empty, use workspace root directly
+      if (args.cwd == '.' || args.cwd.isEmpty) {
+        workingDirectory = validator.workspaceRoot;
+      } else {
+        // Validate and resolve custom working directory
+        final validationResult = validator.isPathSafe(args.cwd);
+        if (!validationResult.isValid) {
+          throw ToolExecutionException(
+            code: 'invalid_path',
+            message: validationResult.error ?? 'Invalid working directory',
+          );
+        }
+        workingDirectory = validationResult.fullPath!;
       }
 
-      final workingDirectory = validationResult.fullPath!;
       final directory = Directory(workingDirectory);
       if (!await directory.exists()) {
         throw ToolExecutionException(

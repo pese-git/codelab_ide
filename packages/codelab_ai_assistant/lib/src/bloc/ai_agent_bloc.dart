@@ -8,6 +8,7 @@ import '../models/tool_models.dart';
 import '../domain/agent_protocol_service.dart';
 import '../integration/tool_api.dart';
 import '../utils/websocket_error_mapper.dart';
+import '../services/tool_approval_service.dart';
 
 part 'ai_agent_bloc.freezed.dart';
 //part 'ai_agent_bloc.g.dart';
@@ -21,7 +22,9 @@ class AiAgentEvent with _$AiAgentEvent {
   const factory AiAgentEvent.sendUserMessage(String text) = SendUserMessage;
   const factory AiAgentEvent.messageReceived(WSMessage message) =
       MessageReceived;
-  // ...добавить при необходимости дополнительные ивенты
+  const factory AiAgentEvent.approveToolCall() = ApproveToolCall;
+  const factory AiAgentEvent.rejectToolCall() = RejectToolCall;
+  const factory AiAgentEvent.toolApprovalRequested(ToolApprovalRequest request) = ToolApprovalRequested;
 }
 
 @freezed
@@ -33,6 +36,7 @@ class AiAgentState with _$AiAgentState {
   const factory AiAgentState.chat({
     required List<WSMessage> history,
     @Default(false) bool waitingResponse,
+    ToolApprovalRequest? pendingApproval,
   }) = ChatState;
 }
 
@@ -40,18 +44,31 @@ class AiAgentState with _$AiAgentState {
 class AiAgentBloc extends Bloc<AiAgentEvent, AiAgentState> {
   final AgentProtocolService protocol;
   final ToolApi toolApi;
+  final ToolApprovalService approvalService;
   late final Stream<WSMessage> _msgSub;
 
-  AiAgentBloc({required this.protocol, required this.toolApi})
-    : super(const InitialState()) {
+  AiAgentBloc({
+    required this.protocol, 
+    required this.toolApi,
+    required this.approvalService,
+  }) : super(const InitialState()) {
     on<AgentConnected>((event, emit) => emit(const ConnectedState()));
     on<AgentDisconnected>((event, emit) => emit(const InitialState()));
     on<SendUserMessage>(_onUserMessage);
     on<MessageReceived>(_onMessageReceived);
+    on<ApproveToolCall>(_onApproveToolCall);
+    on<RejectToolCall>(_onRejectToolCall);
+    on<ToolApprovalRequested>(_onToolApprovalRequested);
+    
     // подписка на стрим AI
     protocol.connect();
     _msgSub = protocol.messages;
     _msgSub.listen((msg) => add(AiAgentEvent.messageReceived(msg)));
+    
+    // подписка на запросы подтверждения
+    approvalService.approvalRequests.listen((request) {
+      add(AiAgentEvent.toolApprovalRequested(request));
+    });
   }
 
   Future<void> _onUserMessage(
@@ -122,8 +139,66 @@ class AiAgentBloc extends Bloc<AiAgentEvent, AiAgentState> {
       ChatState(
         history: [...(chatState?.history ?? []), msg],
         waitingResponse: false,
+        pendingApproval: chatState?.pendingApproval,
       ),
     );
+  }
+
+  Future<void> _onToolApprovalRequested(
+    ToolApprovalRequested event,
+    Emitter<AiAgentState> emit,
+  ) async {
+    final chatState = state is ChatState ? state as ChatState : null;
+    
+    emit(
+      ChatState(
+        history: chatState?.history ?? [],
+        waitingResponse: chatState?.waitingResponse ?? false,
+        pendingApproval: event.request,
+      ),
+    );
+  }
+
+  Future<void> _onApproveToolCall(
+    ApproveToolCall event,
+    Emitter<AiAgentState> emit,
+  ) async {
+    final chatState = state is ChatState ? state as ChatState : null;
+    final pendingApproval = chatState?.pendingApproval;
+    
+    if (pendingApproval != null) {
+      _logger.i('User approved tool call: ${pendingApproval.toolCall.toolName}');
+      pendingApproval.completer.complete(ToolApprovalResult.approved);
+      
+      emit(
+        ChatState(
+          history: chatState?.history ?? [],
+          waitingResponse: chatState?.waitingResponse ?? false,
+          pendingApproval: null,
+        ),
+      );
+    }
+  }
+
+  Future<void> _onRejectToolCall(
+    RejectToolCall event,
+    Emitter<AiAgentState> emit,
+  ) async {
+    final chatState = state is ChatState ? state as ChatState : null;
+    final pendingApproval = chatState?.pendingApproval;
+    
+    if (pendingApproval != null) {
+      _logger.w('User rejected tool call: ${pendingApproval.toolCall.toolName}');
+      pendingApproval.completer.complete(ToolApprovalResult.rejected);
+      
+      emit(
+        ChatState(
+          history: chatState?.history ?? [],
+          waitingResponse: chatState?.waitingResponse ?? false,
+          pendingApproval: null,
+        ),
+      );
+    }
   }
 
   @override

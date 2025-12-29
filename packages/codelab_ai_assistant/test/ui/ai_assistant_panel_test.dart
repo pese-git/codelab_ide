@@ -6,10 +6,12 @@ import 'package:codelab_ai_assistant/src/bloc/ai_agent_bloc.dart';
 import 'package:codelab_ai_assistant/src/domain/agent_protocol_service.dart';
 import 'package:codelab_ai_assistant/src/integration/tool_api.dart';
 import 'package:codelab_ai_assistant/src/models/ws_message.dart';
+import 'package:codelab_ai_assistant/src/services/tool_approval_service.dart';
 
 // Моки
 class MockAgentProtocolService extends Mock implements AgentProtocolService {}
 class MockToolApi extends Mock implements ToolApi {}
+class MockToolApprovalService extends Mock implements ToolApprovalService {}
 
 void main() {
   setUpAll(() {
@@ -22,11 +24,13 @@ void main() {
   group('AiAssistantPanel Widget Tests', () {
     late MockAgentProtocolService mockProtocol;
     late MockToolApi mockToolApi;
+    late MockToolApprovalService mockApprovalService;
     late AiAgentBloc bloc;
 
     setUp(() {
       mockProtocol = MockAgentProtocolService();
       mockToolApi = MockToolApi();
+      mockApprovalService = MockToolApprovalService();
 
       // Настройка базового поведения мока
       when(() => mockProtocol.messages).thenAnswer((_) => const Stream.empty());
@@ -34,8 +38,13 @@ void main() {
       when(() => mockProtocol.disconnect()).thenAnswer((_) async {});
       when(() => mockProtocol.sendUserMessage(any(), role: any(named: 'role')))
           .thenReturn(null);
+      when(() => mockApprovalService.approvalRequests).thenAnswer((_) => const Stream.empty());
 
-      bloc = AiAgentBloc(protocol: mockProtocol, toolApi: mockToolApi);
+      bloc = AiAgentBloc(
+        protocol: mockProtocol,
+        toolApi: mockToolApi,
+        approvalService: mockApprovalService,
+      );
     });
 
     tearDown(() {
