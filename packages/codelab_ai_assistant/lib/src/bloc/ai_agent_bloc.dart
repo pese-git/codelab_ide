@@ -94,16 +94,22 @@ class AiAgentBloc extends Bloc<AiAgentEvent, AiAgentState> {
           _logger.i('Tool call successful: $toolName');
           protocol.sendToolResult(
             callId: callId,
+            toolName: toolName,
             result: result.toJson(),
           );
         } on ToolExecutionException catch (e) {
           _logger.e('Tool execution failed: ${e.code} - ${e.message}');
           final errorMsg = WebSocketErrorMapper.mapException(e);
-          protocol.sendToolResult(callId: callId, error: errorMsg);
+          protocol.sendToolResult(
+            callId: callId,
+            toolName: toolName,
+            error: errorMsg,
+          );
         } catch (e, stackTrace) {
           _logger.e('Unexpected error in tool call', error: e, stackTrace: stackTrace);
           protocol.sendToolResult(
             callId: callId,
+            toolName: toolName,
             error: 'Unexpected error: $e',
           );
         }

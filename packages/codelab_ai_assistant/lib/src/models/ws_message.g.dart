@@ -52,7 +52,8 @@ Map<String, dynamic> _$WSToolCallToJson(WSToolCall instance) =>
     };
 
 WSToolResult _$WSToolResultFromJson(Map<String, dynamic> json) => WSToolResult(
-  callId: json['callId'] as String,
+  callId: json['call_id'] as String,
+  toolName: json['tool_name'] as String?,
   result: json['result'] as Map<String, dynamic>?,
   error: json['error'] as String?,
   $type: json['type'] as String?,
@@ -60,7 +61,8 @@ WSToolResult _$WSToolResultFromJson(Map<String, dynamic> json) => WSToolResult(
 
 Map<String, dynamic> _$WSToolResultToJson(WSToolResult instance) =>
     <String, dynamic>{
-      'callId': instance.callId,
+      'call_id': instance.callId,
+      'tool_name': instance.toolName,
       'result': instance.result,
       'error': instance.error,
       'type': instance.$type,

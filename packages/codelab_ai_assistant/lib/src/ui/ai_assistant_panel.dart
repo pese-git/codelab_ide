@@ -76,7 +76,7 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
         userMessage: (_, _) => Alignment.centerRight,
         assistantMessage: (_, _) => Alignment.centerLeft,
         toolCall: (_, _, _, _) => Alignment.centerLeft,
-        toolResult: (_, _, _) => Alignment.centerLeft,
+        toolResult: (_, _, _, _) => Alignment.centerLeft,
         error: (_) => Alignment.center,
       ),
       child: Card(
@@ -84,7 +84,7 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
           userMessage: (_, _) => Colors.blue.normal,
           assistantMessage: (_, _) => Colors.grey[30],
           toolCall: (_, _, _, _) => Colors.orange.normal,
-          toolResult: (_, _, _) => Colors.green.normal,
+          toolResult: (_, _, _, _) => Colors.green.normal,
           error: (_) => Colors.red.normal,
         ),
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
@@ -94,8 +94,9 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
             assistantMessage: (content, _) => content ?? '',
             toolCall: (callId, tool, args, requiresApproval) =>
               'tool_call: $tool ($args)${requiresApproval ? " [requires approval]" : ""}',
-            toolResult: (callId, result, error) => error ?? result.toString(),
-            error: (content) => 'Ошибка: $content',
+            toolResult: (callId, toolName, result, error) =>
+              error ?? (result != null ? result.toString() : 'No result'),
+            error: (content) => 'Ошибка: ${content ?? "Unknown error"}',
           ),
         ),
       ),

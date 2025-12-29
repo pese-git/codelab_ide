@@ -9,6 +9,7 @@ abstract class AgentProtocolService {
   void sendUserMessage(String content, {String role = 'user'});
   void sendToolResult({
     required String callId,
+    String? toolName,
     Map<String, dynamic>? result,
     String? error,
   });
@@ -32,10 +33,16 @@ class AgentProtocolServiceImpl implements AgentProtocolService {
   @override
   void sendToolResult({
     required String callId,
+    String? toolName,
     Map<String, dynamic>? result,
     String? error,
   }) {
-    _repo.send(WSMessage.toolResult(callId: callId, result: result, error: error));
+    _repo.send(WSMessage.toolResult(
+      callId: callId,
+      toolName: toolName,
+      result: result,
+      error: error,
+    ));
   }
 
   @override

@@ -29,7 +29,10 @@ sealed class WSMessage with _$WSMessage {
   }) = WSToolCall;
 
   const factory WSMessage.toolResult({
-    required String callId,
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'call_id') required String callId,
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'tool_name') String? toolName,
     Map<String, dynamic>? result,
     String? error,
   }) = WSToolResult;
