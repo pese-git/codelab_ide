@@ -1,5 +1,6 @@
-import 'package:json_annotation/json_annotation.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
+part 'tool_models.freezed.dart';
 part 'tool_models.g.dart';
 
 /// Модель для входящих tool calls от Gateway
@@ -50,11 +51,7 @@ class ToolResult {
   /// Сообщение об ошибке (если произошла ошибка)
   final String? error;
 
-  const ToolResult({
-    required this.callId,
-    this.result,
-    this.error,
-  });
+  const ToolResult({required this.callId, this.result, this.error});
 
   factory ToolResult.fromJson(Map<String, dynamic> json) =>
       _$ToolResultFromJson(json);
@@ -66,21 +63,12 @@ class ToolResult {
     required String callId,
     required FileOperationResult result,
   }) {
-    return ToolResult(
-      callId: callId,
-      result: result,
-    );
+    return ToolResult(callId: callId, result: result);
   }
 
   /// Создает результат с ошибкой
-  factory ToolResult.error({
-    required String callId,
-    required String error,
-  }) {
-    return ToolResult(
-      callId: callId,
-      error: error,
-    );
+  factory ToolResult.error({required String callId, required String error}) {
+    return ToolResult(callId: callId, error: error);
   }
 
   @override
@@ -150,18 +138,12 @@ class FileOperationResult {
   }
 
   /// Создает результат с ошибкой
-  factory FileOperationResult.failure({
-    required String error,
-  }) {
-    return FileOperationResult(
-      success: false,
-      error: error,
-    );
+  factory FileOperationResult.failure({required String error}) {
+    return FileOperationResult(success: false, error: error);
   }
 
   @override
-  String toString() =>
-      'FileOperationResult(success: $success, error: $error)';
+  String toString() => 'FileOperationResult(success: $success, error: $error)';
 }
 
 /// Аргументы для read_file инструмента
@@ -297,7 +279,11 @@ class ToolExecutionException implements Exception {
   }
 
   /// Файл слишком большой
-  factory ToolExecutionException.fileTooLarge(String path, int size, int maxSize) {
+  factory ToolExecutionException.fileTooLarge(
+    String path,
+    int size,
+    int maxSize,
+  ) {
     return ToolExecutionException(
       code: 'file_too_large',
       message: 'File too large: $path ($size bytes, max: $maxSize bytes)',
@@ -343,4 +329,267 @@ class ToolExecutionException implements Exception {
     }
     return buffer.toString();
   }
+}
+
+// ============================================================================
+// List Files Tool Models
+// ============================================================================
+
+/// Аргументы для list_files инструмента
+@freezed
+abstract class ListFilesArgs with _$ListFilesArgs {
+  const factory ListFilesArgs({
+    required String path,
+    @Default(false) bool recursive,
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'include_hidden') @Default(false) bool includeHidden,
+    String? pattern,
+  }) = _ListFilesArgs;
+
+  factory ListFilesArgs.fromJson(Map<String, dynamic> json) =>
+      _$ListFilesArgsFromJson(json);
+}
+
+/// Информация о файле или директории
+@freezed
+abstract class FileItem with _$FileItem {
+  const factory FileItem({
+    required String name,
+    required String path,
+    required String type,
+    int? size,
+    DateTime? modified,
+  }) = _FileItem;
+
+  factory FileItem.fromJson(Map<String, dynamic> json) =>
+      _$FileItemFromJson(json);
+}
+
+/// Результат выполнения list_files операции
+@freezed
+abstract class ListFilesResult with _$ListFilesResult {
+  const factory ListFilesResult({
+    required bool success,
+    required String path,
+    required List<FileItem> items,
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'total_count')
+    required int totalCount,
+    String? error,
+  }) = _ListFilesResult;
+
+  factory ListFilesResult.fromJson(Map<String, dynamic> json) =>
+      _$ListFilesResultFromJson(json);
+
+  /// Создает успешный результат
+  factory ListFilesResult.successResult({
+    required String path,
+    required List<FileItem> items,
+  }) {
+    return ListFilesResult(
+      success: true,
+      path: path,
+      items: items,
+      totalCount: items.length,
+    );
+  }
+
+  /// Создает результат с ошибкой
+  factory ListFilesResult.failure({
+    required String path,
+    required String error,
+  }) {
+    return ListFilesResult(
+      success: false,
+      path: path,
+      items: const [],
+      totalCount: 0,
+      error: error,
+    );
+  }
+}
+
+// ============================================================================
+// Create Directory Tool Models
+// ============================================================================
+
+/// Аргументы для create_directory инструмента
+@freezed
+abstract class CreateDirectoryArgs with _$CreateDirectoryArgs {
+  const factory CreateDirectoryArgs({
+    required String path,
+    @Default(true) bool recursive,
+  }) = _CreateDirectoryArgs;
+
+  factory CreateDirectoryArgs.fromJson(Map<String, dynamic> json) =>
+      _$CreateDirectoryArgsFromJson(json);
+}
+
+/// Результат выполнения create_directory операции
+@freezed
+abstract class CreateDirectoryResult with _$CreateDirectoryResult {
+  const factory CreateDirectoryResult({
+    required bool success,
+    required String path,
+    required bool created,
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'already_exists')
+    required bool alreadyExists,
+    String? error,
+  }) = _CreateDirectoryResult;
+
+  factory CreateDirectoryResult.fromJson(Map<String, dynamic> json) =>
+      _$CreateDirectoryResultFromJson(json);
+
+  /// Создает успешный результат
+  factory CreateDirectoryResult.successResult({
+    required String path,
+    required bool created,
+    required bool alreadyExists,
+  }) {
+    return CreateDirectoryResult(
+      success: true,
+      path: path,
+      created: created,
+      alreadyExists: alreadyExists,
+    );
+  }
+
+  /// Создает результат с ошибкой
+  factory CreateDirectoryResult.failure({
+    required String path,
+    required String error,
+  }) {
+    return CreateDirectoryResult(
+      success: false,
+      path: path,
+      created: false,
+      alreadyExists: false,
+      error: error,
+    );
+  }
+}
+
+// ============================================================================
+// Run Command Tool Models
+// ============================================================================
+
+/// Arguments for run_command tool
+@freezed
+abstract class RunCommandArgs with _$RunCommandArgs {
+  const factory RunCommandArgs({
+    required String command,
+    @Default('.') String cwd,
+    @Default(60) int timeout,
+    @Default(false) bool shell,
+  }) = _RunCommandArgs;
+
+  factory RunCommandArgs.fromJson(Map<String, dynamic> json) =>
+      _$RunCommandArgsFromJson(json);
+}
+
+/// Result of run_command operation
+@freezed
+abstract class RunCommandResult with _$RunCommandResult {
+  const factory RunCommandResult({
+    required String command,
+    required int exitCode,
+    required String stdout,
+    required String stderr,
+    required int durationMs,
+    required bool timedOut,
+  }) = _RunCommandResult;
+
+  factory RunCommandResult.fromJson(Map<String, dynamic> json) =>
+      _$RunCommandResultFromJson(json);
+
+  const RunCommandResult._();
+
+  bool get success => exitCode == 0 && !timedOut;
+
+  Map<String, dynamic> toToolResult() => {
+    'command': command,
+    'exit_code': exitCode,
+    'stdout': stdout,
+    'stderr': stderr,
+    'duration_ms': durationMs,
+    'timed_out': timedOut,
+    'success': success,
+  };
+}
+
+// ============================================================================
+// Search In Code Tool Models
+// ============================================================================
+
+/// Arguments for search_in_code tool
+@freezed
+abstract class SearchInCodeArgs with _$SearchInCodeArgs {
+  const factory SearchInCodeArgs({
+    required String query,
+    @Default('.') String path,
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'file_pattern')
+    String? filePattern,
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'case_sensitive')
+    @Default(false)
+    bool caseSensitive,
+    @Default(false) bool regex,
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'max_results')
+    @Default(100)
+    int maxResults,
+  }) = _SearchInCodeArgs;
+
+  factory SearchInCodeArgs.fromJson(Map<String, dynamic> json) =>
+      _$SearchInCodeArgsFromJson(json);
+}
+
+/// Single search match
+@freezed
+abstract class SearchMatch with _$SearchMatch {
+  const factory SearchMatch({
+    required String file,
+    required int line,
+    required int column,
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'matched_text')
+    required String matchedText,
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'line_content')
+    required String lineContent,
+  }) = _SearchMatch;
+
+  factory SearchMatch.fromJson(Map<String, dynamic> json) =>
+      _$SearchMatchFromJson(json);
+}
+
+/// Result of search_in_code operation
+@freezed
+abstract class SearchInCodeResult with _$SearchInCodeResult {
+  const factory SearchInCodeResult({
+    required String query,
+    required List<SearchMatch> matches,
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'total_matches')
+    required int totalMatches,
+    required bool truncated,
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'duration_ms')
+    required int durationMs,
+  }) = _SearchInCodeResult;
+
+  factory SearchInCodeResult.fromJson(Map<String, dynamic> json) =>
+      _$SearchInCodeResultFromJson(json);
+
+  const SearchInCodeResult._();
+
+  Map<String, dynamic> toToolResult() => {
+    'query': query,
+    'matches': matches.map((m) => m.toJson()).toList(),
+    'total_matches': totalMatches,
+    'truncated': truncated,
+    'duration_ms': durationMs,
+  };
 }

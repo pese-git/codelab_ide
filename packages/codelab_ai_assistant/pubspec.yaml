@@ -27,6 +27,7 @@ dependencies:
   path: ^1.9.1
   codelab_core: any
   logger: ^2.5.0
+  glob: ^2.1.2
 
 dev_dependencies:
   build_runner: ^2.5.4
