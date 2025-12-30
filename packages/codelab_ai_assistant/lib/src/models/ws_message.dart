@@ -37,6 +37,16 @@ sealed class WSMessage with _$WSMessage {
     String? error,
   }) = WSToolResult;
 
+  const factory WSMessage.agentSwitched({
+    String? content,
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'from_agent') String? fromAgent,
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'to_agent') String? toAgent,
+    String? reason,
+    String? confidence,
+  }) = WSAgentSwitchedMessage;
+
   const factory WSMessage.error({String? content}) = WSError;
 
   factory WSMessage.fromJson(Map<String, dynamic> json) =>

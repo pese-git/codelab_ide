@@ -68,6 +68,28 @@ Map<String, dynamic> _$WSToolResultToJson(WSToolResult instance) =>
       'type': instance.$type,
     };
 
+WSAgentSwitchedMessage _$WSAgentSwitchedMessageFromJson(
+  Map<String, dynamic> json,
+) => WSAgentSwitchedMessage(
+  content: json['content'] as String?,
+  fromAgent: json['from_agent'] as String?,
+  toAgent: json['to_agent'] as String?,
+  reason: json['reason'] as String?,
+  confidence: json['confidence'] as String?,
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$WSAgentSwitchedMessageToJson(
+  WSAgentSwitchedMessage instance,
+) => <String, dynamic>{
+  'content': instance.content,
+  'from_agent': instance.fromAgent,
+  'to_agent': instance.toAgent,
+  'reason': instance.reason,
+  'confidence': instance.confidence,
+  'type': instance.$type,
+};
+
 WSError _$WSErrorFromJson(Map<String, dynamic> json) => WSError(
   content: json['content'] as String?,
   $type: json['type'] as String?,

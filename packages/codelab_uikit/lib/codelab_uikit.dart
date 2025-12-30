@@ -8,6 +8,7 @@ library;
 // МОДЕЛИ
 export 'models/file_node.dart';
 export 'models/editor_tab.dart';
+export 'models/agent_info.dart';
 
 // WIDGETS: PANELS
 export 'widgets/panels/main_panel_area.dart';

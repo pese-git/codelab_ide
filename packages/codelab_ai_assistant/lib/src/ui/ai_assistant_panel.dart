@@ -133,6 +133,7 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
         assistantMessage: (_, _) => Alignment.centerLeft,
         toolCall: (_, _, _, _) => Alignment.centerLeft,
         toolResult: (_, _, _, _) => Alignment.centerLeft,
+        agentSwitched: (_, _, _, _, _) => Alignment.center,
         error: (_) => Alignment.center,
       ),
       child: Card(
@@ -141,6 +142,7 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
           assistantMessage: (_, _) => Colors.grey[30],
           toolCall: (_, _, _, _) => Colors.orange.normal,
           toolResult: (_, _, _, _) => Colors.green.normal,
+          agentSwitched: (_, _, _, _, _) => Colors.purple.normal,
           error: (_) => Colors.red.normal,
         ),
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
@@ -152,6 +154,8 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
                 'tool_call: $tool ($args)${requiresApproval ? " [requires approval]" : ""}',
             toolResult: (callId, toolName, result, error) =>
                 error ?? (result != null ? result.toString() : 'No result'),
+            agentSwitched: (content, fromAgent, toAgent, reason, confidence) =>
+                '🔄 Agent switched: $fromAgent → $toAgent\n$content\nReason: $reason',
             error: (content) => 'Ошибка: ${content ?? "Unknown error"}',
           ),
         ),
