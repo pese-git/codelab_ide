@@ -1,3 +1,4 @@
+import 'package:code_forge/code_forge.dart';
 import 'package:codelab_uikit/widgets/panels/editor_panel/editor_panel_toolbar.dart';
 
 import '../../../models/editor_tab.dart';
@@ -161,6 +162,7 @@ class EditorPanelState extends State<EditorPanel> {
         filePath: 'lib/new_file.dart',
         content:
             '// New file content\nvoid main() {\n  print("Hello World!");\n}',
+        workspacePath: '',
       );
       pane.tabs.add(newTab);
       pane.selectedIndex = pane.tabs.length - 1;
@@ -184,9 +186,11 @@ class EditorPanelState extends State<EditorPanel> {
   // --- API внешнего открытия файла ---
   void openFile({
     required String filePath,
+    required String workspacePath,
     required String title,
     required String content,
     EditorTabsPane? targetPane,
+    LspConfig? lspConfig,
   }) {
     setState(() {
       final pane =
@@ -201,6 +205,8 @@ class EditorPanelState extends State<EditorPanel> {
             title: title,
             filePath: filePath,
             content: content,
+            workspacePath: workspacePath,
+            lspConfig: lspConfig,
           ),
         );
         pane.selectedIndex = pane.tabs.length - 1;
@@ -338,10 +344,13 @@ class EditorPanelState extends State<EditorPanel> {
         onOpenFile: (fileNode) {
           openFile(
             filePath: fileNode.path,
+            workspacePath: fileNode.workspacePath,
             title: fileNode.name,
             content:
                 '// Stub content for drag-and-drop: ${fileNode.name}\nvoid main() {\n  print("Hello, \\${fileNode.name}!");\n}',
             targetPane: node,
+            // LSP конфигурация будет передаваться из EditorBloc при реальном открытии файла
+            lspConfig: null,
           );
         },
         onFocused: () {

@@ -2,10 +2,16 @@ import 'dart:io';
 import 'package:codelab_core/codelab_core.dart';
 import 'package:fpdart/fpdart.dart';
 
+/// Defines the run mode for launching executables
+enum RunMode {
+  debug,
+  release,
+}
+
 abstract interface class RunService {
-  TaskEither<CommandError, String> runCommand(String command, {String? workingDirectory});
-  TaskEither<CommandError, Process> startProcess(String command, {String? workingDirectory});
-  Either<CommandError, String> getRunCommand(String filePath);
+  TaskEither<CommandError, String> runCommand(String command, {String? workingDirectory, RunMode runMode});
+  TaskEither<CommandError, Process> startProcess(String command, {String? workingDirectory, RunMode runMode});
+  Either<CommandError, String> getRunCommand(String filePath, {RunMode runMode});
 }
 
 class RunServiceImpl implements RunService {
@@ -15,7 +21,7 @@ class RunServiceImpl implements RunService {
     : _fileService = fileService;
 
   @override
-  TaskEither<CommandError, String> runCommand(String command, {String? workingDirectory}) {
+  TaskEither<CommandError, String> runCommand(String command, {String? workingDirectory, RunMode runMode = RunMode.debug}) {
     return TaskEither<CommandError, String>.tryCatch(
       () async {
         final result = await Process.run(
@@ -46,6 +52,7 @@ class RunServiceImpl implements RunService {
   TaskEither<CommandError, Process> startProcess(
     String command, {
     String? workingDirectory,
+    RunMode runMode = RunMode.debug,
   }) {
     return TaskEither<CommandError, Process>.tryCatch(
       () async {
@@ -62,12 +69,12 @@ class RunServiceImpl implements RunService {
   }
 
   @override
-  Either<CommandError, String> getRunCommand(String filePath) {
+  Either<CommandError, String> getRunCommand(String filePath, {RunMode runMode = RunMode.debug}) {
     final extension = _fileService.getFileExtension(filePath);
 
     switch (extension) {
       case 'dart':
-        return Right('dart run $filePath');
+        return Right('dart run $filePath'); // <--- на следующем этапе здесь появится switch по runMode
       case 'py':
         return Right('python $filePath');
       case 'js':

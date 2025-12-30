@@ -14,5 +14,6 @@ export 'src/services/run_service.dart';
 export 'src/utils/project_context.dart';
 export 'src/services/global_config_service.dart';
 export 'src/logger/codelab_logger.dart';
+export 'src/utils/path_validator.dart';
 
 // TODO: Export any libraries intended for clients of this package.

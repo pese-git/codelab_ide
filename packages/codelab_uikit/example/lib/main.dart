@@ -55,6 +55,7 @@ class _IdeRootPageState extends State<IdeRootPage> {
         filePath: node.path,
         title: node.name,
         content: content,
+        workspacePath: node.workspacePath,
       );
     }
   }
@@ -65,6 +66,7 @@ class _IdeRootPageState extends State<IdeRootPage> {
       title: 'sample_${_fileCounter}.dart',
       content:
           '// Sample file $_fileCounter\nvoid main() {\n  print("Hello from GlobalKey!");\n}',
+      workspacePath: '/',
     );
     setState(() {
       _fileCounter++;
@@ -118,16 +120,30 @@ class _IdeRootPageState extends State<IdeRootPage> {
     isDirectory: true,
     children: [
       FileNode(
+        workspacePath: '/',
         path: '/project/lib',
         name: 'lib',
         isDirectory: true,
         children: [
-          FileNode(path: '/project/lib/main.dart', name: 'main.dart'),
-          FileNode(path: '/project/lib/home_page.dart', name: 'home_page.dart'),
+          FileNode(
+            workspacePath: '/',
+            path: '/project/lib/main.dart',
+            name: 'main.dart',
+          ),
+          FileNode(
+            workspacePath: '/',
+            path: '/project/lib/home_page.dart',
+            name: 'home_page.dart',
+          ),
         ],
       ),
-      FileNode(path: '/project/README.md', name: 'README.md'),
+      FileNode(
+        workspacePath: '/',
+        path: '/project/README.md',
+        name: 'README.md',
+      ),
     ],
+    workspacePath: '/',
   );
 
   @override
@@ -172,6 +188,7 @@ class _IdeRootPageState extends State<IdeRootPage> {
                           editorPanelKey.currentState?.openFile(
                             filePath: node.path,
                             title: node.name,
+                            workspacePath: node.workspacePath,
                             content: content,
                           );
                         }

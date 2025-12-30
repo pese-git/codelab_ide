@@ -1,5 +1,7 @@
 import 'package:cherrypick/cherrypick.dart';
+import 'package:code_forge/code_forge.dart';
 import 'package:codelab_core/codelab_core.dart';
+import 'package:codelab_engine/src/services/lsp_service.dart';
 import 'package:codelab_uikit/codelab_uikit.dart' as uikit;
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart';
@@ -27,6 +29,7 @@ class EditorPanelState extends State<EditorPanel> {
   late final GlobalKey<uikit.EditorPanelState> _internalEditorPanelKey;
   final _bloc = EditorBloc(
     fileService: CherryPick.openRootScope().resolve<FileService>(),
+    lspService: CherryPick.openRootScope().resolve<LspService>(),
   );
 
   @override
@@ -73,7 +76,7 @@ class EditorPanelState extends State<EditorPanel> {
                     'EditorPanel: Save tab pressed for file ${tab.filePath}',
                     tag: 'editor_panel',
                   );
-                  context.read<EditorBloc>().add(EditorEvent.saveFile(tab));
+                  //context.read<EditorBloc>().add(EditorEvent.saveFile(tab));
                 },
               );
             },
@@ -92,6 +95,8 @@ class EditorPanelState extends State<EditorPanel> {
                     filePath: s.filePath,
                     title: s.filePath.split('/').last,
                     content: s.content,
+                    workspacePath: s.workspacePath,
+                    lspConfig: s.lspConfig,
                   );
                 },
                 fileChanged: (s) {
@@ -99,11 +104,13 @@ class EditorPanelState extends State<EditorPanel> {
                     'EditorPanel: fileChanged for ${s.filePath}',
                     tag: 'editor_panel',
                   );
-                  //_internalEditorPanelKey.currentState?.openFile(
-                  //  filePath: s.filePath,
-                  //  title: s.filePath.split('/').last,
-                  //  content: s.content,
-                  //);
+                  _internalEditorPanelKey.currentState?.openFile(
+                    filePath: s.filePath,
+                    title: s.filePath.split('/').last,
+                    content: s.content,
+                    workspacePath: s.workspacePath,
+                    lspConfig: s.lspConfig,
+                  );
                   // Можно добавить уведомление/snackbar о том, что файл изменён
                 },
                 fileDeleted: (s) {
@@ -160,15 +167,27 @@ class EditorPanelState extends State<EditorPanel> {
     );
   }
 
-  void openFile({required String filePath}) {
+  void openFile({
+    required String filePath,
+    required String workspacePath,
+    LspConfig? lspConfig,
+  }) {
     codelabLogger.d(
       'EditorPanel: openFile called for $filePath',
       tag: 'editor_panel',
     );
+    _internalEditorPanelKey.currentState?.openFile(
+      filePath: filePath,
+      title: filePath.split('/').last,
+      content: '',
+      workspacePath: workspacePath,
+      lspConfig: lspConfig,
+    );
     // Делегируем открытие файла бизнес-логике
-    _bloc.add(EditorEvent.openFile(filePath));
+    //_bloc.add(EditorEvent.openFile(filePath, workspacePath));
   }
 
+  @Deprecated('Do not use')
   void _saveActiveTab(BuildContext context) {
     final activeTab = _internalEditorPanelKey.currentState?.activeTab;
     if (activeTab != null) {

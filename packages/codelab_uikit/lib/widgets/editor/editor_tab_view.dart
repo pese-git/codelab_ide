@@ -10,6 +10,7 @@ class EditorTabView extends StatefulWidget {
   final ValueChanged<int>? onTabClosed;
   final ValueChanged<EditorTab>? onTabContentChanged;
   final ValueChanged<List<EditorTab>>? onTabsReordered;
+  @Deprecated('Do not use')
   final ValueChanged<EditorTab>? onTabSave;
 
   const EditorTabView({
@@ -28,6 +29,49 @@ class EditorTabView extends StatefulWidget {
 }
 
 class _EditorTabViewState extends State<EditorTabView> {
+  final Map<String, EditorCodeFieldState> _editorStates = {};
+
+  void _registerEditorState(String filePath, EditorCodeFieldState state) {
+    _editorStates[filePath] = state;
+  }
+
+  // Очищаем неиспользуемые состояния редакторов
+  void _cleanupUnusedStates() {
+    final openFilePaths = widget.tabs.map((tab) => tab.filePath).toSet();
+    _editorStates.removeWhere(
+      (filePath, _) => !openFilePaths.contains(filePath),
+    );
+  }
+
+  @override
+  void dispose() {
+    // Очищаем все состояния при уничтожении виджета
+    _editorStates.clear();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(EditorTabView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Очищаем состояния закрытых вкладок
+    if (oldWidget.tabs.length != widget.tabs.length) {
+      _cleanupUnusedStates();
+    }
+  }
+
+  void _saveTab(EditorTab tab) {
+    // Получаем состояние редактора по пути файла
+    final editorState = _editorStates[tab.filePath];
+    if (editorState != null) {
+      // Вызываем сохранение файла
+      editorState.saveFile();
+      // Обновляем состояние таба (убираем флаг "грязности")
+      //final updatedTab = tab.copyWith(isDirty: false);
+      // Уведомляем родительский виджет о сохранении
+      //widget.onTabSave?.call(updatedTab);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.tabs.isEmpty) {
@@ -38,11 +82,14 @@ class _EditorTabViewState extends State<EditorTabView> {
       tabs: [
         for (final tab in widget.tabs)
           Tab(
+            key: ValueKey(tab.filePath),
             text: Text('${tab.title}${tab.isDirty ? ' •' : ''}'),
             semanticLabel: tab.title,
             icon: const Icon(FluentIcons.document),
             body: _buildEditorContent(tab),
             onClosed: () {
+              // Удаляем состояние редактора при закрытии вкладки
+              _editorStates.remove(tab.filePath);
               final idx = widget.tabs.indexOf(tab);
               widget.onTabClosed?.call(idx);
             },
@@ -113,7 +160,7 @@ class _EditorTabViewState extends State<EditorTabView> {
                 ),
                 IconButton(
                   icon: const WindowsIcon(WindowsIcons.save, size: 18.0),
-                  onPressed: () => widget.onTabSave?.call(tab),
+                  onPressed: () => _saveTab(tab),
                 ),
               ],
             ),
@@ -124,8 +171,12 @@ class _EditorTabViewState extends State<EditorTabView> {
                   border: Border.all(color: const Color(0xFF323130)),
                 ),
                 child: EditorCodeField(
-                  content: tab.content,
+                  key: ValueKey(tab.filePath),
                   filePath: tab.filePath,
+                  workspacePath: tab.workspacePath,
+                  lspConfig: tab.lspConfig,
+                  onStateCreated: (state) =>
+                      _registerEditorState(tab.filePath, state),
                   onChanged: (newText) {
                     final updatedTab = tab.copyWith(
                       content: newText,

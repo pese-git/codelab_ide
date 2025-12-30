@@ -1,4 +1,5 @@
 import 'package:cherrypick/cherrypick.dart';
+import 'package:code_forge/code_forge.dart';
 import 'package:codelab_ai_assistant/codelab_ai_assistant.dart';
 import 'package:codelab_engine/codelab_engine.dart' as engine;
 import 'package:codelab_terminal/codelab_terminal.dart';
@@ -31,6 +32,10 @@ class _IdeRootPageState extends State<IdeRootPage> {
   final GlobalKey<engine.ExplorerPanelState> explorerKey =
       GlobalKey<engine.ExplorerPanelState>();
 
+  // Создаём новый инстанс блока из DI (factory!)
+  late AiAgentBloc aiAgentBloc = CherryPick.openRootScope()
+      .resolve<AiAgentBloc>();
+
   @override
   Widget build(BuildContext context) {
     return ScaffoldPage(
@@ -46,6 +51,7 @@ class _IdeRootPageState extends State<IdeRootPage> {
         builder: (context, constraints) {
           final panelHeight = constraints.maxHeight;
 
+          // ignore: unused_local_variable
           final editorHeight = panelHeight * _editorPanelFraction;
           final terminalHeight = panelHeight * (1 - _editorPanelFraction) - 8;
 
@@ -66,11 +72,18 @@ class _IdeRootPageState extends State<IdeRootPage> {
                     selectedIndex: _selectedSidebarIndex,
                     explorerSlot: engine.ExplorerPanel(
                       key: explorerKey,
-                      onFileOpen: (String filePath) {
-                        editorPanelKey.currentState?.openFile(
-                          filePath: filePath,
-                        );
-                      },
+                      onFileOpen:
+                          (
+                            String filePath,
+                            String workspacePath,
+                            LspConfig? lspConfig,
+                          ) {
+                            editorPanelKey.currentState?.openFile(
+                              filePath: filePath,
+                              workspacePath: workspacePath,
+                              lspConfig: lspConfig,
+                            );
+                          },
                     ),
                   )
                 : null,
@@ -150,14 +163,16 @@ class _IdeRootPageState extends State<IdeRootPage> {
                       if (_aiPanelVisible)
                         SizedBox(
                           width: _aiPanelWidth,
-                          child: const AIAssistantPanel(),
+                          child: AiAssistantPanel(bloc: aiAgentBloc),
                         ),
                     ],
                   ),
                 ),
               ],
             ),
-            rightPanel: uikit.RightPanel(aiSlot: const AIAssistantPanel()),
+            rightPanel: uikit.RightPanel(
+              aiSlot: AiAssistantPanel(bloc: aiAgentBloc),
+            ),
             rightPanelWidth: _aiPanelWidth,
             rightPanelSplitter: _aiPanelVisible
                 ? uikit.HorizontalSplitter(

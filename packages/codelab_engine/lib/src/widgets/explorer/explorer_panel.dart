@@ -1,6 +1,8 @@
 import 'package:cherrypick/cherrypick.dart';
+import 'package:code_forge/code_forge.dart';
 import 'package:codelab_core/codelab_core.dart';
 import 'package:codelab_engine/codelab_engine.dart';
+import 'package:codelab_engine/src/services/lsp_service.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:codelab_uikit/codelab_uikit.dart'
     as uikit
@@ -11,7 +13,12 @@ import 'explorer_bloc.dart';
 
 class ExplorerPanel extends StatefulWidget {
   final GlobalKey<uikit.ExplorerPanelState>? explorerKey;
-  final void Function(String filePath) onFileOpen;
+  final void Function(
+    String filePath,
+    String workspacePath,
+    LspConfig? lspConfig,
+  )
+  onFileOpen;
 
   ExplorerPanel({super.key, this.explorerKey, required this.onFileOpen});
 
@@ -26,6 +33,7 @@ class ExplorerPanelState extends State<ExplorerPanel> {
         .resolve<ProjectManagerService>(),
     fileService: CherryPick.openRootScope().resolve<FileService>(),
     fileSyncService: CherryPick.openRootScope().resolve<FileSyncService>(),
+    lspService: CherryPick.openRootScope().resolve<LspService>(),
   );
 
   @override
@@ -49,7 +57,11 @@ class ExplorerPanelState extends State<ExplorerPanel> {
             },
             openedFile: (s) {
               if (!s.node.isDirectory) {
-                widget.onFileOpen.call(s.node.path);
+                widget.onFileOpen.call(
+                  s.node.path,
+                  s.node.workspacePath,
+                  s.lspConfig,
+                );
               }
             },
             nodeExpanded: (s) {

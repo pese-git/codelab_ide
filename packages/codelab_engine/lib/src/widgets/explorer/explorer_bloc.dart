@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:code_forge/code_forge.dart';
 import 'package:codelab_core/codelab_core.dart' as core;
 import 'package:codelab_engine/codelab_engine.dart';
+import 'package:codelab_engine/src/services/lsp_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:codelab_core/codelab_core.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -25,8 +27,10 @@ class ExplorerState with _$ExplorerState {
   const factory ExplorerState.initial() = Initial;
   const factory ExplorerState.fileTreeLoaded(uikit.FileNode fileTree) =
       FileTreeLoaded;
-  const factory ExplorerState.openedFile({required uikit.FileNode node}) =
-      OpenedFile;
+  const factory ExplorerState.openedFile({
+    required uikit.FileNode node,
+    LspConfig? lspConfig,
+  }) = OpenedFile;
   const factory ExplorerState.nodeExpanded(String path) = NodeExpanded;
   const factory ExplorerState.nodeCollapsed(String path) = NodeCollapsed;
   const factory ExplorerState.error({required String message, Object? error}) =
@@ -37,6 +41,7 @@ class ExplorerBloc extends Bloc<ExplorerEvent, ExplorerState> {
   final core.ProjectManagerService _projectManagerService;
   final core.FileService _fileService;
   final FileSyncService _fileSyncService;
+  final LspService _lspService;
   late final StreamSubscription<core.ProjectConfig?> _projectSubscription;
   late final StreamSubscription<String> _fileDeletedSubscription;
   late final StreamSubscription<void> _fileTreeChangedSubscription;
@@ -45,9 +50,11 @@ class ExplorerBloc extends Bloc<ExplorerEvent, ExplorerState> {
     required core.ProjectManagerService projectManagerService,
     required core.FileService fileService,
     required FileSyncService fileSyncService,
+    required LspService lspService,
   }) : _projectManagerService = projectManagerService,
        _fileService = fileService,
        _fileSyncService = fileSyncService,
+       _lspService = lspService,
        super(const ExplorerState.initial()) {
     on<LoadFileTree>((event, emit) async {
       final result = _fileService.loadProjectTree(event.projectPath);
@@ -64,7 +71,12 @@ class ExplorerBloc extends Bloc<ExplorerEvent, ExplorerState> {
     });
 
     on<OpenFile>((event, emit) async {
-      emit(ExplorerState.openedFile(node: event.node));
+      emit(
+        ExplorerState.openedFile(
+          node: event.node,
+          lspConfig: _lspService.config,
+        ),
+      );
     });
 
     on<ExpandNode>((event, emit) {
@@ -107,5 +119,6 @@ class ExplorerBloc extends Bloc<ExplorerEvent, ExplorerState> {
     name: node.name,
     isDirectory: node.isDirectory,
     children: node.children.map(_coreToUikit).toList(),
+    workspacePath: node.workspacePath,
   );
 }

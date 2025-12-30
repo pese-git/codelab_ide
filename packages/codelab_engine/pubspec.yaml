@@ -6,7 +6,7 @@ version: 1.0.0
 resolution: workspace
 
 environment:
-  sdk: ^3.9.0
+  sdk: '>=3.10.1 <4.0.0'
 
 # Add regular dependencies here.
 dependencies:
@@ -30,12 +30,13 @@ dependencies:
   xterm: ^4.0.0
   logger: ^2.6.2
   flutter_highlight: ^0.7.0
-  flutter_code_editor: ^0.3.5
+  #flutter_code_editor: ^0.3.5
   cherrypick: ^3.0.2
   cherrypick_annotations: ^3.0.1
   cherrypick_flutter: ^3.0.2
   fluent_ui: ^4.13.0
   fpdart: ^1.2.0
+  code_forge: ^1.4.0
 
 
 dev_dependencies:

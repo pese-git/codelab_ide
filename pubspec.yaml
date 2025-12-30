@@ -1,7 +1,7 @@
 name: codelab_ide_workspace
 publish_to: none
 environment:
-  sdk: ^3.9.0
+  sdk: '>=3.10.1 <4.0.0'
 workspace:
   - apps/codelab_ide
   - packages/codelab_uikit
@@ -25,5 +25,7 @@ melos:
       - "packages/**"
 
   scripts:
+    outdated:
+      run: melos exec -- dart pub outdated
     generate:
       run: melos exec -c 1 --depends-on build_runner -- dart run build_runner build  --delete-conflicting-outputs
