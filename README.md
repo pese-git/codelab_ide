@@ -1,232 +1,623 @@
 # CodeLab IDE
 
-A cross-platform IDE built with Flutter for educational coding labs and development. Built with a modular monorepo architecture using Melos for package management.
+Кроссплатформенная IDE, построенная на Flutter для образовательных целей и разработки. Использует модульную монорепозиторную архитектуру с управлением через Melos.
 
-## Features
+## Возможности
 
-### ✅ MVP Features
-- **File Tree Navigation** - Browse and navigate project structure
-- **Code Editor** - Edit files with syntax highlighting for multiple languages
-- **Built-in Terminal** - Execute commands and run scripts
-- **Cross-platform** - Runs on Windows, Linux, and macOS
-- **Modular Architecture** - Clean separation of concerns with dedicated packages
+### ✅ MVP Функции
+- **Навигация по дереву файлов** - Просмотр и навигация по структуре проекта
+- **Редактор кода** - Редактирование файлов с подсветкой синтаксиса для множества языков
+- **Встроенный терминал** - Выполнение команд и запуск скриптов
+- **Кроссплатформенность** - Работает на Windows, Linux и macOS
+- **Модульная архитектура** - Чистое разделение ответственности с выделенными пакетами
 
-### 🎯 Core Functionality
-- Open and browse project directories
-- Edit files with real-time syntax highlighting
-- Save files with keyboard shortcuts
-- Execute commands in integrated terminal
-- Resizable panels for optimal workflow
-- BLoC state management for predictable state updates
-- Dependency injection with CherryPick
-- Functional programming patterns with FPDart
+### 🎯 Основной функционал
+- Открытие и просмотр директорий проектов
+- Редактирование файлов с подсветкой синтаксиса в реальном времени
+- Сохранение файлов с помощью горячих клавиш
+- Выполнение команд в интегрированном терминале
+- Изменяемые размеры панелей для оптимального рабочего процесса
+- Управление состоянием через BLoC для предсказуемых обновлений
+- Внедрение зависимостей с помощью CherryPick
+- Паттерны функционального программирования с FPDart
 
-## Supported Languages
+## Скриншоты
 
-The IDE supports syntax highlighting for:
-- **Dart** -  support
-- **Python** -  support  
-- **JavaScript/TypeScript** -  support
-- **Java** -  support
-- **C/C++** -  support
-- **HTML/CSS** -  support
-- **JSON/YAML** -  support
-- **Markdown** -  support
-- **And more...**
+### Приветственный экран
 
-## Getting Started
+![CodeLab IDE - Приветственный экран](docs/images/screenshot-welcome.png)
 
-### Prerequisites
-- Flutter SDK (version 3.9.0 or higher)
-- Dart SDK
-- Melos (for monorepo management)
+*Приветственный экран с возможностью открыть существующий проект, создать новый или клонировать из Git репозитория.*
 
-### Installation
+### Главный интерфейс с AI ассистентом
 
-1. Clone the repository:
+![CodeLab IDE - Главный интерфейс](docs/images/screenshot-main.png)
+
+*Основной интерфейс IDE с открытым проектом, редактором кода с подсветкой синтаксиса Dart, встроенным терминалом и AI ассистентом для помощи в разработке.*
+
+
+
+## Поддерживаемые языки
+
+IDE поддерживает подсветку синтаксиса для:
+- **Dart** - полная поддержка
+- **Python** - полная поддержка
+- **JavaScript/TypeScript** - полная поддержка
+- **Java** - полная поддержка
+- **C/C++** - полная поддержка
+- **HTML/CSS** - полная поддержка
+- **JSON/YAML** - полная поддержка
+- **Markdown** - полная поддержка
+- **И многие другие...**
+
+## Настройка окружения для разработки
+
+### Системные требования
+
+#### Общие требования
+- **Dart SDK**: версия 3.10.1 или выше
+- **Flutter SDK**: версия 3.38.5 (рекомендуется использовать FVM)
+- **Git**: для клонирования репозитория
+- **Минимум 4 GB RAM** (рекомендуется 8 GB)
+- **Свободное место на диске**: минимум 5 GB
+
+#### Требования для Windows
+- **ОС**: Windows 10 или выше (64-bit)
+- **Visual Studio 2022** или **Visual Studio Build Tools 2022**
+  - Компоненты: "Desktop development with C++"
+  - Windows 10 SDK
+- **PowerShell 5.0** или выше
+
+#### Требования для macOS
+- **ОС**: macOS 10.15 (Catalina) или выше
+- **Xcode**: версия 13.0 или выше
+- **CocoaPods**: для управления зависимостями
+  ```bash
+  sudo gem install cocoapods
+  ```
+- **Command Line Tools для Xcode**:
+  ```bash
+  xcode-select --install
+  ```
+
+#### Требования для Linux
+- **ОС**: Ubuntu 20.04 LTS или выше (или эквивалентный дистрибутив)
+- **Необходимые библиотеки**:
+  ```bash
+  sudo apt-get update
+  sudo apt-get install -y \
+    clang cmake ninja-build pkg-config \
+    libgtk-3-dev liblzma-dev libstdc++-12-dev
+  ```
+
+### Установка Flutter с использованием FVM (рекомендуется)
+
+FVM (Flutter Version Management) позволяет управлять несколькими версиями Flutter в одном проекте.
+
+#### 1. Установка FVM
+
+**macOS/Linux:**
+```bash
+# Используя Homebrew (macOS)
+brew tap leoafarias/fvm
+brew install fvm
+
+# Или используя Dart pub
+dart pub global activate fvm
+```
+
+**Windows:**
+```powershell
+# Используя Chocolatey
+choco install fvm
+
+# Или используя Dart pub
+dart pub global activate fvm
+```
+
+#### 2. Настройка переменных окружения
+
+Добавьте путь к глобальным пакетам Dart в PATH:
+
+**macOS/Linux (bash/zsh):**
+```bash
+# Добавьте в ~/.bashrc или ~/.zshrc
+export PATH="$PATH":"$HOME/.pub-cache/bin"
+```
+
+**Windows:**
+```powershell
+# Добавьте в переменные окружения системы:
+# %USERPROFILE%\AppData\Local\Pub\Cache\bin
+```
+
+### Установка проекта
+
+#### 1. Клонирование репозитория
+
 ```bash
 git clone <repository-url>
 cd codelab_ide
 ```
 
-2. Install Melos globally:
+#### 2. Установка Flutter через FVM
+
+```bash
+# Установить версию Flutter, указанную в .fvmrc
+fvm install
+
+# Использовать установленную версию
+fvm use 3.38.5
+```
+
+#### 3. Установка Melos
+
+Melos используется для управления монорепозиторием:
+
 ```bash
 dart pub global activate melos
 ```
 
-3. Bootstrap the workspace:
+#### 4. Инициализация workspace
+
 ```bash
+# Установить зависимости для всех пакетов
 melos bootstrap
 ```
 
-4. Run the application:
+Эта команда:
+- Установит все зависимости для каждого пакета
+- Создаст симлинки между локальными пакетами
+- Выполнит необходимую кодогенерацию
+
+#### 5. Генерация кода (если требуется)
+
+```bash
+# Запустить build_runner для всех пакетов
+melos generate
+```
+
+## Запуск IDE
+
+### Запуск в режиме разработки
+
+**Используя Melos (рекомендуется):**
 ```bash
 melos run:codelab_ide
 ```
 
-### Development Commands
+**Используя Flutter напрямую:**
+```bash
+cd apps/codelab_ide
+fvm flutter run
+```
+
+**Выбор конкретной платформы:**
+```bash
+# macOS
+fvm flutter run -d macos
+
+# Windows
+fvm flutter run -d windows
+
+# Linux
+fvm flutter run -d linux
+```
+
+### Запуск с hot reload
+
+При запуске через `flutter run` автоматически включается hot reload:
+- Нажмите `r` для hot reload
+- Нажмите `R` для hot restart
+- Нажмите `q` для выхода
+
+## Сборка проекта
+
+### Сборка для Windows
+
+**Требования:**
+- Visual Studio 2022 с компонентами C++
+- Windows 10 SDK
+
+**Команды сборки:**
+```bash
+cd apps/codelab_ide
+
+# Debug сборка
+fvm flutter build windows --debug
+
+# Release сборка
+fvm flutter build windows --release
+
+# Profile сборка (для профилирования)
+fvm flutter build windows --profile
+```
+
+**Результат сборки:**
+```
+apps/codelab_ide/build/windows/x64/runner/Release/
+├── codelab_ide.exe          # Исполняемый файл
+├── flutter_windows.dll      # Flutter runtime
+└── data/                    # Ресурсы приложения
+```
+
+**Запуск собранного приложения:**
+```bash
+.\apps\codelab_ide\build\windows\x64\runner\Release\codelab_ide.exe
+```
+
+### Сборка для macOS
+
+**Требования:**
+- Xcode 13.0 или выше
+- CocoaPods
+- Подписанный сертификат разработчика (для распространения)
+
+**Команды сборки:**
+```bash
+cd apps/codelab_ide
+
+# Debug сборка
+fvm flutter build macos --debug
+
+# Release сборка
+fvm flutter build macos --release
+
+# Profile сборка
+fvm flutter build macos --profile
+```
+
+**Результат сборки:**
+```
+apps/codelab_ide/build/macos/Build/Products/Release/
+└── codelab_ide.app          # macOS приложение
+```
+
+**Запуск собранного приложения:**
+```bash
+open apps/codelab_ide/build/macos/Build/Products/Release/codelab_ide.app
+```
+
+**Создание DMG для распространения:**
+```bash
+# Установить create-dmg
+brew install create-dmg
+
+# Создать DMG
+create-dmg \
+  --volname "CodeLab IDE" \
+  --window-pos 200 120 \
+  --window-size 800 400 \
+  --icon-size 100 \
+  --app-drop-link 600 185 \
+  "CodeLab-IDE.dmg" \
+  "apps/codelab_ide/build/macos/Build/Products/Release/codelab_ide.app"
+```
+
+### Сборка для Linux
+
+**Требования:**
+- Установленные системные библиотеки (см. раздел "Требования для Linux")
+- clang, cmake, ninja-build
+
+**Команды сборки:**
+```bash
+cd apps/codelab_ide
+
+# Debug сборка
+fvm flutter build linux --debug
+
+# Release сборка
+fvm flutter build linux --release
+
+# Profile сборка
+fvm flutter build linux --profile
+```
+
+**Результат сборки:**
+```
+apps/codelab_ide/build/linux/x64/release/bundle/
+├── codelab_ide              # Исполняемый файл
+├── lib/                     # Библиотеки
+└── data/                    # Ресурсы приложения
+```
+
+**Запуск собранного приложения:**
+```bash
+./apps/codelab_ide/build/linux/x64/release/bundle/codelab_ide
+```
+
+**Создание AppImage для распространения:**
+```bash
+# Установить appimagetool
+wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+chmod +x appimagetool-x86_64.AppImage
+
+# Создать структуру AppDir
+mkdir -p AppDir/usr/bin
+cp -r apps/codelab_ide/build/linux/x64/release/bundle/* AppDir/usr/bin/
+
+# Создать .desktop файл
+cat > AppDir/codelab_ide.desktop << EOF
+[Desktop Entry]
+Name=CodeLab IDE
+Exec=codelab_ide
+Icon=codelab_ide
+Type=Application
+Categories=Development;
+EOF
+
+# Создать AppImage
+./appimagetool-x86_64.AppImage AppDir CodeLab-IDE-x86_64.AppImage
+```
+
+## Команды разработки
 
 ```bash
-# Run code generation
-melos generate
+# Запустить IDE
+melos run:codelab_ide
 
-# Run tests for all packages
+# Запустить все тесты
 melos test
 
-# Run the main IDE application
-melos run:codelab_ide
+# Запустить тесты конкретного пакета
+melos test --scope=codelab_core
 
-# Run individual package examples
-melos run:uikit_example
+# Генерация кода (freezed, json_serializable и т.д.)
+melos generate
+
+# Проверить устаревшие зависимости
+melos outdated
+
+# Очистить build артефакты
+melos clean
+
+# Форматирование кода
+melos format
+
+# Анализ кода
+melos analyze
 ```
 
-### Building for Distribution
+## Решение проблем
 
-#### macOS
+### Проблемы с FVM
+
+**Проблема:** `fvm: command not found`
 ```bash
-flutter build macos
+# Убедитесь, что путь к pub-cache добавлен в PATH
+echo $PATH | grep pub-cache  # macOS/Linux
+echo %PATH% | findstr pub-cache  # Windows
 ```
 
-#### Windows
+**Проблема:** FVM не находит Flutter SDK
 ```bash
-flutter build windows
+# Переустановите Flutter через FVM
+fvm install 3.38.5 --force
+fvm use 3.38.5
 ```
 
-#### Linux
+### Проблемы с Melos
+
+**Проблема:** `melos: command not found`
 ```bash
-flutter build linux
+# Переустановите Melos
+dart pub global activate melos
 ```
 
-## Project Structure
+**Проблема:** Ошибки при `melos bootstrap`
+```bash
+# Очистите кэш и попробуйте снова
+melos clean
+rm -rf .dart_tool
+melos bootstrap
+```
 
-This project uses a monorepo architecture managed by Melos:
+### Проблемы сборки на Windows
+
+**Проблема:** Ошибки компиляции C++
+- Убедитесь, что установлен Visual Studio 2022 с компонентами C++
+- Проверьте, что Windows 10 SDK установлен
+
+**Проблема:** `CMake not found`
+```powershell
+# Установите CMake через Visual Studio Installer
+# или скачайте с https://cmake.org/download/
+```
+
+### Проблемы сборки на macOS
+
+**Проблема:** Ошибки CocoaPods
+```bash
+# Обновите CocoaPods
+sudo gem install cocoapods
+pod repo update
+
+# Очистите кэш
+cd apps/codelab_ide/macos
+rm -rf Pods Podfile.lock
+pod install
+```
+
+**Проблема:** Ошибки подписи кода
+```bash
+# Для разработки можно отключить подписывание
+# В Xcode: Signing & Capabilities -> Signing -> Automatically manage signing
+```
+
+### Проблемы сборки на Linux
+
+**Проблема:** Отсутствуют библиотеки
+```bash
+# Установите все необходимые зависимости
+sudo apt-get update
+sudo apt-get install -y clang cmake ninja-build pkg-config \
+  libgtk-3-dev liblzma-dev libstdc++-12-dev
+```
+
+**Проблема:** Ошибки GTK
+```bash
+# Установите дополнительные GTK библиотеки
+sudo apt-get install -y libgtk-3-dev libglib2.0-dev
+```
+
+## Дополнительные инструменты разработки
+
+### VS Code расширения (рекомендуется)
+
+- **Dart** - Поддержка языка Dart
+- **Flutter** - Поддержка Flutter framework
+- **Melos Code** - Поддержка Melos monorepo
+
+### Полезные команды Flutter
+
+```bash
+# Проверить установку Flutter
+fvm flutter doctor
+
+# Список доступных устройств
+fvm flutter devices
+
+# Очистить build кэш
+fvm flutter clean
+
+# Обновить зависимости
+fvm flutter pub get
+
+# Запустить анализатор
+fvm flutter analyze
+```
+
+## Структура проекта
+
+Проект использует монорепозиторную архитектуру, управляемую через Melos:
 
 ```
 codelab_ide/
 ├── apps/
-│   └── codelab_ide/                 # Main Flutter application
+│   └── codelab_ide/                 # Основное Flutter приложение
 │       ├── lib/
-│       │   ├── main.dart            # Application entry point
-│       │   ├── codelab_app.dart     # Root widget with DI setup
-│       │   ├── pages/               # Application pages
-│       │   └── widgets/             # Application-specific widgets
-│       └── pubspec.yaml             # App dependencies
+│       │   ├── main.dart            # Точка входа приложения
+│       │   ├── codelab_app.dart     # Корневой виджет с настройкой DI
+│       │   ├── pages/               # Страницы приложения
+│       │   └── widgets/             # Специфичные виджеты приложения
+│       └── pubspec.yaml             # Зависимости приложения
 ├── packages/
-│   ├── codelab_core/                # Core services and models
+│   ├── codelab_core/                # Основные сервисы и модели
 │   │   ├── lib/src/
 │   │   │   ├── services/            # FileService, ProjectService, RunService
 │   │   │   ├── models/              # FileNode, ProjectConfig
 │   │   │   ├── errors/              # AppError, FileError
 │   │   │   └── utils/               # Logger, ProjectContext
 │   │   └── pubspec.yaml
-│   ├── codelab_engine/              # Business logic and UI widgets
+│   ├── codelab_engine/              # Бизнес-логика и UI виджеты
 │   │   ├── lib/src/
-│   │   │   ├── project_bloc.dart    # Main project state management
-│   │   │   └── widgets/             # Editor, FileTree, Terminal, etc.
+│   │   │   ├── project_bloc.dart    # Основное управление состоянием проекта
+│   │   │   └── widgets/             # Editor, FileTree, Terminal и т.д.
 │   │   └── pubspec.yaml
-│   ├── codelab_terminal/            # Terminal implementation
-│   │   ├── lib/src/widgets/         # Terminal widget and bloc
+│   ├── codelab_terminal/            # Реализация терминала
+│   │   ├── lib/src/widgets/         # Виджет терминала и bloc
 │   │   └── pubspec.yaml
-│   ├── codelab_uikit/               # UI components and theming
-│   │   ├── lib/src/                 # Base UI components
-│   │   ├── example/                 # Example app with Fluent UI
+│   ├── codelab_uikit/               # UI компоненты и темы
+│   │   ├── lib/src/                 # Базовые UI компоненты
+│   │   ├── example/                 # Пример приложения с Fluent UI
 │   │   └── pubspec.yaml
-│   ├── codelab_ai_assistant/        # AI assistant integration
-│   │   ├── lib/src/                 # AI assistant implementation
+│   ├── codelab_ai_assistant/        # Интеграция AI ассистента
+│   │   ├── lib/src/                 # Реализация AI ассистента
 │   │   └── pubspec.yaml
-│   └── codelab_version_control/     # Git integration
-│       ├── lib/src/                 # Version control services
+│   └── codelab_version_control/     # Интеграция Git
+│       ├── lib/src/                 # Сервисы контроля версий
 │       └── pubspec.yaml
-├── pubspec.yaml                     # Workspace configuration
-└── melos.yaml                       # Melos monorepo configuration
+├── pubspec.yaml                     # Конфигурация workspace
+└── melos.yaml                       # Конфигурация Melos monorepo
 ```
 
-## Usage
+## Использование
 
-1. **Open a Project**: Click the folder icon in the toolbar to open a project directory
-2. **Navigate Files**: Use the file tree panel to browse and open files
-3. **Edit Code**: Write and edit code in the editor with syntax highlighting
-4. **Save Files**: Use Ctrl+S (Cmd+S on macOS) or the save button
-5. **Run Commands**: Use the terminal panel to execute commands and scripts
-6. **Run Current File**: Click the play button to execute the currently open file
+1. **Открыть проект**: Нажмите на иконку папки в панели инструментов для открытия директории проекта
+2. **Навигация по файлам**: Используйте панель дерева файлов для просмотра и открытия файлов
+3. **Редактирование кода**: Пишите и редактируйте код в редакторе с подсветкой синтаксиса
+4. **Сохранение файлов**: Используйте Ctrl+S (Cmd+S на macOS) или кнопку сохранения
+5. **Выполнение команд**: Используйте панель терминала для выполнения команд и скриптов
+6. **Запуск текущего файла**: Нажмите кнопку воспроизведения для выполнения открытого файла
 
-## Example Project
+## Пример проекта
 
-Check the `example_project/` directory for sample files demonstrating the IDE's capabilities:
-- `hello.dart` - Dart example
-- `example.py` - Python example  
-- `README.md` - Project documentation
+Проверьте директорию `example_project/` для примеров файлов, демонстрирующих возможности IDE:
+- `hello.dart` - Пример на Dart
+- `example.py` - Пример на Python
+- `README.md` - Документация проекта
 
-## Architecture & Technology Stack
+## Архитектура и технологический стек
 
-### Core Technologies
-- **Flutter/Dart** - Cross-platform UI framework
-- **Melos** - Monorepo management and tooling
-- **BLoC** - State management with predictable state transitions
-- **CherryPick** - Dependency injection for testable code
-- **FPDart** - Functional programming utilities (Either, TaskEither)
-- **Freezed** - Code generation for immutable data classes
+### Основные технологии
+- **Flutter/Dart** - Кроссплатформенный UI фреймворк
+- **Melos** - Управление монорепозиторием и инструменты
+- **BLoC** - Управление состоянием с предсказуемыми переходами
+- **CherryPick** - Внедрение зависимостей для тестируемого кода
+- **FPDart** - Утилиты функционального программирования (Either, TaskEither)
+- **Freezed** - Генерация кода для неизменяемых классов данных
 
-### Key Dependencies
+### Ключевые зависимости
 
-#### Core Packages
-- `flutter_bloc` & `bloc` - State management
-- `fpdart` - Functional programming patterns
-- `cherrypick` - Dependency injection
-- `freezed_annotation` & `freezed` - Immutable data classes
+#### Основные пакеты
+- `flutter_bloc` & `bloc` - Управление состоянием
+- `fpdart` - Паттерны функционального программирования
+- `cherrypick` - Внедрение зависимостей
+- `freezed_annotation` & `freezed` - Неизменяемые классы данных
 
-#### File System & UI
-- `file_picker` - File and directory selection
-- `file` & `path` - File system operations
-- `fluent_ui` - Windows-style UI components (in codelab_uikit)
+#### Файловая система и UI
+- `file_picker` - Выбор файлов и директорий
+- `file` & `path` - Операции с файловой системой
+- `fluent_ui` - UI компоненты в стиле Windows (в codelab_uikit)
 
-#### Code Editing
-- `flutter_code_editor` - Advanced code editing with syntax highlighting
-- `code_text_field` - Code editor widgets
-- `highlight` & `flutter_highlight` - Syntax highlighting
+#### Редактирование кода
+- `flutter_code_editor` - Продвинутое редактирование кода с подсветкой синтаксиса
+- `code_text_field` - Виджеты редактора кода
+- `highlight` & `flutter_highlight` - Подсветка синтаксиса
 
-#### Terminal & Execution
-- `xterm` - Terminal emulation
-- `process_run` - Command execution
-- `logger` - Structured logging
+#### Терминал и выполнение
+- `xterm` - Эмуляция терминала
+- `process_run` - Выполнение команд
+- `logger` - Структурированное логирование
 
-### Development Dependencies
-- `build_runner` - Code generation
-- `melos` - Monorepo tooling
-- `cherrypick_generator` - DI code generation
+### Зависимости для разработки
+- `build_runner` - Генерация кода
+- `melos` - Инструменты для монорепозитория
+- `cherrypick_generator` - Генерация кода для DI
 
-## Development
+## Разработка
 
-### Current Status
-This project is actively developed with a modular architecture that enables easy extension and maintenance. The core IDE functionality is implemented with clean separation of concerns.
+### Текущий статус
+Проект активно разрабатывается с модульной архитектурой, которая обеспечивает простое расширение и поддержку. Основной функционал IDE реализован с чистым разделением ответственности.
 
-### ✅ Implemented Features
-- **Modular Architecture** - Clean separation with dedicated packages
-- **File Management** - Project loading, file tree navigation, file operations
-- **Code Editor** - Syntax highlighting for multiple languages
-- **Terminal Integration** - Command execution and script running
-- **State Management** - BLoC pattern with immutable states
-- **Dependency Injection** - CherryPick for testable code
-- **Cross-platform** - Windows, Linux, macOS support
-- **UI Components** - Fluent UI integration for Windows-style interface
+### ✅ Реализованные функции
+- **Модульная архитектура** - Чистое разделение с выделенными пакетами
+- **Управление файлами** - Загрузка проектов, навигация по дереву файлов, операции с файлами
+- **Редактор кода** - Подсветка синтаксиса для множества языков
+- **Интеграция терминала** - Выполнение команд и запуск скриптов
+- **Управление состоянием** - Паттерн BLoC с неизменяемыми состояниями
+- **Внедрение зависимостей** - CherryPick для тестируемого кода
+- **Кроссплатформенность** - Поддержка Windows, Linux, macOS
+- **UI компоненты** - Интеграция Fluent UI для интерфейса в стиле Windows
 
-### 🚧 In Development
-- **AI Assistant** - Intelligent code suggestions and assistance
-- **Version Control** - Git integration and repository management
-- **Advanced Editing** - Code completion and refactoring tools
+### 🚧 В разработке
+- **AI Ассистент** - Интеллектуальные подсказки и помощь в коде
+- **Контроль версий** - Интеграция Git и управление репозиториями
+- **Продвинутое редактирование** - Автодополнение кода и инструменты рефакторинга
 
-### 🔮 Future Enhancements
-- **Debugging Support** - Integrated debugger with breakpoints
-- **Plugin System** - Extensible architecture for third-party plugins
-- **Multi-tab Editing** - Tabbed interface for multiple files
-- **Theme Customization** - Custom color schemes and themes
-- **Package Management** - Integrated pub.dev package management
-- **Collaboration Tools** - Real-time collaboration features
+### 🔮 Будущие улучшения
+- **Поддержка отладки** - Интегрированный отладчик с точками останова
+- **Система плагинов** - Расширяемая архитектура для сторонних плагинов
+- **Многовкладочное редактирование** - Интерфейс с вкладками для нескольких файлов
+- **Настройка тем** - Пользовательские цветовые схемы и темы
+- **Управление пакетами** - Интегрированное управление пакетами pub.dev
+- **Инструменты совместной работы** - Функции совместной работы в реальном времени
 
-### Contributing
-The project uses conventional commits and follows clean code practices. Each package is independently testable and can be developed in isolation.
+### Участие в разработке
+Проект использует conventional commits и следует практикам чистого кода. Каждый пакет независимо тестируется и может разрабатываться изолированно.
 
-## License
+## Лицензия
 
 ```
 MIT License
