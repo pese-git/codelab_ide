@@ -20,6 +20,7 @@ class AiAgentEvent with _$AiAgentEvent {
   const factory AiAgentEvent.connected() = AgentConnected;
   const factory AiAgentEvent.disconnected() = AgentDisconnected;
   const factory AiAgentEvent.sendUserMessage(String text) = SendUserMessage;
+  const factory AiAgentEvent.switchAgent(String agentType, String content) = SwitchAgent;
   const factory AiAgentEvent.messageReceived(WSMessage message) =
       MessageReceived;
   const factory AiAgentEvent.approveToolCall() = ApproveToolCall;
@@ -37,6 +38,7 @@ class AiAgentState with _$AiAgentState {
     required List<WSMessage> history,
     @Default(false) bool waitingResponse,
     ToolApprovalRequest? pendingApproval,
+    @Default('orchestrator') String currentAgent,
   }) = ChatState;
 }
 
@@ -55,6 +57,7 @@ class AiAgentBloc extends Bloc<AiAgentEvent, AiAgentState> {
     on<AgentConnected>((event, emit) => emit(const ConnectedState()));
     on<AgentDisconnected>((event, emit) => emit(const InitialState()));
     on<SendUserMessage>(_onUserMessage);
+    on<SwitchAgent>(_onSwitchAgent);
     on<MessageReceived>(_onMessageReceived);
     on<ApproveToolCall>(_onApproveToolCall);
     on<RejectToolCall>(_onRejectToolCall);
@@ -88,12 +91,37 @@ class AiAgentBloc extends Bloc<AiAgentEvent, AiAgentState> {
     );
   }
 
+  Future<void> _onSwitchAgent(
+    SwitchAgent event,
+    Emitter<AiAgentState> emit,
+  ) async {
+    protocol.sendSwitchAgent(event.agentType, event.content);
+    final chatState = state is ChatState ? state as ChatState : null;
+    emit(
+      ChatState(
+        history: chatState?.history ?? [],
+        waitingResponse: true,
+        currentAgent: event.agentType,
+      ),
+    );
+  }
+
   Future<void> _onMessageReceived(
     MessageReceived event,
     Emitter<AiAgentState> emit,
   ) async {
     final msg = event.message;
     final chatState = state is ChatState ? state as ChatState : null;
+    
+    // Обработка agentSwitched для обновления currentAgent
+    String? newAgent;
+    msg.maybeWhen(
+      agentSwitched: (content, fromAgent, toAgent, reason, confidence) {
+        newAgent = toAgent;
+        _logger.i('Agent switched: $fromAgent → $toAgent (reason: $reason)');
+      },
+      orElse: () {},
+    );
     
     // обработка tool_call через ToolApi
     await msg.maybeWhen(
@@ -140,6 +168,7 @@ class AiAgentBloc extends Bloc<AiAgentEvent, AiAgentState> {
         history: [...(chatState?.history ?? []), msg],
         waitingResponse: false,
         pendingApproval: chatState?.pendingApproval,
+        currentAgent: newAgent ?? chatState?.currentAgent ?? 'orchestrator',
       ),
     );
   }

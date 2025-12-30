@@ -1,5 +1,6 @@
 // lib/ai_agent/ui/ai_assistant_panel.dart
 
+import 'package:codelab_uikit/codelab_uikit.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
@@ -29,9 +30,30 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
         final waiting = chat?.waitingResponse ?? false;
         final pendingApproval = chat?.pendingApproval;
         final List<WSMessage> history = (chat != null) ? chat.history : [];
+        final currentAgent = AgentType.fromString(chat?.currentAgent ?? 'orchestrator');
 
         return Column(
           children: [
+            // Header с индикатором агента
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  const Text('AI Assistant', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(width: 12),
+                  AgentSelector(
+                    currentAgent: currentAgent,
+                    onAgentSelected: (agentType) {
+                      widget.bloc.add(AiAgentEvent.switchAgent(
+                        agentType.toApiString(),
+                        'Switched to ${agentType.displayName}',
+                      ));
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const Divider(size: 1),
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.all(8),

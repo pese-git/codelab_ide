@@ -28,6 +28,10 @@ export 'widgets/splitters/vertical_splitter.dart';
 export 'widgets/navigation/sidebar_navigation.dart';
 export 'widgets/navigation/main_header.dart';
 
+// WIDGETS: AI Agent
+export 'widgets/ai_assistant_ui/agent_indicator.dart';
+export 'widgets/ai_assistant_ui/agent_selector.dart';
+
 // WIDGETS: STATUS BAR
 export 'widgets/status/status_bar.dart';
 

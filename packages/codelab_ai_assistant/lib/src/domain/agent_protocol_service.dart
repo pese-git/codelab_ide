@@ -7,6 +7,7 @@ import '../data/websocket_agent_repository.dart';
 abstract class AgentProtocolService {
   Stream<WSMessage> get messages;
   void sendUserMessage(String content, {String role = 'user'});
+  void sendSwitchAgent(String agentType, String content);
   void sendToolResult({
     required String callId,
     String? toolName,
@@ -28,6 +29,16 @@ class AgentProtocolServiceImpl implements AgentProtocolService {
   @override
   void sendUserMessage(String content, {String role = 'user'}) {
     _repo.send(WSMessage.userMessage(content: content, role: role));
+  }
+
+  @override
+  void sendSwitchAgent(String agentType, String content) {
+    // Отправляем switch_agent сообщение через WebSocket
+    _repo.sendRaw({
+      'type': 'switch_agent',
+      'agent_type': agentType,
+      'content': content,
+    });
   }
 
   @override

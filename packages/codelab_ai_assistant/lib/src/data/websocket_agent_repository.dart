@@ -22,6 +22,10 @@ class WebSocketAgentRepository {
     _channel?.sink.add(jsonEncode(message.toJson()));
   }
 
+  void sendRaw(Map<String, dynamic> data) {
+    _channel?.sink.add(jsonEncode(data));
+  }
+
   Future<void> disconnect() async {
     await _channel?.sink.close();
   }
