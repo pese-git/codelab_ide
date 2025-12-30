@@ -72,10 +72,10 @@ WSAgentSwitchedMessage _$WSAgentSwitchedMessageFromJson(
   Map<String, dynamic> json,
 ) => WSAgentSwitchedMessage(
   content: json['content'] as String?,
-  fromAgent: json['from_agent'] as String?,
-  toAgent: json['to_agent'] as String?,
-  reason: json['reason'] as String?,
-  confidence: json['confidence'] as String?,
+  fromAgent: _readFromAgent(json, 'from_agent') as String?,
+  toAgent: _readToAgent(json, 'to_agent') as String?,
+  reason: _readReason(json, 'reason') as String?,
+  confidence: _readConfidence(json, 'confidence') as String?,
   $type: json['type'] as String?,
 );
 

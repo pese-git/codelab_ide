@@ -5,6 +5,23 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'ws_message.freezed.dart';
 part 'ws_message.g.dart';
 
+// Helper functions to read values from metadata if not present at top level
+Object? _readFromAgent(Map json, String key) {
+  return json['from_agent'] ?? json['metadata']?['from_agent'];
+}
+
+Object? _readToAgent(Map json, String key) {
+  return json['to_agent'] ?? json['metadata']?['to_agent'];
+}
+
+Object? _readReason(Map json, String key) {
+  return json['reason'] ?? json['metadata']?['reason'];
+}
+
+Object? _readConfidence(Map json, String key) {
+  return json['confidence'] ?? json['metadata']?['confidence'];
+}
+
 @Freezed(unionKey: 'type', unionValueCase: FreezedUnionCase.snake)
 sealed class WSMessage with _$WSMessage {
   const factory WSMessage.userMessage({
@@ -25,7 +42,9 @@ sealed class WSMessage with _$WSMessage {
     @JsonKey(name: 'tool_name') required String toolName,
     required Map<String, dynamic> arguments,
     // ignore: invalid_annotation_target
-    @JsonKey(name: 'requires_approval', defaultValue: false) @Default(false) bool requiresApproval,
+    @JsonKey(name: 'requires_approval', defaultValue: false)
+    @Default(false)
+    bool requiresApproval,
   }) = WSToolCall;
 
   const factory WSMessage.toolResult({
@@ -40,11 +59,13 @@ sealed class WSMessage with _$WSMessage {
   const factory WSMessage.agentSwitched({
     String? content,
     // ignore: invalid_annotation_target
-    @JsonKey(name: 'from_agent') String? fromAgent,
+    @JsonKey(name: 'from_agent', readValue: _readFromAgent) String? fromAgent,
     // ignore: invalid_annotation_target
-    @JsonKey(name: 'to_agent') String? toAgent,
-    String? reason,
-    String? confidence,
+    @JsonKey(name: 'to_agent', readValue: _readToAgent) String? toAgent,
+    // ignore: invalid_annotation_target
+    @JsonKey(readValue: _readReason) String? reason,
+    // ignore: invalid_annotation_target
+    @JsonKey(readValue: _readConfidence) String? confidence,
   }) = WSAgentSwitchedMessage;
 
   const factory WSMessage.error({String? content}) = WSError;
