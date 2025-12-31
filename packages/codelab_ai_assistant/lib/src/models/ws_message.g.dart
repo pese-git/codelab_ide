@@ -99,3 +99,21 @@ Map<String, dynamic> _$WSErrorToJson(WSError instance) => <String, dynamic>{
   'content': instance.content,
   'type': instance.$type,
 };
+
+WSHITLDecision _$WSHITLDecisionFromJson(Map<String, dynamic> json) =>
+    WSHITLDecision(
+      callId: json['call_id'] as String,
+      decision: json['decision'] as String,
+      modifiedArguments: json['modified_arguments'] as Map<String, dynamic>?,
+      feedback: json['feedback'] as String?,
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$WSHITLDecisionToJson(WSHITLDecision instance) =>
+    <String, dynamic>{
+      'call_id': instance.callId,
+      'decision': instance.decision,
+      'modified_arguments': instance.modifiedArguments,
+      'feedback': instance.feedback,
+      'type': instance.$type,
+    };

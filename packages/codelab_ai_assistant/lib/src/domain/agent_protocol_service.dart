@@ -14,6 +14,12 @@ abstract class AgentProtocolService {
     Map<String, dynamic>? result,
     String? error,
   });
+  void sendHITLDecision({
+    required String callId,
+    required String decision,
+    Map<String, dynamic>? modifiedArguments,
+    String? feedback,
+  });
   void connect();
   Future<void> disconnect();
 }
@@ -53,6 +59,21 @@ class AgentProtocolServiceImpl implements AgentProtocolService {
       toolName: toolName,
       result: result,
       error: error,
+    ));
+  }
+
+  @override
+  void sendHITLDecision({
+    required String callId,
+    required String decision,
+    Map<String, dynamic>? modifiedArguments,
+    String? feedback,
+  }) {
+    _repo.send(WSMessage.hitlDecision(
+      callId: callId,
+      decision: decision,
+      modifiedArguments: modifiedArguments,
+      feedback: feedback,
     ));
   }
 

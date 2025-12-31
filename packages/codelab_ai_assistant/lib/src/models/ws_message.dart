@@ -70,6 +70,15 @@ sealed class WSMessage with _$WSMessage {
 
   const factory WSMessage.error({String? content}) = WSError;
 
+  const factory WSMessage.hitlDecision({
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'call_id') required String callId,
+    required String decision, // "approve", "edit", "reject"
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'modified_arguments') Map<String, dynamic>? modifiedArguments,
+    String? feedback,
+  }) = WSHITLDecision;
+
   factory WSMessage.fromJson(Map<String, dynamic> json) =>
       _$WSMessageFromJson(json);
 }

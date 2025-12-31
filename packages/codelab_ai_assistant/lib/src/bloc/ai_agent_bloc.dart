@@ -197,12 +197,20 @@ class AiAgentBloc extends Bloc<AiAgentEvent, AiAgentState> {
     
     if (pendingApproval != null) {
       _logger.i('User approved tool call: ${pendingApproval.toolCall.toolName}');
+      
+      // Send HITL decision to backend
+      protocol.sendHITLDecision(
+        callId: pendingApproval.toolCall.callId,
+        decision: 'approve',
+      );
+      
+      // Complete local approval
       pendingApproval.completer.complete(ToolApprovalResult.approved);
       
       emit(
         ChatState(
           history: chatState?.history ?? [],
-          waitingResponse: chatState?.waitingResponse ?? false,
+          waitingResponse: true, // Waiting for backend response
           pendingApproval: null,
         ),
       );
@@ -218,12 +226,21 @@ class AiAgentBloc extends Bloc<AiAgentEvent, AiAgentState> {
     
     if (pendingApproval != null) {
       _logger.w('User rejected tool call: ${pendingApproval.toolCall.toolName}');
+      
+      // Send HITL decision to backend
+      protocol.sendHITLDecision(
+        callId: pendingApproval.toolCall.callId,
+        decision: 'reject',
+        feedback: 'User rejected this operation',
+      );
+      
+      // Complete local approval
       pendingApproval.completer.complete(ToolApprovalResult.rejected);
       
       emit(
         ChatState(
           history: chatState?.history ?? [],
-          waitingResponse: chatState?.waitingResponse ?? false,
+          waitingResponse: true, // Waiting for backend response
           pendingApproval: null,
         ),
       );

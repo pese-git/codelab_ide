@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 import '../bloc/ai_agent_bloc.dart';
 import '../models/ws_message.dart';
+import '../widgets/tool_approval_dialog.dart' as hitl;
 
 class AiAssistantPanel extends StatefulWidget {
   final AiAgentBloc bloc;
@@ -108,13 +109,21 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Для подтверждения: Создать файл $toolName с содержимым "${arguments['content'] ?? arguments}"?',
-            style: const TextStyle(fontWeight: FontWeight.bold),
+          Row(
+            children: [
+              Icon(FluentIcons.warning, color: Colors.orange, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Tool approval required: $toolName',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           Text(
-            'Пожалуйста, подтвердите, чтобы я мог выполнить эту операцию.',
+            'This operation requires your approval before execution.',
             style: TextStyle(color: Colors.grey[100]),
           ),
           const SizedBox(height: 12),
@@ -128,11 +137,37 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
                 child: const Text('Reject'),
               ),
               const SizedBox(width: 8),
+              Button(
+                onPressed: () {
+                  // Show detailed approval dialog
+                  showDialog(
+                    context: context,
+                    builder: (ctx) => hitl.ToolApprovalDialog(
+                      callId: toolCall.callId,
+                      toolName: toolName,
+                      arguments: arguments,
+                      reason: 'This operation requires user approval',
+                      onDecision: (decision, {modifiedArguments, feedback}) {
+                        if (decision == 'approve') {
+                          widget.bloc.add(const AiAgentEvent.approveToolCall());
+                        } else if (decision == 'reject') {
+                          widget.bloc.add(const AiAgentEvent.rejectToolCall());
+                        } else if (decision == 'edit') {
+                          // TODO: Add edit support in BLoC
+                          widget.bloc.add(const AiAgentEvent.approveToolCall());
+                        }
+                      },
+                    ),
+                  );
+                },
+                child: const Text('Review Details'),
+              ),
+              const SizedBox(width: 8),
               FilledButton(
                 onPressed: () {
                   widget.bloc.add(const AiAgentEvent.approveToolCall());
                 },
-                child: const Text('Approve'),
+                child: const Text('Quick Approve'),
               ),
             ],
           ),
@@ -157,6 +192,7 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
         toolResult: (_, _, _, _) => Alignment.centerLeft,
         agentSwitched: (_, _, _, _, _) => Alignment.center,
         error: (_) => Alignment.center,
+        hitlDecision: (_, _, _, _) => Alignment.centerRight, // User decision
       ),
       child: Card(
         backgroundColor: msg.when(
@@ -166,6 +202,7 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
           toolResult: (_, _, _, _) => Colors.green.normal,
           agentSwitched: (_, _, _, _, _) => Colors.purple.normal,
           error: (_) => Colors.red.normal,
+          hitlDecision: (_, _, _, _) => Colors.blue.light, // User decision color
         ),
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
         child: GptMarkdown(
@@ -179,6 +216,8 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
             agentSwitched: (content, fromAgent, toAgent, reason, confidence) =>
                 '🔄 Agent switched: $fromAgent → $toAgent\n$content\nReason: $reason',
             error: (content) => 'Ошибка: ${content ?? "Unknown error"}',
+            hitlDecision: (callId, decision, modifiedArgs, feedback) =>
+                '✓ Decision: $decision${feedback != null ? " - $feedback" : ""}',
           ),
         ),
       ),
