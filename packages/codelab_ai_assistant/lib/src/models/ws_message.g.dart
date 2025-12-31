@@ -100,6 +100,22 @@ Map<String, dynamic> _$WSErrorToJson(WSError instance) => <String, dynamic>{
   'type': instance.$type,
 };
 
+WSSwitchAgent _$WSSwitchAgentFromJson(Map<String, dynamic> json) =>
+    WSSwitchAgent(
+      agentType: json['agent_type'] as String,
+      content: json['content'] as String,
+      reason: json['reason'] as String?,
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$WSSwitchAgentToJson(WSSwitchAgent instance) =>
+    <String, dynamic>{
+      'agent_type': instance.agentType,
+      'content': instance.content,
+      'reason': instance.reason,
+      'type': instance.$type,
+    };
+
 WSHITLDecision _$WSHITLDecisionFromJson(Map<String, dynamic> json) =>
     WSHITLDecision(
       callId: json['call_id'] as String,

@@ -1,7 +1,10 @@
 // lib/ai_agent/di/ai_agent_module.dart
 
 import 'package:cherrypick/cherrypick.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:logger/logger.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:codelab_core/codelab_core.dart';
 import '../data/websocket_agent_repository.dart';
 import '../domain/agent_protocol_service.dart';
@@ -9,20 +12,95 @@ import '../bloc/ai_agent_bloc.dart';
 import '../integration/tool_api.dart';
 import '../services/tool_executor.dart';
 import '../services/tool_approval_service.dart';
+import '../services/gateway_service.dart';
+import '../services/session_restore_service.dart';
+import '../api/gateway_api.dart';
+import '../bloc/session_manager_bloc.dart';
 
 class AiAssistantModule extends Module {
   final String wsUrl;
+  final String gatewayBaseUrl;
   final bool useMockApi;
   final GlobalKey<NavigatorState>? navigatorKey;
+  final SharedPreferences? sharedPreferences;
   
   AiAssistantModule({
     required this.wsUrl,
+    this.gatewayBaseUrl = 'http://localhost:8000',
     this.navigatorKey,
     this.useMockApi = false,
+    this.sharedPreferences,
   });
 
   @override
   void builder(Scope currentScope) {
+    // SharedPreferences — singleton (передается извне или создается)
+    if (sharedPreferences != null) {
+      bind<SharedPreferences>()
+          .toProvide(() => sharedPreferences!)
+          .singleton();
+    }
+
+    // Logger — singleton
+    bind<Logger>()
+        .toProvide(() => Logger(
+              printer: PrettyPrinter(
+                methodCount: 0,
+                errorMethodCount: 5,
+                lineLength: 80,
+                colors: true,
+                printEmojis: true,
+              ),
+            ))
+        .singleton();
+
+    // Dio HTTP client — singleton
+    bind<Dio>()
+        .toProvide(() {
+          final dio = Dio(BaseOptions(
+            connectTimeout: const Duration(seconds: 30),
+            receiveTimeout: const Duration(seconds: 30),
+          ));
+          
+          // Добавить логирование запросов (опционально)
+          dio.interceptors.add(LogInterceptor(
+            requestBody: true,
+            responseBody: true,
+            logPrint: (obj) => currentScope.resolve<Logger>().d(obj),
+          ));
+          
+          return dio;
+        })
+        .singleton();
+
+    // Gateway API — singleton
+    bind<GatewayApi>()
+        .toProvide(() => GatewayApi(
+              dio: currentScope.resolve<Dio>(),
+              baseUrl: gatewayBaseUrl,
+            ))
+        .singleton();
+
+    // Gateway Service — singleton
+    bind<GatewayService>()
+        .toProvide(() => GatewayService(
+              api: currentScope.resolve<GatewayApi>(),
+              logger: currentScope.resolve<Logger>(),
+            ))
+        .singleton();
+
+    // Session Restore Service — singleton
+    // Требует SharedPreferences, который должен быть передан в конструктор модуля
+    if (sharedPreferences != null) {
+      bind<SessionRestoreService>()
+          .toProvide(() => SessionRestoreService(
+                gatewayService: currentScope.resolve<GatewayService>(),
+                prefs: currentScope.resolve<SharedPreferences>(),
+                logger: currentScope.resolve<Logger>(),
+              ))
+          .singleton();
+    }
+
     // WebSocket-репозиторий — singleton
     bind<WebSocketAgentRepository>()
         .toProvide(() => WebSocketAgentRepository(wsUrl: wsUrl))
@@ -70,5 +148,16 @@ class AiAssistantModule extends Module {
         approvalService: currentScope.resolve<ToolApprovalService>(),
       ),
     );
+
+    // Session Manager Bloc — factory
+    // Создается для каждого открытия диалога управления сессиями
+    if (sharedPreferences != null) {
+      bind<SessionManagerBloc>().toProvide(
+        () => SessionManagerBloc(
+          sessionService: currentScope.resolve<SessionRestoreService>(),
+          logger: currentScope.resolve<Logger>(),
+        ),
+      );
+    }
   }
 }

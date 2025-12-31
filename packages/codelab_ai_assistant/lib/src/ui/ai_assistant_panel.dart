@@ -4,9 +4,12 @@ import 'package:codelab_uikit/codelab_uikit.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
+import 'package:cherrypick/cherrypick.dart';
 import '../bloc/ai_agent_bloc.dart';
+import '../bloc/session_manager_bloc.dart';
 import '../models/ws_message.dart';
 import '../widgets/tool_approval_dialog.dart' as hitl;
+import '../widgets/session_manager_widget.dart';
 
 class AiAssistantPanel extends StatefulWidget {
   final AiAgentBloc bloc;
@@ -31,25 +34,38 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
         final waiting = chat?.waitingResponse ?? false;
         final pendingApproval = chat?.pendingApproval;
         final List<WSMessage> history = (chat != null) ? chat.history : [];
-        final currentAgent = AgentType.fromString(chat?.currentAgent ?? 'orchestrator');
+        final currentAgent = AgentType.fromString(
+          chat?.currentAgent ?? 'orchestrator',
+        );
 
         return Column(
           children: [
-            // Header с индикатором агента
+            // Header с индикатором агента и кнопкой управления сессиями
             Padding(
               padding: const EdgeInsets.all(12),
               child: Row(
                 children: [
-                  const Text('AI Assistant', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'AI Assistant',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(width: 12),
                   AgentSelector(
                     currentAgent: currentAgent,
                     onAgentSelected: (agentType) {
-                      widget.bloc.add(AiAgentEvent.switchAgent(
-                        agentType.toApiString(),
-                        'Switched to ${agentType.displayName}',
-                      ));
+                      widget.bloc.add(
+                        AiAgentEvent.switchAgent(
+                          agentType.toApiString(),
+                          'Switched to ${agentType.displayName}',
+                        ),
+                      );
                     },
+                  ),
+                  const Spacer(),
+                  // Кнопка управления сессиями
+                  IconButton(
+                    icon: const Icon(FluentIcons.history),
+                    onPressed: () => _showSessionManager(context),
                   ),
                 ],
               ),
@@ -183,6 +199,41 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
     _controller.clear();
   }
 
+  Future<void> _showSessionManager(BuildContext context) async {
+    try {
+      // Получить SessionManagerBloc из DI через Cherrypick
+      final sessionManagerBloc = CherryPick.openRootScope()
+          .resolve<SessionManagerBloc>();
+
+      // Загрузить список сессий
+      sessionManagerBloc.add(const SessionManagerEvent.loadSessions());
+
+      // Показать диалог
+      await showDialog(
+        context: context,
+        builder: (dialogContext) => SessionManagerWidget(
+          bloc: sessionManagerBloc,
+          onSessionChanged: () {
+            // Перезагрузить чат при смене сессии
+            widget.bloc.add(const AiAgentEvent.connected());
+          },
+        ),
+      );
+    } catch (e) {
+      // Если SessionManagerBloc не зарегистрирован (нет SharedPreferences)
+      if (context.mounted) {
+        await displayInfoBar(
+          context,
+          builder: (context, close) => const InfoBar(
+            title: Text('Session Manager not available'),
+            content: Text('SharedPreferences not configured in DI module'),
+            severity: InfoBarSeverity.warning,
+          ),
+        );
+      }
+    }
+  }
+
   Widget _msgBubble(WSMessage msg) {
     return Align(
       alignment: msg.when(
@@ -192,6 +243,8 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
         toolResult: (_, _, _, _) => Alignment.centerLeft,
         agentSwitched: (_, _, _, _, _) => Alignment.center,
         error: (_) => Alignment.center,
+        switchAgent: (_, _, _) =>
+            Alignment.centerRight, // User request to switch
         hitlDecision: (_, _, _, _) => Alignment.centerRight, // User decision
       ),
       child: Card(
@@ -202,7 +255,10 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
           toolResult: (_, _, _, _) => Colors.green.normal,
           agentSwitched: (_, _, _, _, _) => Colors.purple.normal,
           error: (_) => Colors.red.normal,
-          hitlDecision: (_, _, _, _) => Colors.blue.light, // User decision color
+          switchAgent: (_, _, _) =>
+              Colors.blue.light, // User switch request color
+          hitlDecision: (_, _, _, _) =>
+              Colors.blue.light, // User decision color
         ),
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
         child: GptMarkdown(
@@ -216,6 +272,8 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
             agentSwitched: (content, fromAgent, toAgent, reason, confidence) =>
                 '🔄 Agent switched: $fromAgent → $toAgent\n$content\nReason: $reason',
             error: (content) => 'Ошибка: ${content ?? "Unknown error"}',
+            switchAgent: (agentType, content, reason) =>
+                '🔀 Switching to $agentType agent\n$content${reason != null ? "\nReason: $reason" : ""}',
             hitlDecision: (callId, decision, modifiedArgs, feedback) =>
                 '✓ Decision: $decision${feedback != null ? " - $feedback" : ""}',
           ),

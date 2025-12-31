@@ -67,6 +67,8 @@ dependencies:
   synchronized: ^3.4.0
   intl: ^0.20.2
   code_forge: ^1.4.0
+  # Session persistence
+  shared_preferences: ^2.2.2
 
 dependency_overrides:
   #flutter_code_editor:
