@@ -57,7 +57,8 @@ class ToolExecutor {
   /// Получает PathValidator с актуальным workspace root
   PathValidator _getPathValidator() {
     try {
-      final projectManager = CherryPick.openRootScope().resolve<ProjectManagerService>();
+      final projectManager = CherryPick.openRootScope()
+          .resolve<ProjectManagerService>();
       final project = projectManager.currentProject;
       if (project != null) {
         return PathValidator(workspaceRoot: project.path);
@@ -65,7 +66,7 @@ class ToolExecutor {
     } catch (e) {
       print('[ToolExecutor] Failed to resolve ProjectManagerService: $e');
     }
-    
+
     // Fallback: используем временную директорию
     print('[ToolExecutor] Using fallback workspace root: /tmp');
     return PathValidator(workspaceRoot: '/tmp');
@@ -75,6 +76,13 @@ class ToolExecutor {
   ///
   /// Маршрутизирует вызов к соответствующему методу обработки
   /// в зависимости от [toolCall.toolName].
+  ///
+  /// Returns different result types based on tool:
+  /// - FileOperationResult for read_file, write_file
+  /// - ListFilesResult for list_files
+  /// - CreateDirectoryResult for create_directory
+  /// - RunCommandResult for run_command
+  /// - SearchInCodeResult for search_in_code
   ///
   /// Throws [ToolExecutionException] если инструмент не поддерживается
   /// или произошла ошибка выполнения.
@@ -348,7 +356,10 @@ class ToolExecutor {
       final glob = args.pattern != null ? Glob(args.pattern!) : null;
 
       await for (final entity in directory.list(recursive: args.recursive)) {
-        final relativePath = p.relative(entity.path, from: pathValidator.workspaceRoot);
+        final relativePath = p.relative(
+          entity.path,
+          from: pathValidator.workspaceRoot,
+        );
         final name = p.basename(entity.path);
 
         // Пропускаем скрытые файлы если не включены
@@ -380,10 +391,7 @@ class ToolExecutor {
         items.add(item);
       }
 
-      return ListFilesResult.successResult(
-        path: args.path,
-        items: items,
-      );
+      return ListFilesResult.successResult(path: args.path, items: items);
     } on ToolExecutionException {
       rethrow;
     } on PathValidationException catch (e) {
@@ -405,7 +413,9 @@ class ToolExecutor {
   // ==========================================================================
 
   /// Выполняет операцию создания директории
-  Future<CreateDirectoryResult> _createDirectory(Map<String, dynamic> arguments) async {
+  Future<CreateDirectoryResult> _createDirectory(
+    Map<String, dynamic> arguments,
+  ) async {
     try {
       // Парсинг аргументов
       final args = CreateDirectoryArgs.fromJson(arguments);
@@ -469,7 +479,7 @@ class ToolExecutor {
   /// Выполняет операцию запуска команды
   Future<RunCommandResult> _runCommand(Map<String, dynamic> arguments) async {
     final stopwatch = Stopwatch()..start();
-    
+
     try {
       final args = RunCommandArgs.fromJson(arguments);
       print('[ToolExecutor] Running command: ${args.command}');
@@ -480,7 +490,7 @@ class ToolExecutor {
       // Resolve working directory
       final validator = _getPathValidator();
       String workingDirectory;
-      
+
       // If cwd is '.' or empty, use workspace root directly
       if (args.cwd == '.' || args.cwd.isEmpty) {
         workingDirectory = validator.workspaceRoot;
@@ -532,11 +542,11 @@ class ToolExecutor {
       // Capture output
       final stdoutBuffer = StringBuffer();
       final stderrBuffer = StringBuffer();
-      
+
       process.stdout.transform(utf8.decoder).listen((data) {
         stdoutBuffer.write(data);
       });
-      
+
       process.stderr.transform(utf8.decoder).listen((data) {
         stderrBuffer.write(data);
       });
@@ -544,7 +554,7 @@ class ToolExecutor {
       // Wait for completion with timeout
       int exitCode;
       bool timedOut = false;
-      
+
       try {
         exitCode = await process.exitCode.timeout(
           Duration(seconds: args.timeout),
@@ -574,9 +584,13 @@ class ToolExecutor {
       );
 
       if (timedOut) {
-        print('[ToolExecutor] Command timed out after ${args.timeout}s: ${args.command}');
+        print(
+          '[ToolExecutor] Command timed out after ${args.timeout}s: ${args.command}',
+        );
       } else if (exitCode != 0) {
-        print('[ToolExecutor] Command failed with exit code $exitCode: ${args.command}');
+        print(
+          '[ToolExecutor] Command failed with exit code $exitCode: ${args.command}',
+        );
       } else {
         print('[ToolExecutor] Command completed successfully: ${args.command}');
       }
@@ -609,8 +623,10 @@ class ToolExecutor {
 
     // Check if command starts with safe command
     final firstWord = lowerCommand.split(' ').first;
-    final isSafe = _safeCommands.any((safe) => firstWord == safe || firstWord.startsWith('$safe.'));
-    
+    final isSafe = _safeCommands.any(
+      (safe) => firstWord == safe || firstWord.startsWith('$safe.'),
+    );
+
     if (!isSafe) {
       throw ToolExecutionException(
         code: 'unsafe_command',
@@ -667,7 +683,9 @@ class ToolExecutor {
   // Search In Code Tool
   // ==========================================================================
 
-  Future<SearchInCodeResult> _searchInCode(Map<String, dynamic> arguments) async {
+  Future<SearchInCodeResult> _searchInCode(
+    Map<String, dynamic> arguments,
+  ) async {
     final stopwatch = Stopwatch()..start();
 
     try {
@@ -715,7 +733,9 @@ class ToolExecutor {
         durationMs: stopwatch.elapsedMilliseconds,
       );
 
-      print('[ToolExecutor] Found ${matches.length} matches for: ${args.query}');
+      print(
+        '[ToolExecutor] Found ${matches.length} matches for: ${args.query}',
+      );
       return result;
     } on ToolExecutionException {
       rethrow;
@@ -813,10 +833,7 @@ class ToolExecutor {
         final lines = data['lines'] as Map<String, dynamic>;
         final submatches = data['submatches'] as List;
 
-        final file = p.relative(
-          path['text'] as String,
-          from: searchPath,
-        );
+        final file = p.relative(path['text'] as String, from: searchPath);
         final lineContent = (lines['text'] as String).trimRight();
 
         for (final submatch in submatches) {
@@ -825,13 +842,15 @@ class ToolExecutor {
           final end = (matchData['end'] as num).toInt();
           final matchedText = lineContent.substring(start, end);
 
-          matches.add(SearchMatch(
-            file: file,
-            line: lineNumber,
-            column: start + 1,
-            matchedText: matchedText,
-            lineContent: lineContent,
-          ));
+          matches.add(
+            SearchMatch(
+              file: file,
+              line: lineNumber,
+              column: start + 1,
+              matchedText: matchedText,
+              lineContent: lineContent,
+            ),
+          );
         }
       } catch (e) {
         print('[ToolExecutor] Failed to parse ripgrep line: $line, error: $e');
@@ -864,13 +883,15 @@ class ToolExecutor {
 
         final file = p.relative(filePath, from: searchPath);
 
-        matches.add(SearchMatch(
-          file: file,
-          line: lineNumber,
-          column: 1, // grep doesn't provide column info
-          matchedText: '', // grep doesn't isolate matched text
-          lineContent: lineContent,
-        ));
+        matches.add(
+          SearchMatch(
+            file: file,
+            line: lineNumber,
+            column: 1, // grep doesn't provide column info
+            matchedText: '', // grep doesn't isolate matched text
+            lineContent: lineContent,
+          ),
+        );
       } catch (e) {
         print('[ToolExecutor] Failed to parse grep line: $line, error: $e');
       }

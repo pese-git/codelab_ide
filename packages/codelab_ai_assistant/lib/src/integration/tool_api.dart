@@ -8,17 +8,18 @@ final _logger = Logger();
 /// Абстракция для интеграции tool_call из AI agent с системами IDE.
 abstract class ToolApi {
   /// Выполнить tool call с поддержкой HITL операций.
-  /// 
+  ///
   /// Параметры:
   /// - [callId] - уникальный идентификатор вызова
   /// - [toolName] - имя инструмента для выполнения
   /// - [arguments] - аргументы для инструмента
   /// - [requiresApproval] - требуется ли подтверждение пользователя
-  /// 
-  /// Возвращает [FileOperationResult] с результатом выполнения.
-  /// 
+  ///
+  /// Возвращает результат выполнения (тип зависит от инструмента).
+  /// Обычно это объект с методом toJson() для сериализации.
+  ///
   /// Throws [ToolExecutionException] при ошибках выполнения.
-  Future<FileOperationResult> call({
+  Future<dynamic> call({
     required String callId,
     required String toolName,
     required Map<String, dynamic> arguments,
@@ -34,17 +35,19 @@ class ToolApiImpl implements ToolApi {
   ToolApiImpl({
     required ToolExecutor toolExecutor,
     required ToolApprovalService approvalService,
-  })  : _toolExecutor = toolExecutor,
-        _approvalService = approvalService;
+  }) : _toolExecutor = toolExecutor,
+       _approvalService = approvalService;
 
   @override
-  Future<FileOperationResult> call({
+  Future<dynamic> call({
     required String callId,
     required String toolName,
     required Map<String, dynamic> arguments,
     required bool requiresApproval,
   }) async {
-    _logger.i('ToolApi.call: callId=$callId, toolName=$toolName, requiresApproval=$requiresApproval');
+    _logger.i(
+      'ToolApi.call: callId=$callId, toolName=$toolName, requiresApproval=$requiresApproval',
+    );
 
     try {
       // Создаем ToolCall объект
@@ -58,9 +61,9 @@ class ToolApiImpl implements ToolApi {
       // Если требуется подтверждение, запрашиваем его у пользователя
       if (requiresApproval) {
         _logger.d('Requesting user approval for tool: $toolName');
-        
+
         final approvalResult = await _approvalService.requestApproval(toolCall);
-        
+
         switch (approvalResult) {
           case ToolApprovalResult.approved:
             _logger.i('User approved tool execution: $toolName');
@@ -75,15 +78,18 @@ class ToolApiImpl implements ToolApi {
       // Выполняем tool call через ToolExecutor
       _logger.d('Executing tool: $toolName');
       final result = await _toolExecutor.executeToolCall(toolCall);
-      
+
       _logger.i('Tool execution successful: $toolName');
       return result;
-      
     } on ToolExecutionException catch (e) {
       _logger.e('Tool execution failed: ${e.code} - ${e.message}');
       rethrow;
     } catch (e, stackTrace) {
-      _logger.e('Unexpected error during tool execution', error: e, stackTrace: stackTrace);
+      _logger.e(
+        'Unexpected error during tool execution',
+        error: e,
+        stackTrace: stackTrace,
+      );
       throw ToolExecutionException.general(
         'Unexpected error during tool execution: $e',
         cause: e,
@@ -95,7 +101,7 @@ class ToolApiImpl implements ToolApi {
 /// Моковая реализация, для тестов/отладки, всегда выбрасывает ошибку
 class ToolApiMock implements ToolApi {
   @override
-  Future<FileOperationResult> call({
+  Future<dynamic> call({
     required String callId,
     required String toolName,
     required Map<String, dynamic> arguments,
