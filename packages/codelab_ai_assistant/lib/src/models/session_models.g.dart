@@ -8,22 +8,28 @@ part of 'session_models.dart';
 
 _ChatMessage _$ChatMessageFromJson(Map<String, dynamic> json) => _ChatMessage(
   role: json['role'] as String,
-  content: json['content'] as String,
+  content: json['content'] as String?,
   name: json['name'] as String?,
+  toolCallId: json['tool_call_id'] as String?,
+  toolCalls: (json['tool_calls'] as List<dynamic>?)
+      ?.map((e) => e as Map<String, dynamic>)
+      .toList(),
 );
 
 Map<String, dynamic> _$ChatMessageToJson(_ChatMessage instance) =>
     <String, dynamic>{
       'role': instance.role,
-      'content': instance.content,
-      'name': instance.name,
+      if (instance.content case final value?) 'content': value,
+      if (instance.name case final value?) 'name': value,
+      if (instance.toolCallId case final value?) 'tool_call_id': value,
+      if (instance.toolCalls case final value?) 'tool_calls': value,
     };
 
 _AgentSwitch _$AgentSwitchFromJson(Map<String, dynamic> json) => _AgentSwitch(
-  from: json['from'] as String,
-  to: json['to'] as String,
-  reason: json['reason'] as String,
-  timestamp: json['timestamp'] as String,
+  from: json['from'] as String?,
+  to: json['to'] as String?,
+  reason: json['reason'] as String?,
+  timestamp: json['timestamp'] as String?,
 );
 
 Map<String, dynamic> _$AgentSwitchToJson(_AgentSwitch instance) =>

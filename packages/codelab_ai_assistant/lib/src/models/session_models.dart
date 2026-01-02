@@ -4,12 +4,14 @@ part 'session_models.freezed.dart';
 part 'session_models.g.dart';
 
 /// Сообщение в чате
-@freezed
+@Freezed(makeCollectionsUnmodifiable: false)
 abstract class ChatMessage with _$ChatMessage {
   const factory ChatMessage({
     required String role,
-    required String content,
-    String? name,
+    @JsonKey(includeIfNull: false) String? content,
+    @JsonKey(includeIfNull: false) String? name,
+    @JsonKey(name: 'tool_call_id', includeIfNull: false) String? toolCallId,
+    @JsonKey(name: 'tool_calls', includeIfNull: false) List<Map<String, dynamic>>? toolCalls,
   }) = _ChatMessage;
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) =>
@@ -20,10 +22,10 @@ abstract class ChatMessage with _$ChatMessage {
 @freezed
 abstract class AgentSwitch with _$AgentSwitch {
   const factory AgentSwitch({
-    required String from,
-    required String to,
-    required String reason,
-    required String timestamp,
+    String? from,
+    String? to,
+    String? reason,
+    String? timestamp,
   }) = _AgentSwitch;
 
   factory AgentSwitch.fromJson(Map<String, dynamic> json) =>
