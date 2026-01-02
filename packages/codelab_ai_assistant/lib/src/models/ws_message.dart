@@ -22,6 +22,11 @@ Object? _readConfidence(Map json, String key) {
   return json['confidence'] ?? json['metadata']?['confidence'];
 }
 
+// Helper to read error content from either 'content' or 'error' field
+Object? _readErrorContent(Map json, String key) {
+  return json['content'] ?? json['error'];
+}
+
 @Freezed(unionKey: 'type', unionValueCase: FreezedUnionCase.snake)
 sealed class WSMessage with _$WSMessage {
   const factory WSMessage.userMessage({
@@ -68,7 +73,10 @@ sealed class WSMessage with _$WSMessage {
     @JsonKey(readValue: _readConfidence) String? confidence,
   }) = WSAgentSwitchedMessage;
 
-  const factory WSMessage.error({String? content}) = WSError;
+  const factory WSMessage.error({
+    // ignore: invalid_annotation_target
+    @JsonKey(readValue: _readErrorContent) String? content,
+  }) = WSError;
 
   const factory WSMessage.switchAgent({
     // ignore: invalid_annotation_target

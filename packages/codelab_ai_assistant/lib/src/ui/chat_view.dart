@@ -116,26 +116,16 @@ class _ChatViewState extends State<ChatView> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            FluentIcons.chat,
-            size: 64,
-            color: Colors.grey[100],
-          ),
+          Icon(FluentIcons.chat, size: 64, color: Colors.grey[100]),
           const SizedBox(height: 24),
           const Text(
             'Start a conversation',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 8),
           Text(
             'Ask me anything or describe what you want to build',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[120],
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey[120]),
             textAlign: TextAlign.center,
           ),
         ],
@@ -165,9 +155,7 @@ class _ChatViewState extends State<ChatView> {
             height: 40,
             child: FilledButton(
               onPressed: (waiting || hasApproval) ? null : _send,
-              style: ButtonStyle(
-                padding: ButtonState.all(EdgeInsets.zero),
-              ),
+              style: ButtonStyle(padding: ButtonState.all(EdgeInsets.zero)),
               child: waiting
                   ? const SizedBox(
                       width: 16,
@@ -190,9 +178,7 @@ class _ChatViewState extends State<ChatView> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.orange.withOpacity(0.1),
-        border: Border(
-          top: BorderSide(color: Colors.orange, width: 2),
-        ),
+        border: Border(top: BorderSide(color: Colors.orange, width: 2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -270,7 +256,7 @@ class _ChatViewState extends State<ChatView> {
     if (text.isEmpty) return;
     widget.bloc.add(AiAgentEvent.sendUserMessage(text));
     _controller.clear();
-    
+
     // Scroll to bottom after sending
     Future.delayed(const Duration(milliseconds: 100), () {
       if (_scrollController.hasClients) {
@@ -295,23 +281,18 @@ class _ChatViewState extends State<ChatView> {
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment:
-            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isUser
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         children: [
-          if (!isUser) ...[
-            _buildAvatar(msg),
-            const SizedBox(width: 12),
-          ],
+          if (!isUser) ...[_buildAvatar(msg), const SizedBox(width: 12)],
           Flexible(
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: _getMessageColor(msg),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: _getBorderColor(msg),
-                  width: 1,
-                ),
+                border: Border.all(color: _getBorderColor(msg), width: 1),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -322,10 +303,7 @@ class _ChatViewState extends State<ChatView> {
               ),
             ),
           ),
-          if (isUser) ...[
-            const SizedBox(width: 12),
-            _buildAvatar(msg),
-          ],
+          if (isUser) ...[const SizedBox(width: 12), _buildAvatar(msg)],
         ],
       ),
     );
@@ -399,7 +377,8 @@ class _ChatViewState extends State<ChatView> {
       assistantMessage: (_, __) => Colors.grey[20]!,
       toolCall: (_, __, ___, ____) => Colors.orange.withOpacity(0.1),
       toolResult: (_, __, ___, ____) => Colors.green.withOpacity(0.1),
-      agentSwitched: (_, __, ___, ____, _____) => Colors.purple.withOpacity(0.1),
+      agentSwitched: (_, __, ___, ____, _____) =>
+          Colors.purple.withOpacity(0.1),
       error: (_) => Colors.red.withOpacity(0.1),
       switchAgent: (_, __, ___) => Colors.blue.withOpacity(0.1),
       hitlDecision: (_, __, ___, ____) => Colors.blue.withOpacity(0.1),
@@ -412,7 +391,8 @@ class _ChatViewState extends State<ChatView> {
       assistantMessage: (_, __) => Colors.grey[60]!,
       toolCall: (_, __, ___, ____) => Colors.orange.withOpacity(0.3),
       toolResult: (_, __, ___, ____) => Colors.green.withOpacity(0.3),
-      agentSwitched: (_, __, ___, ____, _____) => Colors.purple.withOpacity(0.3),
+      agentSwitched: (_, __, ___, ____, _____) =>
+          Colors.purple.withOpacity(0.3),
       error: (_) => Colors.red.withOpacity(0.3),
       switchAgent: (_, __, ___) => Colors.blue.withOpacity(0.3),
       hitlDecision: (_, __, ___, ____) => Colors.blue.withOpacity(0.3),
@@ -422,14 +402,19 @@ class _ChatViewState extends State<ChatView> {
   String _getMessageContent(WSMessage msg) {
     return msg.when(
       userMessage: (c, _) => c,
-      assistantMessage: (content, _) => content ?? '',
+      assistantMessage: (content, _) => content ?? '_(No content)_',
       toolCall: (callId, tool, args, requiresApproval) =>
           '**Tool Call:** `$tool`\n\n```json\n$args\n```${requiresApproval ? "\n\n⚠️ Requires approval" : ""}',
       toolResult: (callId, toolName, result, error) =>
           error ?? (result != null ? '```json\n$result\n```' : 'No result'),
       agentSwitched: (content, fromAgent, toAgent, reason, confidence) =>
           '$content\n\n**Reason:** $reason',
-      error: (content) => '**Error:** ${content ?? "Unknown error"}',
+      error: (content) {
+        if (content == null || content.isEmpty) {
+          return '**Error:** Unknown error occurred. Please check the logs for details.';
+        }
+        return '**Error:** $content';
+      },
       switchAgent: (agentType, content, reason) =>
           '$content${reason != null ? "\n\n**Reason:** $reason" : ""}',
       hitlDecision: (callId, decision, modifiedArgs, feedback) =>

@@ -91,7 +91,7 @@ Map<String, dynamic> _$WSAgentSwitchedMessageToJson(
 };
 
 WSError _$WSErrorFromJson(Map<String, dynamic> json) => WSError(
-  content: json['content'] as String?,
+  content: _readErrorContent(json, 'content') as String?,
   $type: json['type'] as String?,
 );
 

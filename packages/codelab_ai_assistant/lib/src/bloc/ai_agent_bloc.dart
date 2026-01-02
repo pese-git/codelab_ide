@@ -128,17 +128,37 @@ class AiAgentBloc extends Bloc<AiAgentEvent, AiAgentState> {
       assistantMessage: (content, isFinal) => 'assistant: $content (final: $isFinal)',
       userMessage: (content, role) => 'user: $content',
       error: (content) => 'error: $content',
+      switchAgent: (agentType, content, reason) => 'switch_agent: $agentType',
+      agentSwitched: (content, fromAgent, toAgent, reason, confidence) => 'agent_switched: $fromAgent → $toAgent',
       orElse: () => 'other',
     )}');
     
     // Обработка agentSwitched для обновления currentAgent
     String? newAgent;
+    
     msg.maybeWhen(
       agentSwitched: (content, fromAgent, toAgent, reason, confidence) {
         newAgent = toAgent;
         _logger.i('Agent switched: $fromAgent → $toAgent (reason: $reason)');
       },
+      switchAgent: (agentType, content, reason) {
+        // switch_agent is a request to switch
+        _logger.i('Switch agent requested: $agentType (reason: $reason)');
+      },
       orElse: () {},
+    );
+    
+    // Determine if we should stop waiting based on message type
+    // Stop waiting for: assistant_message (if final), error, tool_result
+    // Keep waiting for: tool_call, switch_agent, agent_switched
+    bool shouldStopWaiting = msg.maybeWhen(
+      assistantMessage: (content, isFinal) => isFinal,
+      error: (content) => true,
+      toolResult: (callId, toolName, result, error) => false, // Keep waiting after tool result
+      toolCall: (callId, toolName, arguments, requiresApproval) => false, // Keep waiting for tool execution
+      switchAgent: (agentType, content, reason) => false, // Keep waiting after switch request
+      agentSwitched: (content, fromAgent, toAgent, reason, confidence) => false, // Keep waiting after switch
+      orElse: () => false,
     );
     
     // обработка tool_call через ToolApi
@@ -181,19 +201,22 @@ class AiAgentBloc extends Bloc<AiAgentEvent, AiAgentState> {
     );
     
     // добавить пришедший ответ в чат
-    final newHistory = [...(chatState?.history ?? []), msg];
-    _logger.d('Updating chat state: history length=${newHistory.length}, waitingResponse=false');
+    final newHistory = <WSMessage>[...(chatState?.history ?? []), msg];
+    final currentWaiting = chatState?.waitingResponse ?? false;
+    final newWaitingState = shouldStopWaiting ? false : currentWaiting;
+    
+    _logger.d('Updating chat state: history length=${newHistory.length}, waitingResponse=$newWaitingState (was: $currentWaiting, shouldStop: $shouldStopWaiting)');
     
     emit(
       ChatState(
         history: newHistory,
-        waitingResponse: false,
+        waitingResponse: newWaitingState,
         pendingApproval: chatState?.pendingApproval,
         currentAgent: newAgent ?? chatState?.currentAgent ?? 'orchestrator',
       ),
     );
     
-    _logger.i('Chat state updated successfully');
+    _logger.i('Chat state updated: waiting=$newWaitingState, agent=${newAgent ?? chatState?.currentAgent}');
   }
 
   Future<void> _onToolApprovalRequested(
