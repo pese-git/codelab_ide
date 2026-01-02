@@ -21,12 +21,15 @@ class AiAgentEvent with _$AiAgentEvent {
   const factory AiAgentEvent.connected() = AgentConnected;
   const factory AiAgentEvent.disconnected() = AgentDisconnected;
   const factory AiAgentEvent.sendUserMessage(String text) = SendUserMessage;
-  const factory AiAgentEvent.switchAgent(String agentType, String content) = SwitchAgent;
+  const factory AiAgentEvent.switchAgent(String agentType, String content) =
+      SwitchAgent;
   const factory AiAgentEvent.messageReceived(WSMessage message) =
       MessageReceived;
   const factory AiAgentEvent.approveToolCall() = ApproveToolCall;
   const factory AiAgentEvent.rejectToolCall() = RejectToolCall;
-  const factory AiAgentEvent.toolApprovalRequested(ToolApprovalRequest request) = ToolApprovalRequested;
+  const factory AiAgentEvent.toolApprovalRequested(
+    ToolApprovalRequest request,
+  ) = ToolApprovalRequested;
   const factory AiAgentEvent.loadHistory(SessionHistory history) = LoadHistory;
 }
 
@@ -66,16 +69,16 @@ class AiAgentBloc extends Bloc<AiAgentEvent, AiAgentState> {
     on<RejectToolCall>(_onRejectToolCall);
     on<ToolApprovalRequested>(_onToolApprovalRequested);
     on<LoadHistory>(_onLoadHistory);
-    
+
     // НЕ подключаемся автоматически - подключение происходит при loadHistory
     // с конкретным session_id
-    
+
     // подписка на запросы подтверждения
     approvalService.approvalRequests.listen((request) {
       add(AiAgentEvent.toolApprovalRequested(request));
     });
   }
-  
+
   void _ensureConnected() {
     if (!_isConnected) {
       _msgSub = protocol.messages;
@@ -122,20 +125,15 @@ class AiAgentBloc extends Bloc<AiAgentEvent, AiAgentState> {
   ) async {
     final msg = event.message;
     final chatState = state is ChatState ? state as ChatState : null;
-    
+
     // Log received message for debugging
-    _logger.d('Received message: type=${msg.runtimeType}, content=${msg.maybeWhen(
-      assistantMessage: (content, isFinal) => 'assistant: $content (final: $isFinal)',
-      userMessage: (content, role) => 'user: $content',
-      error: (content) => 'error: $content',
-      switchAgent: (agentType, content, reason) => 'switch_agent: $agentType',
-      agentSwitched: (content, fromAgent, toAgent, reason, confidence) => 'agent_switched: $fromAgent → $toAgent',
-      orElse: () => 'other',
-    )}');
-    
+    _logger.d(
+      'Received message: type=${msg.runtimeType}, content=${msg.maybeWhen(assistantMessage: (content, isFinal) => 'assistant: $content (final: $isFinal)', userMessage: (content, role) => 'user: $content', error: (content) => 'error: $content', switchAgent: (agentType, content, reason) => 'switch_agent: $agentType', agentSwitched: (content, fromAgent, toAgent, reason, confidence) => 'agent_switched: $fromAgent → $toAgent', orElse: () => 'other')}',
+    );
+
     // Обработка agentSwitched для обновления currentAgent
     String? newAgent;
-    
+
     msg.maybeWhen(
       agentSwitched: (content, fromAgent, toAgent, reason, confidence) {
         newAgent = toAgent;
@@ -147,25 +145,31 @@ class AiAgentBloc extends Bloc<AiAgentEvent, AiAgentState> {
       },
       orElse: () {},
     );
-    
+
     // Determine if we should stop waiting based on message type
     // Stop waiting for: assistant_message (if final), error, tool_result
     // Keep waiting for: tool_call, switch_agent, agent_switched
     bool shouldStopWaiting = msg.maybeWhen(
       assistantMessage: (content, isFinal) => isFinal,
       error: (content) => true,
-      toolResult: (callId, toolName, result, error) => false, // Keep waiting after tool result
-      toolCall: (callId, toolName, arguments, requiresApproval) => false, // Keep waiting for tool execution
-      switchAgent: (agentType, content, reason) => false, // Keep waiting after switch request
-      agentSwitched: (content, fromAgent, toAgent, reason, confidence) => false, // Keep waiting after switch
+      toolResult: (callId, toolName, result, error) =>
+          false, // Keep waiting after tool result
+      toolCall: (callId, toolName, arguments, requiresApproval) =>
+          false, // Keep waiting for tool execution
+      switchAgent: (agentType, content, reason) =>
+          false, // Keep waiting after switch request
+      agentSwitched: (content, fromAgent, toAgent, reason, confidence) =>
+          false, // Keep waiting after switch
       orElse: () => false,
     );
-    
+
     // обработка tool_call через ToolApi
     await msg.maybeWhen(
       toolCall: (callId, toolName, arguments, requiresApproval) async {
-        _logger.d('Received tool call: $toolName (callId: $callId, requiresApproval: $requiresApproval)');
-        
+        _logger.d(
+          'Received tool call: $toolName (callId: $callId, requiresApproval: $requiresApproval)',
+        );
+
         try {
           final result = await toolApi.call(
             callId: callId,
@@ -173,7 +177,7 @@ class AiAgentBloc extends Bloc<AiAgentEvent, AiAgentState> {
             arguments: arguments,
             requiresApproval: requiresApproval,
           );
-          
+
           _logger.i('Tool call successful: $toolName');
           protocol.sendToolResult(
             callId: callId,
@@ -189,7 +193,11 @@ class AiAgentBloc extends Bloc<AiAgentEvent, AiAgentState> {
             error: errorMsg,
           );
         } catch (e, stackTrace) {
-          _logger.e('Unexpected error in tool call', error: e, stackTrace: stackTrace);
+          _logger.e(
+            'Unexpected error in tool call',
+            error: e,
+            stackTrace: stackTrace,
+          );
           protocol.sendToolResult(
             callId: callId,
             toolName: toolName,
@@ -199,14 +207,16 @@ class AiAgentBloc extends Bloc<AiAgentEvent, AiAgentState> {
       },
       orElse: () {},
     );
-    
+
     // добавить пришедший ответ в чат
     final newHistory = <WSMessage>[...(chatState?.history ?? []), msg];
     final currentWaiting = chatState?.waitingResponse ?? false;
     final newWaitingState = shouldStopWaiting ? false : currentWaiting;
-    
-    _logger.d('Updating chat state: history length=${newHistory.length}, waitingResponse=$newWaitingState (was: $currentWaiting, shouldStop: $shouldStopWaiting)');
-    
+
+    _logger.d(
+      'Updating chat state: history length=${newHistory.length}, waitingResponse=$newWaitingState (was: $currentWaiting, shouldStop: $shouldStopWaiting)',
+    );
+
     emit(
       ChatState(
         history: newHistory,
@@ -215,8 +225,10 @@ class AiAgentBloc extends Bloc<AiAgentEvent, AiAgentState> {
         currentAgent: newAgent ?? chatState?.currentAgent ?? 'orchestrator',
       ),
     );
-    
-    _logger.i('Chat state updated: waiting=$newWaitingState, agent=${newAgent ?? chatState?.currentAgent}');
+
+    _logger.i(
+      'Chat state updated: waiting=$newWaitingState, agent=${newAgent ?? chatState?.currentAgent}',
+    );
   }
 
   Future<void> _onToolApprovalRequested(
@@ -224,7 +236,7 @@ class AiAgentBloc extends Bloc<AiAgentEvent, AiAgentState> {
     Emitter<AiAgentState> emit,
   ) async {
     final chatState = state is ChatState ? state as ChatState : null;
-    
+
     emit(
       ChatState(
         history: chatState?.history ?? [],
@@ -240,19 +252,21 @@ class AiAgentBloc extends Bloc<AiAgentEvent, AiAgentState> {
   ) async {
     final chatState = state is ChatState ? state as ChatState : null;
     final pendingApproval = chatState?.pendingApproval;
-    
+
     if (pendingApproval != null) {
-      _logger.i('User approved tool call: ${pendingApproval.toolCall.toolName}');
-      
+      _logger.i(
+        'User approved tool call: ${pendingApproval.toolCall.toolName}',
+      );
+
       // Send HITL decision to backend
       protocol.sendHITLDecision(
         callId: pendingApproval.toolCall.callId,
         decision: 'approve',
       );
-      
+
       // Complete local approval
       pendingApproval.completer.complete(ToolApprovalResult.approved);
-      
+
       emit(
         ChatState(
           history: chatState?.history ?? [],
@@ -269,20 +283,22 @@ class AiAgentBloc extends Bloc<AiAgentEvent, AiAgentState> {
   ) async {
     final chatState = state is ChatState ? state as ChatState : null;
     final pendingApproval = chatState?.pendingApproval;
-    
+
     if (pendingApproval != null) {
-      _logger.w('User rejected tool call: ${pendingApproval.toolCall.toolName}');
-      
+      _logger.w(
+        'User rejected tool call: ${pendingApproval.toolCall.toolName}',
+      );
+
       // Send HITL decision to backend
       protocol.sendHITLDecision(
         callId: pendingApproval.toolCall.callId,
         decision: 'reject',
         feedback: 'User rejected this operation',
       );
-      
+
       // Complete local approval
       pendingApproval.completer.complete(ToolApprovalResult.rejected);
-      
+
       emit(
         ChatState(
           history: chatState?.history ?? [],
@@ -297,52 +313,58 @@ class AiAgentBloc extends Bloc<AiAgentEvent, AiAgentState> {
     LoadHistory event,
     Emitter<AiAgentState> emit,
   ) async {
-    _logger.i('Loading history: ${event.history.messageCount} messages for session ${event.history.sessionId}');
-    
+    _logger.i(
+      'Loading history: ${event.history.messageCount} messages for session ${event.history.sessionId}',
+    );
+
     // Переподключить WebSocket с новым session_id
     try {
-      _logger.d('Reconnecting WebSocket with session_id: ${event.history.sessionId}');
+      _logger.d(
+        'Reconnecting WebSocket with session_id: ${event.history.sessionId}',
+      );
       protocol.reconnect(event.history.sessionId);
-      
+
       // Убедиться что подписка на сообщения активна
       _ensureConnected();
-      
+
       _logger.i('WebSocket reconnected successfully');
     } catch (e) {
       _logger.e('Failed to reconnect WebSocket', error: e);
       emit(ErrorState('Failed to connect to session: $e'));
       return;
     }
-    
+
     // Конвертировать ChatMessage в WSMessage
     final wsMessages = <WSMessage>[];
     for (final msg in event.history.messages) {
       if (msg.role == 'user') {
-        wsMessages.add(WSMessage.userMessage(
-          content: msg.content ?? '',
-          role: 'user',
-        ));
+        wsMessages.add(
+          WSMessage.userMessage(content: msg.content ?? '', role: 'user'),
+        );
       } else if (msg.role == 'assistant') {
-        wsMessages.add(WSMessage.assistantMessage(
-          content: msg.content,
-          isFinal: true,
-        ));
+        wsMessages.add(
+          WSMessage.assistantMessage(content: msg.content, isFinal: true),
+        );
       } else if (msg.role == 'tool') {
-        wsMessages.add(WSMessage.toolResult(
-          callId: msg.toolCallId ?? '',
-          toolName: msg.name ?? '',
-          result: msg.content != null ? {'result': msg.content} : null,
-          error: null,
-        ));
+        wsMessages.add(
+          WSMessage.toolResult(
+            callId: msg.toolCallId ?? '',
+            toolName: msg.name ?? '',
+            result: msg.content != null ? {'result': msg.content} : null,
+            error: null,
+          ),
+        );
       }
     }
-    
-    emit(ChatState(
-      history: wsMessages,
-      waitingResponse: false,
-      currentAgent: event.history.currentAgent ?? 'orchestrator',
-    ));
-    
+
+    emit(
+      ChatState(
+        history: wsMessages,
+        waitingResponse: false,
+        currentAgent: event.history.currentAgent ?? 'orchestrator',
+      ),
+    );
+
     _logger.i('History loaded: ${wsMessages.length} messages');
   }
 

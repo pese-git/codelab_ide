@@ -408,7 +408,7 @@ class _ChatViewState extends State<ChatView> {
       toolResult: (callId, toolName, result, error) =>
           error ?? (result != null ? '```json\n$result\n```' : 'No result'),
       agentSwitched: (content, fromAgent, toAgent, reason, confidence) =>
-          '$content\n\n**Reason:** $reason',
+          '${content ?? "Agent switched"}\n\n**Reason:** $reason',
       error: (content) {
         if (content == null || content.isEmpty) {
           return '**Error:** Unknown error occurred. Please check the logs for details.';
@@ -416,7 +416,7 @@ class _ChatViewState extends State<ChatView> {
         return '**Error:** $content';
       },
       switchAgent: (agentType, content, reason) =>
-          '$content${reason != null ? "\n\n**Reason:** $reason" : ""}',
+          '${content ?? "Switching to $agentType agent"}${reason != null ? "\n\n**Reason:** $reason" : ""}',
       hitlDecision: (callId, decision, modifiedArgs, feedback) =>
           '**Decision:** $decision${feedback != null ? "\n\n**Feedback:** $feedback" : ""}',
     );

@@ -81,7 +81,7 @@ sealed class WSMessage with _$WSMessage {
   const factory WSMessage.switchAgent({
     // ignore: invalid_annotation_target
     @JsonKey(name: 'agent_type') required String agentType,
-    required String content,
+    String? content,
     String? reason,
   }) = WSSwitchAgent;
 

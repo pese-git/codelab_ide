@@ -103,7 +103,7 @@ Map<String, dynamic> _$WSErrorToJson(WSError instance) => <String, dynamic>{
 WSSwitchAgent _$WSSwitchAgentFromJson(Map<String, dynamic> json) =>
     WSSwitchAgent(
       agentType: json['agent_type'] as String,
-      content: json['content'] as String,
+      content: json['content'] as String?,
       reason: json['reason'] as String?,
       $type: json['type'] as String?,
     );
