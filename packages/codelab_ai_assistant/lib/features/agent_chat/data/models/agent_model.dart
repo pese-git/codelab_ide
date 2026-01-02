@@ -8,37 +8,37 @@ part 'agent_model.g.dart';
 
 /// DTO модель для сериализации/десериализации агента
 @freezed
-class AgentModel with _$AgentModel {
+abstract class AgentModel with _$AgentModel {
   const factory AgentModel({
     /// ID агента (тип)
     required String id,
-    
+
     /// Имя агента
     required String name,
-    
+
     /// Описание
     required String description,
-    
+
     /// Иконка
     required String icon,
-    
+
     /// Доступность
     // ignore: invalid_annotation_target
     @JsonKey(name: 'is_available') @Default(true) bool isAvailable,
-    
+
     /// Возможности
     @Default([]) List<String> capabilities,
-    
+
     /// Метаданные
     Map<String, dynamic>? metadata,
   }) = _AgentModel;
-  
+
   const AgentModel._();
-  
+
   /// Создает модель из JSON
   factory AgentModel.fromJson(Map<String, dynamic> json) =>
       _$AgentModelFromJson(json);
-  
+
   /// Конвертирует DTO модель в domain entity
   Agent toEntity() {
     return Agent(
@@ -51,7 +51,7 @@ class AgentModel with _$AgentModel {
       metadata: metadata != null ? some(metadata!) : none(),
     );
   }
-  
+
   /// Создает DTO модель из domain entity
   factory AgentModel.fromEntity(Agent entity) {
     return AgentModel(

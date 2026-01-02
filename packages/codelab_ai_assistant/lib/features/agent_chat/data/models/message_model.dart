@@ -7,77 +7,77 @@ part 'message_model.freezed.dart';
 part 'message_model.g.dart';
 
 /// DTO модель для сериализации/десериализации сообщения
-/// 
+///
 /// Соответствует формату WebSocket протокола
 @freezed
-class MessageModel with _$MessageModel {
+abstract class MessageModel with _$MessageModel {
   const factory MessageModel({
     /// Тип сообщения (user_message, assistant_message, tool_call, etc.)
     required String type,
-    
+
     /// Текстовое содержимое (для text сообщений)
     String? content,
-    
+
     /// Роль отправителя
     String? role,
-    
+
     /// Является ли сообщение финальным (для assistant_message)
     // ignore: invalid_annotation_target
     @JsonKey(name: 'is_final') bool? isFinal,
-    
+
     /// ID вызова инструмента (для tool_call, tool_result)
     // ignore: invalid_annotation_target
     @JsonKey(name: 'call_id') String? callId,
-    
+
     /// Имя инструмента (для tool_call, tool_result)
     // ignore: invalid_annotation_target
     @JsonKey(name: 'tool_name') String? toolName,
-    
+
     /// Аргументы инструмента (для tool_call)
     Map<String, dynamic>? arguments,
-    
+
     /// Результат выполнения (для tool_result)
     Map<String, dynamic>? result,
-    
+
     /// Ошибка выполнения (для tool_result, error)
     String? error,
-    
+
     /// Тип агента (для switch_agent)
     // ignore: invalid_annotation_target
     @JsonKey(name: 'agent_type') String? agentType,
-    
+
     /// Агент откуда переключаемся (для agent_switched)
     // ignore: invalid_annotation_target
     @JsonKey(name: 'from_agent') String? fromAgent,
-    
+
     /// Агент куда переключаемся (для agent_switched)
     // ignore: invalid_annotation_target
     @JsonKey(name: 'to_agent') String? toAgent,
-    
+
     /// Причина переключения
     String? reason,
-    
+
     /// Метаданные
     Map<String, dynamic>? metadata,
   }) = _MessageModel;
-  
+
   const MessageModel._();
-  
+
   /// Создает модель из JSON
   factory MessageModel.fromJson(Map<String, dynamic> json) =>
       _$MessageModelFromJson(json);
-  
+
   /// Конвертирует DTO модель в domain entity
   Message toEntity() {
     final messageId = _generateId();
     final timestamp = DateTime.now();
-    
+
     // Определяем роль
     final messageRole = _parseRole();
-    
+
     // Определяем содержимое
     final messageContent = _parseContent();
-    
+
     return Message(
       id: messageId,
       role: messageRole,
@@ -86,7 +86,7 @@ class MessageModel with _$MessageModel {
       metadata: metadata != null ? some(metadata!) : none(),
     );
   }
-  
+
   /// Парсит роль из типа сообщения
   MessageRole _parseRole() {
     switch (type) {
@@ -103,7 +103,7 @@ class MessageModel with _$MessageModel {
         return role == 'user' ? MessageRole.user : MessageRole.assistant;
     }
   }
-  
+
   /// Парсит содержимое из типа сообщения
   MessageContent _parseContent() {
     switch (type) {
@@ -113,14 +113,14 @@ class MessageModel with _$MessageModel {
           text: content ?? '',
           isFinal: isFinal ?? true,
         );
-        
+
       case 'tool_call':
         return MessageContent.toolCall(
           callId: callId ?? '',
           toolName: toolName ?? '',
           arguments: arguments ?? {},
         );
-        
+
       case 'tool_result':
         return MessageContent.toolResult(
           callId: callId ?? '',
@@ -128,29 +128,29 @@ class MessageModel with _$MessageModel {
           result: result != null ? some(result!) : none(),
           error: error != null ? some(error!) : none(),
         );
-        
+
       case 'agent_switched':
         return MessageContent.agentSwitch(
           fromAgent: fromAgent ?? '',
           toAgent: toAgent ?? '',
           reason: reason != null ? some(reason!) : none(),
         );
-        
+
       case 'error':
         return MessageContent.error(
           message: content ?? error ?? 'Unknown error',
         );
-        
+
       default:
         return MessageContent.text(text: content ?? '', isFinal: true);
     }
   }
-  
+
   /// Генерирует уникальный ID
   String _generateId() {
     return '${DateTime.now().millisecondsSinceEpoch}_${type}_${callId ?? ''}';
   }
-  
+
   /// Создает DTO модель из domain entity
   factory MessageModel.fromEntity(Message entity) {
     return entity.content.when(
@@ -179,10 +179,7 @@ class MessageModel with _$MessageModel {
         toAgent: toAgent,
         reason: reason?.toNullable(),
       ),
-      error: (message) => MessageModel(
-        type: 'error',
-        content: message,
-      ),
+      error: (message) => MessageModel(type: 'error', content: message),
     );
   }
 }
