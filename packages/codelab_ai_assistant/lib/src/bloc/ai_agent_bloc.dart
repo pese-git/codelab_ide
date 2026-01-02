@@ -123,6 +123,14 @@ class AiAgentBloc extends Bloc<AiAgentEvent, AiAgentState> {
     final msg = event.message;
     final chatState = state is ChatState ? state as ChatState : null;
     
+    // Log received message for debugging
+    _logger.d('Received message: type=${msg.runtimeType}, content=${msg.maybeWhen(
+      assistantMessage: (content, isFinal) => 'assistant: $content (final: $isFinal)',
+      userMessage: (content, role) => 'user: $content',
+      error: (content) => 'error: $content',
+      orElse: () => 'other',
+    )}');
+    
     // Обработка agentSwitched для обновления currentAgent
     String? newAgent;
     msg.maybeWhen(
@@ -173,14 +181,19 @@ class AiAgentBloc extends Bloc<AiAgentEvent, AiAgentState> {
     );
     
     // добавить пришедший ответ в чат
+    final newHistory = [...(chatState?.history ?? []), msg];
+    _logger.d('Updating chat state: history length=${newHistory.length}, waitingResponse=false');
+    
     emit(
       ChatState(
-        history: [...(chatState?.history ?? []), msg],
+        history: newHistory,
         waitingResponse: false,
         pendingApproval: chatState?.pendingApproval,
         currentAgent: newAgent ?? chatState?.currentAgent ?? 'orchestrator',
       ),
     );
+    
+    _logger.i('Chat state updated successfully');
   }
 
   Future<void> _onToolApprovalRequested(
