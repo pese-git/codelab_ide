@@ -13,11 +13,13 @@ import '../models/session_models.dart';
 class SessionManagerWidget extends StatelessWidget {
   final SessionManagerBloc bloc;
   final void Function(SessionHistory history)? onSessionChanged;
+  final VoidCallback? onNewSession;
 
   const SessionManagerWidget({
     super.key,
     required this.bloc,
     this.onSessionChanged,
+    this.onNewSession,
   });
 
   @override
@@ -41,6 +43,23 @@ class SessionManagerWidget extends StatelessWidget {
                 ),
               );
 
+              // Закрыть диалог
+              Navigator.of(context).pop();
+            },
+            newSessionCreated: (sessionId) {
+              // Уведомить о создании новой сессии
+              onNewSession?.call();
+              
+              // Показать уведомление
+              displayInfoBar(
+                context,
+                builder: (context, close) => InfoBar(
+                  title: const Text('New session created'),
+                  content: Text('Session ID: $sessionId'),
+                  severity: InfoBarSeverity.success,
+                ),
+              );
+              
               // Закрыть диалог
               Navigator.of(context).pop();
             },
@@ -176,6 +195,10 @@ class SessionManagerWidget extends StatelessWidget {
                   );
                 },
                 sessionSwitched: (sessionId, history) {
+                  // Показываем loading пока не перезагрузится список
+                  return const Center(child: ProgressRing());
+                },
+                newSessionCreated: (sessionId) {
                   // Показываем loading пока не перезагрузится список
                   return const Center(child: ProgressRing());
                 },

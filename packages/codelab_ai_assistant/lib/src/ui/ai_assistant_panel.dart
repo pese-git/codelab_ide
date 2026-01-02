@@ -8,6 +8,7 @@ import 'package:cherrypick/cherrypick.dart';
 import '../bloc/ai_agent_bloc.dart';
 import '../bloc/session_manager_bloc.dart';
 import '../models/ws_message.dart';
+import '../models/session_models.dart';
 import '../widgets/tool_approval_dialog.dart' as hitl;
 import '../widgets/session_manager_widget.dart';
 
@@ -216,6 +217,19 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
           onSessionChanged: (history) {
             // Загрузить историю в чат при смене сессии
             widget.bloc.add(AiAgentEvent.loadHistory(history));
+          },
+          onNewSession: () {
+            // Очистить чат при создании новой сессии
+            widget.bloc.add(AiAgentEvent.loadHistory(
+              SessionHistory(
+                sessionId: sessionManagerBloc.state.maybeMap(
+                  loaded: (state) => state.currentSessionId ?? 'new-session',
+                  orElse: () => 'new-session',
+                ),
+                messages: [],
+                messageCount: 0,
+              ),
+            ));
           },
         ),
       );

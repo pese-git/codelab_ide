@@ -35,6 +35,10 @@ class SessionManagerState with _$SessionManagerState {
     required String sessionId,
     required SessionHistory history,
   }) = _SessionSwitched;
+  
+  const factory SessionManagerState.newSessionCreated({
+    required String sessionId,
+  }) = _NewSessionCreated;
 }
 
 /// BLoC для управления сессиями
@@ -86,10 +90,18 @@ class SessionManagerBloc extends Bloc<SessionManagerEvent, SessionManagerState> 
       _logger.i('Creating new session');
       await _sessionService.resetSession();
       
-      // Перезагрузить список сессий
-      add(const SessionManagerEvent.loadSessions());
-      
-      _logger.i('New session created: ${_sessionService.currentSessionId}');
+      final newSessionId = _sessionService.currentSessionId;
+      if (newSessionId != null) {
+        // Эмитить событие создания новой сессии
+        emit(SessionManagerState.newSessionCreated(sessionId: newSessionId));
+        
+        _logger.i('New session created: $newSessionId');
+        
+        // Перезагрузить список сессий
+        add(const SessionManagerEvent.loadSessions());
+      } else {
+        throw Exception('Failed to create new session');
+      }
     } catch (e) {
       _logger.e('Error creating new session', error: e);
       emit(SessionManagerState.error(e.toString()));
