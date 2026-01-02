@@ -12,7 +12,7 @@ import '../models/session_models.dart';
 /// - Удалить сессию (TODO: требует endpoint в Gateway)
 class SessionManagerWidget extends StatelessWidget {
   final SessionManagerBloc bloc;
-  final VoidCallback? onSessionChanged;
+  final void Function(SessionHistory history)? onSessionChanged;
 
   const SessionManagerWidget({
     super.key,
@@ -28,8 +28,8 @@ class SessionManagerWidget extends StatelessWidget {
         listener: (context, state) {
           state.maybeWhen(
             sessionSwitched: (sessionId, history) {
-              // Уведомить о смене сессии
-              onSessionChanged?.call();
+              // Уведомить о смене сессии с историей
+              onSessionChanged?.call(history);
 
               // Показать уведомление
               displayInfoBar(

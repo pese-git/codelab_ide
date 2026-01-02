@@ -213,9 +213,9 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
         context: context,
         builder: (dialogContext) => SessionManagerWidget(
           bloc: sessionManagerBloc,
-          onSessionChanged: () {
-            // Перезагрузить чат при смене сессии
-            widget.bloc.add(const AiAgentEvent.connected());
+          onSessionChanged: (history) {
+            // Загрузить историю в чат при смене сессии
+            widget.bloc.add(AiAgentEvent.loadHistory(history));
           },
         ),
       );

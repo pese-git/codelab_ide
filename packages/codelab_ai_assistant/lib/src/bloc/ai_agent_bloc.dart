@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logger/logger.dart';
 import '../models/ws_message.dart';
 import '../models/tool_models.dart';
+import '../models/session_models.dart';
 import '../domain/agent_protocol_service.dart';
 import '../integration/tool_api.dart';
 import '../utils/websocket_error_mapper.dart';
@@ -26,6 +27,7 @@ class AiAgentEvent with _$AiAgentEvent {
   const factory AiAgentEvent.approveToolCall() = ApproveToolCall;
   const factory AiAgentEvent.rejectToolCall() = RejectToolCall;
   const factory AiAgentEvent.toolApprovalRequested(ToolApprovalRequest request) = ToolApprovalRequested;
+  const factory AiAgentEvent.loadHistory(SessionHistory history) = LoadHistory;
 }
 
 @freezed
@@ -50,7 +52,7 @@ class AiAgentBloc extends Bloc<AiAgentEvent, AiAgentState> {
   late final Stream<WSMessage> _msgSub;
 
   AiAgentBloc({
-    required this.protocol, 
+    required this.protocol,
     required this.toolApi,
     required this.approvalService,
   }) : super(const InitialState()) {
@@ -62,6 +64,7 @@ class AiAgentBloc extends Bloc<AiAgentEvent, AiAgentState> {
     on<ApproveToolCall>(_onApproveToolCall);
     on<RejectToolCall>(_onRejectToolCall);
     on<ToolApprovalRequested>(_onToolApprovalRequested);
+    on<LoadHistory>(_onLoadHistory);
     
     // подписка на стрим AI
     protocol.connect();
@@ -245,6 +248,44 @@ class AiAgentBloc extends Bloc<AiAgentEvent, AiAgentState> {
         ),
       );
     }
+  }
+
+  Future<void> _onLoadHistory(
+    LoadHistory event,
+    Emitter<AiAgentState> emit,
+  ) async {
+    _logger.i('Loading history: ${event.history.messageCount} messages');
+    
+    // Конвертировать ChatMessage в WSMessage
+    final wsMessages = <WSMessage>[];
+    for (final msg in event.history.messages) {
+      if (msg.role == 'user') {
+        wsMessages.add(WSMessage.userMessage(
+          content: msg.content ?? '',
+          role: 'user',
+        ));
+      } else if (msg.role == 'assistant') {
+        wsMessages.add(WSMessage.assistantMessage(
+          content: msg.content,
+          isFinal: true,
+        ));
+      } else if (msg.role == 'tool') {
+        wsMessages.add(WSMessage.toolResult(
+          callId: msg.toolCallId ?? '',
+          toolName: msg.name ?? '',
+          result: msg.content != null ? {'result': msg.content} : null,
+          error: null,
+        ));
+      }
+    }
+    
+    emit(ChatState(
+      history: wsMessages,
+      waitingResponse: false,
+      currentAgent: event.history.currentAgent ?? 'orchestrator',
+    ));
+    
+    _logger.i('History loaded: ${wsMessages.length} messages');
   }
 
   @override
