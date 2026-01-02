@@ -87,15 +87,28 @@ class SessionRestoreService {
     }
   }
 
-  /// Создать новую сессию
+  /// Создать новую сессию на сервере
   Future<void> createNewSession() async {
-    _currentSessionId = _generateSessionId();
-    _currentAgent = 'orchestrator'; // По умолчанию начинаем с orchestrator
-    
-    await _prefs.setString(_sessionIdKey, _currentSessionId!);
-    await _prefs.setString(_lastAgentKey, _currentAgent!);
-    
-    _logger.i('Created new session: $_currentSessionId');
+    try {
+      // Создать сессию на сервере через Gateway API
+      _currentSessionId = await _gatewayService.createSession();
+      _currentAgent = 'orchestrator'; // По умолчанию начинаем с orchestrator
+      
+      await _prefs.setString(_sessionIdKey, _currentSessionId!);
+      await _prefs.setString(_lastAgentKey, _currentAgent!);
+      
+      _logger.i('Created new session on server: $_currentSessionId');
+    } catch (e) {
+      _logger.e('Failed to create session on server, falling back to local', error: e);
+      // Fallback: создать локально если сервер недоступен
+      _currentSessionId = _generateSessionId();
+      _currentAgent = 'orchestrator';
+      
+      await _prefs.setString(_sessionIdKey, _currentSessionId!);
+      await _prefs.setString(_lastAgentKey, _currentAgent!);
+      
+      _logger.w('Created local session (fallback): $_currentSessionId');
+    }
   }
 
   /// Получить текущий session_id

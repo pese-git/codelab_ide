@@ -18,7 +18,6 @@ import '../api/gateway_api.dart';
 import '../bloc/session_manager_bloc.dart';
 
 class AiAssistantModule extends Module {
-  final String wsUrl;
   final String gatewayBaseUrl;
   final String internalApiKey;
   final bool useMockApi;
@@ -26,7 +25,6 @@ class AiAssistantModule extends Module {
   final SharedPreferences? sharedPreferences;
   
   AiAssistantModule({
-    required this.wsUrl,
     this.gatewayBaseUrl = 'http://localhost:8000',
     this.internalApiKey = 'change-me-internal-key',
     this.navigatorKey,
@@ -113,8 +111,11 @@ class AiAssistantModule extends Module {
     }
 
     // WebSocket-репозиторий — singleton
+    // Теперь использует gatewayUrl вместо полного wsUrl
     bind<WebSocketAgentRepository>()
-        .toProvide(() => WebSocketAgentRepository(wsUrl: wsUrl))
+        .toProvide(() => WebSocketAgentRepository(
+              gatewayUrl: gatewayBaseUrl.replaceFirst('http', 'ws'),
+            ))
         .singleton();
 
     // Протокол-сервис (AgentProtocolService) — singleton

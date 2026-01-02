@@ -20,7 +20,8 @@ abstract class AgentProtocolService {
     Map<String, dynamic>? modifiedArguments,
     String? feedback,
   });
-  void connect();
+  void connect({String? sessionId});
+  void reconnect(String sessionId);
   Future<void> disconnect();
 }
 
@@ -78,7 +79,10 @@ class AgentProtocolServiceImpl implements AgentProtocolService {
   }
 
   @override
-  void connect() => _repo.connect();
+  void connect({String? sessionId}) => _repo.connect(sessionId: sessionId);
+
+  @override
+  void reconnect(String sessionId) => _repo.reconnect(sessionId);
 
   @override
   Future<void> disconnect() => _repo.disconnect();

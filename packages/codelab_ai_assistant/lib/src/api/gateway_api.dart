@@ -47,12 +47,22 @@ class GatewayApi {
   }
 
   /// Получить текущего агента для сессии
-  /// 
+  ///
   /// GET /agents/{sessionId}/current
   Future<CurrentAgentInfo> getCurrentAgent(String sessionId) async {
     final response = await _dio.get(
       '$baseUrl/agents/$sessionId/current',
     );
     return CurrentAgentInfo.fromJson(response.data);
+  }
+
+  /// Создать новую сессию
+  ///
+  /// POST /sessions
+  Future<Map<String, dynamic>> createSession() async {
+    final response = await _dio.post(
+      '$baseUrl/sessions',
+    );
+    return response.data as Map<String, dynamic>;
   }
 }

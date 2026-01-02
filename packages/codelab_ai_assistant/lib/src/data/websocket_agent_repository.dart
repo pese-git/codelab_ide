@@ -6,16 +6,33 @@ import '../models/ws_message.dart';
 
 /// Репозиторий для взаимодействия с AI Agent через WebSocket.
 class WebSocketAgentRepository {
-  final String wsUrl;
+  final String gatewayUrl;
+  String? _currentSessionId;
   WebSocketChannel? _channel;
 
-  WebSocketAgentRepository({required this.wsUrl});
+  WebSocketAgentRepository({required this.gatewayUrl});
 
   Stream<WSMessage> get messages => _channel!.stream
       .map((event) => WSMessage.fromJson(jsonDecode(event as String)));
 
-  void connect() {
+  /// Подключиться к WebSocket с указанным session_id
+  void connect({String? sessionId}) {
+    // Закрыть предыдущее соединение если есть
+    if (_channel != null) {
+      _channel!.sink.close();
+    }
+    
+    _currentSessionId = sessionId;
+    final wsUrl = sessionId != null
+        ? '$gatewayUrl/ws/$sessionId'
+        : '$gatewayUrl/ws/ide-session'; // fallback для обратной совместимости
+    
     _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
+  }
+
+  /// Переподключиться с новым session_id
+  void reconnect(String sessionId) {
+    connect(sessionId: sessionId);
   }
 
   void send(WSMessage message) {
@@ -28,5 +45,9 @@ class WebSocketAgentRepository {
 
   Future<void> disconnect() async {
     await _channel?.sink.close();
+    _channel = null;
+    _currentSessionId = null;
   }
+  
+  String? get currentSessionId => _currentSessionId;
 }

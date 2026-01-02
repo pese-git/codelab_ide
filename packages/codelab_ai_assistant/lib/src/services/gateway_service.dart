@@ -92,7 +92,7 @@ class GatewayService {
   }
 
   /// Получить текущего агента для сессии
-  /// 
+  ///
   /// Throws:
   /// - [SessionNotFoundException] если сессия не найдена
   /// - [GatewayException] при других ошибках
@@ -115,6 +115,31 @@ class GatewayService {
       );
     } catch (e) {
       _logger.e('Unexpected error getting current agent', error: e);
+      throw GatewayException('Unexpected error: $e');
+    }
+  }
+
+  /// Создать новую сессию на сервере
+  ///
+  /// Returns: session_id созданной сессии
+  ///
+  /// Throws:
+  /// - [GatewayException] при ошибках
+  Future<String> createSession() async {
+    try {
+      _logger.i('Creating new session on server');
+      final response = await _api.createSession();
+      final sessionId = response['session_id'] as String;
+      _logger.i('Session created: $sessionId');
+      return sessionId;
+    } on DioException catch (e) {
+      _logger.e('Failed to create session', error: e);
+      throw GatewayException(
+        'Failed to create session: ${e.message}',
+        statusCode: e.response?.statusCode,
+      );
+    } catch (e) {
+      _logger.e('Unexpected error creating session', error: e);
       throw GatewayException('Unexpected error: $e');
     }
   }

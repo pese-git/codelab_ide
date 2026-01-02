@@ -50,6 +50,7 @@ class AiAgentBloc extends Bloc<AiAgentEvent, AiAgentState> {
   final ToolApi toolApi;
   final ToolApprovalService approvalService;
   late final Stream<WSMessage> _msgSub;
+  bool _isConnected = false;
 
   AiAgentBloc({
     required this.protocol,
@@ -66,15 +67,21 @@ class AiAgentBloc extends Bloc<AiAgentEvent, AiAgentState> {
     on<ToolApprovalRequested>(_onToolApprovalRequested);
     on<LoadHistory>(_onLoadHistory);
     
-    // подписка на стрим AI
-    protocol.connect();
-    _msgSub = protocol.messages;
-    _msgSub.listen((msg) => add(AiAgentEvent.messageReceived(msg)));
+    // НЕ подключаемся автоматически - подключение происходит при loadHistory
+    // с конкретным session_id
     
     // подписка на запросы подтверждения
     approvalService.approvalRequests.listen((request) {
       add(AiAgentEvent.toolApprovalRequested(request));
     });
+  }
+  
+  void _ensureConnected() {
+    if (!_isConnected) {
+      _msgSub = protocol.messages;
+      _msgSub.listen((msg) => add(AiAgentEvent.messageReceived(msg)));
+      _isConnected = true;
+    }
   }
 
   Future<void> _onUserMessage(
@@ -254,7 +261,22 @@ class AiAgentBloc extends Bloc<AiAgentEvent, AiAgentState> {
     LoadHistory event,
     Emitter<AiAgentState> emit,
   ) async {
-    _logger.i('Loading history: ${event.history.messageCount} messages');
+    _logger.i('Loading history: ${event.history.messageCount} messages for session ${event.history.sessionId}');
+    
+    // Переподключить WebSocket с новым session_id
+    try {
+      _logger.d('Reconnecting WebSocket with session_id: ${event.history.sessionId}');
+      protocol.reconnect(event.history.sessionId);
+      
+      // Убедиться что подписка на сообщения активна
+      _ensureConnected();
+      
+      _logger.i('WebSocket reconnected successfully');
+    } catch (e) {
+      _logger.e('Failed to reconnect WebSocket', error: e);
+      emit(ErrorState('Failed to connect to session: $e'));
+      return;
+    }
     
     // Конвертировать ChatMessage в WSMessage
     final wsMessages = <WSMessage>[];
