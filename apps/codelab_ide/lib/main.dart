@@ -31,6 +31,7 @@ void main() async {
     AiAssistantModule(
       wsUrl: 'ws://localhost:8000/ws/ide-session',
       gatewayBaseUrl: 'http://localhost:8000',
+      internalApiKey: 'my-super-secret-key',
       useMockApi: false,
       sharedPreferences: sharedPreferences,
     ),

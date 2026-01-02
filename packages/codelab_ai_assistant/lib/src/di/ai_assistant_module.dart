@@ -20,6 +20,7 @@ import '../bloc/session_manager_bloc.dart';
 class AiAssistantModule extends Module {
   final String wsUrl;
   final String gatewayBaseUrl;
+  final String internalApiKey;
   final bool useMockApi;
   final GlobalKey<NavigatorState>? navigatorKey;
   final SharedPreferences? sharedPreferences;
@@ -27,6 +28,7 @@ class AiAssistantModule extends Module {
   AiAssistantModule({
     required this.wsUrl,
     this.gatewayBaseUrl = 'http://localhost:8000',
+    this.internalApiKey = 'change-me-internal-key',
     this.navigatorKey,
     this.useMockApi = false,
     this.sharedPreferences,
@@ -60,6 +62,15 @@ class AiAssistantModule extends Module {
           final dio = Dio(BaseOptions(
             connectTimeout: const Duration(seconds: 30),
             receiveTimeout: const Duration(seconds: 30),
+          ));
+          
+          // Добавить интерцептор для внутренней аутентификации
+          dio.interceptors.add(InterceptorsWrapper(
+            onRequest: (options, handler) {
+              // Добавить X-Internal-Auth заголовок ко всем запросам
+              options.headers['X-Internal-Auth'] = internalApiKey;
+              return handler.next(options);
+            },
           ));
           
           // Добавить логирование запросов (опционально)
