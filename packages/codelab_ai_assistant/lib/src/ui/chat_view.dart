@@ -3,8 +3,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 import '../../features/agent_chat/presentation/bloc/agent_chat_bloc.dart';
-import '../models/ws_message.dart';
-import '../utils/message_mapper.dart';
+import '../../features/agent_chat/domain/entities/message.dart';
 import '../widgets/tool_approval_dialog.dart' as hitl;
 
 /// Виджет чата с AI агентом
@@ -40,7 +39,7 @@ class _ChatViewState extends State<ChatView> {
       builder: (context, state) {
         final waiting = state.isLoading;
         final pendingApproval = null; // TODO: Implement approval handling
-        final List<WSMessage> history = MessageMapper.toWSMessageList(state.messages);
+        final messages = state.messages;
         final currentAgent = AgentType.fromString(state.currentAgent);
 
         return Column(
@@ -50,13 +49,13 @@ class _ChatViewState extends State<ChatView> {
             const Divider(style: DividerThemeData(thickness: 1)),
             // Messages
             Expanded(
-              child: history.isEmpty
+              child: messages.isEmpty
                   ? _buildEmptyChat(context)
                   : ListView.builder(
                       controller: _scrollController,
                       padding: const EdgeInsets.all(16),
-                      itemCount: history.length,
-                      itemBuilder: (ctx, idx) => _msgBubble(history[idx]),
+                      itemCount: messages.length,
+                      itemBuilder: (ctx, idx) => _msgBubble(messages[idx]),
                     ),
             ),
             // Tool approval buttons
@@ -247,13 +246,8 @@ class _ChatViewState extends State<ChatView> {
     });
   }
 
-  Widget _msgBubble(WSMessage msg) {
-    final isUser = msg.maybeWhen(
-      userMessage: (_, __) => true,
-      switchAgent: (_, __, ___) => true,
-      hitlDecision: (_, __, ___, ____) => true,
-      orElse: () => false,
-    );
+  Widget _msgBubble(Message message) {
+    final isUser = message.isUser;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -263,37 +257,32 @@ class _ChatViewState extends State<ChatView> {
             ? MainAxisAlignment.end
             : MainAxisAlignment.start,
         children: [
-          if (!isUser) ...[_buildAvatar(msg), const SizedBox(width: 12)],
+          if (!isUser) ...[_buildAvatar(message), const SizedBox(width: 12)],
           Flexible(
             child: Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: _getMessageColor(msg),
+                color: _getMessageColor(message),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: _getBorderColor(msg), width: 1),
+                border: Border.all(color: _getBorderColor(message), width: 1),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (!isUser) _buildMessageHeader(msg),
-                  GptMarkdown(_getMessageContent(msg)),
+                  if (!isUser) _buildMessageHeader(message),
+                  GptMarkdown(_getMessageContent(message)),
                 ],
               ),
             ),
           ),
-          if (isUser) ...[const SizedBox(width: 12), _buildAvatar(msg)],
+          if (isUser) ...[const SizedBox(width: 12), _buildAvatar(message)],
         ],
       ),
     );
   }
 
-  Widget _buildAvatar(WSMessage msg) {
-    final isUser = msg.maybeWhen(
-      userMessage: (_, __) => true,
-      switchAgent: (_, __, ___) => true,
-      hitlDecision: (_, __, ___, ____) => true,
-      orElse: () => false,
-    );
+  Widget _buildAvatar(Message message) {
+    final isUser = message.isUser;
 
     return Container(
       width: 32,
@@ -310,24 +299,24 @@ class _ChatViewState extends State<ChatView> {
     );
   }
 
-  Widget _buildMessageHeader(WSMessage msg) {
+  Widget _buildMessageHeader(Message message) {
     String? label;
     Color? color;
 
-    msg.maybeWhen(
-      toolCall: (_, tool, __, requiresApproval) {
-        label = '🔧 Tool: $tool';
+    message.content.maybeWhen(
+      toolCall: (callId, toolName, arguments) {
+        label = '🔧 Tool: $toolName';
         color = Colors.orange;
       },
-      toolResult: (_, toolName, __, ___) {
+      toolResult: (callId, toolName, result, error) {
         label = '✓ Result: $toolName';
         color = Colors.green;
       },
-      agentSwitched: (_, fromAgent, toAgent, __, ___) {
+      agentSwitch: (fromAgent, toAgent, reason) {
         label = '🔄 $fromAgent → $toAgent';
         color = Colors.purple;
       },
-      error: (_) {
+      error: (message) {
         label = '❌ Error';
         color = Colors.red;
       },
@@ -349,54 +338,73 @@ class _ChatViewState extends State<ChatView> {
     );
   }
 
-  Color _getMessageColor(WSMessage msg) {
-    return msg.when(
-      userMessage: (_, __) => Colors.blue.withOpacity(0.1),
-      assistantMessage: (_, __) => Colors.grey[20]!,
-      toolCall: (_, __, ___, ____) => Colors.orange.withOpacity(0.1),
+  Color _getMessageColor(Message message) {
+    return message.content.when(
+      text: (text, isFinal) => message.isUser
+          ? Colors.blue.withOpacity(0.1)
+          : Colors.grey[20]!,
+      toolCall: (_, __, ___) => Colors.orange.withOpacity(0.1),
       toolResult: (_, __, ___, ____) => Colors.green.withOpacity(0.1),
-      agentSwitched: (_, __, ___, ____, _____) =>
-          Colors.purple.withOpacity(0.1),
+      agentSwitch: (_, __, ___) => Colors.purple.withOpacity(0.1),
       error: (_) => Colors.red.withOpacity(0.1),
-      switchAgent: (_, __, ___) => Colors.blue.withOpacity(0.1),
-      hitlDecision: (_, __, ___, ____) => Colors.blue.withOpacity(0.1),
     );
   }
 
-  Color _getBorderColor(WSMessage msg) {
-    return msg.when(
-      userMessage: (_, __) => Colors.blue.withOpacity(0.3),
-      assistantMessage: (_, __) => Colors.grey[60]!,
-      toolCall: (_, __, ___, ____) => Colors.orange.withOpacity(0.3),
+  Color _getBorderColor(Message message) {
+    return message.content.when(
+      text: (text, isFinal) => message.isUser
+          ? Colors.blue.withOpacity(0.3)
+          : Colors.grey[60]!,
+      toolCall: (_, __, ___) => Colors.orange.withOpacity(0.3),
       toolResult: (_, __, ___, ____) => Colors.green.withOpacity(0.3),
-      agentSwitched: (_, __, ___, ____, _____) =>
-          Colors.purple.withOpacity(0.3),
+      agentSwitch: (_, __, ___) => Colors.purple.withOpacity(0.3),
       error: (_) => Colors.red.withOpacity(0.3),
-      switchAgent: (_, __, ___) => Colors.blue.withOpacity(0.3),
-      hitlDecision: (_, __, ___, ____) => Colors.blue.withOpacity(0.3),
     );
   }
 
-  String _getMessageContent(WSMessage msg) {
-    return msg.when(
-      userMessage: (c, _) => c,
-      assistantMessage: (content, _) => content ?? '_(No content)_',
-      toolCall: (callId, tool, args, requiresApproval) =>
-          '**Tool Call:** `$tool`\n\n```json\n$args\n```${requiresApproval ? "\n\n⚠️ Requires approval" : ""}',
-      toolResult: (callId, toolName, result, error) =>
-          error ?? (result != null ? '```json\n$result\n```' : 'No result'),
-      agentSwitched: (content, fromAgent, toAgent, reason, confidence) =>
-          '${content ?? "Agent switched: $fromAgent → $toAgent"}${reason != null ? "\n\n**Reason:** $reason" : ""}',
-      error: (content) {
-        if (content == null || content.isEmpty) {
+  String _getMessageContent(Message message) {
+    return message.content.when(
+      text: (text, isFinal) => text,
+      toolCall: (callId, toolName, arguments) =>
+          '**Tool Call:** `$toolName`\n\n```json\n$arguments\n```',
+      toolResult: (callId, toolName, result, error) {
+        // error и result - это Option<T>?, сначала проверяем на null
+        if (error != null) {
+          return error.fold(
+            () => result != null
+                ? result.fold(
+                    () => 'No result',
+                    (r) => '```json\n$r\n```',
+                  )
+                : 'No result',
+            (e) => '**Error:** $e',
+          );
+        }
+        if (result != null) {
+          return result.fold(
+            () => 'No result',
+            (r) => '```json\n$r\n```',
+          );
+        }
+        return 'No result';
+      },
+      agentSwitch: (fromAgent, toAgent, reason) {
+        final baseText = 'Agent switched: $fromAgent → $toAgent';
+        // reason - это Option<String>?, сначала проверяем на null
+        if (reason != null) {
+          return reason.fold(
+            () => baseText,
+            (r) => '$baseText\n\n**Reason:** $r',
+          );
+        }
+        return baseText;
+      },
+      error: (errorMessage) {
+        if (errorMessage.isEmpty) {
           return '**Error:** Unknown error occurred. Please check the logs for details.';
         }
-        return '**Error:** $content';
+        return '**Error:** $errorMessage';
       },
-      switchAgent: (agentType, content, reason) =>
-          '${content ?? "Switching to $agentType agent"}${reason != null ? "\n\n**Reason:** $reason" : ""}',
-      hitlDecision: (callId, decision, modifiedArgs, feedback) =>
-          '**Decision:** $decision${feedback != null ? "\n\n**Feedback:** $feedback" : ""}',
     );
   }
 }
