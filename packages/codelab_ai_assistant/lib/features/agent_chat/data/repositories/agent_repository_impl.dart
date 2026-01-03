@@ -171,6 +171,32 @@ class AgentRepositoryImpl implements AgentRepository {
       );
     }
     
+    // Обрабатываем системные сообщения (agent_switched, error и т.д.)
+    if (chatMsg.role == 'system') {
+      // Проверяем, есть ли информация о переключении агента в name поле
+      if (chatMsg.name != null && chatMsg.name!.contains('agent_switched')) {
+        // Пытаемся извлечь информацию из content
+        final content = chatMsg.content ?? '';
+        return WSMessage.agentSwitched(
+          content: content,
+          fromAgent: null, // Информация может быть в content
+          toAgent: null,
+          reason: null,
+        );
+      }
+      
+      // Если это ошибка
+      if (chatMsg.content != null && chatMsg.content!.toLowerCase().contains('error')) {
+        return WSMessage.error(content: chatMsg.content);
+      }
+      
+      // Другие системные сообщения показываем как assistant message
+      return WSMessage.assistantMessage(
+        content: chatMsg.content,
+        isFinal: true,
+      );
+    }
+    
     // Обрабатываем сообщения ассистента
     return WSMessage.assistantMessage(
       content: chatMsg.content,
