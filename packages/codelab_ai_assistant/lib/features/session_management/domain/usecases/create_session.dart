@@ -1,5 +1,4 @@
 // Use case для создания новой сессии
-import 'package:fpdart/fpdart.dart';
 import '../../../../core/usecases/usecase.dart';
 import '../../../../core/utils/type_defs.dart';
 import '../entities/session.dart';

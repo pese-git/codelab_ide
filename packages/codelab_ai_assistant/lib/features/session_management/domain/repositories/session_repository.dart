@@ -1,6 +1,5 @@
 // Repository interface для управления сессиями
 import 'package:fpdart/fpdart.dart';
-import '../../../../core/error/failures.dart';
 import '../../../../core/utils/type_defs.dart';
 import '../entities/session.dart';
 

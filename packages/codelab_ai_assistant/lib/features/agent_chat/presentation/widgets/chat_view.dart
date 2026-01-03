@@ -4,7 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 import '../bloc/agent_chat_bloc.dart';
 import '../../domain/entities/message.dart';
-import '../../../tool_execution/presentation/widgets/tool_approval_dialog.dart' as hitl;
 
 /// Виджет чата с AI агентом
 class ChatView extends StatefulWidget {
@@ -342,7 +341,7 @@ class _ChatViewState extends State<ChatView> {
     return message.content.when(
       text: (text, isFinal) => message.isUser
           ? Colors.blue.withOpacity(0.1)
-          : Colors.grey[20]!,
+          : Colors.grey[20],
       toolCall: (_, __, ___) => Colors.orange.withOpacity(0.1),
       toolResult: (_, __, ___, ____) => Colors.green.withOpacity(0.1),
       agentSwitch: (_, __, ___) => Colors.purple.withOpacity(0.1),
@@ -354,7 +353,7 @@ class _ChatViewState extends State<ChatView> {
     return message.content.when(
       text: (text, isFinal) => message.isUser
           ? Colors.blue.withOpacity(0.3)
-          : Colors.grey[60]!,
+          : Colors.grey[60],
       toolCall: (_, __, ___) => Colors.orange.withOpacity(0.3),
       toolResult: (_, __, ___, ____) => Colors.green.withOpacity(0.3),
       agentSwitch: (_, __, ___) => Colors.purple.withOpacity(0.3),

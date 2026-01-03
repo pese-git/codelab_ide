@@ -36,8 +36,6 @@ import 'features/agent_chat/domain/usecases/receive_messages.dart';
 import 'features/agent_chat/domain/usecases/switch_agent.dart';
 import 'features/agent_chat/domain/usecases/load_history.dart';
 import 'features/agent_chat/domain/usecases/connect.dart';
-import 'features/tool_execution/domain/entities/tool_approval.dart';
-import 'features/tool_execution/domain/entities/tool_call.dart';
 
 // Presentation
 import 'features/session_management/presentation/bloc/session_manager_bloc.dart';
@@ -238,7 +236,7 @@ class AiAssistantCleanModule extends Module {
     bind<AgentRemoteDataSource>()
         .toProvide(
           () => AgentRemoteDataSourceImpl(
-            gatewayUrl: gatewayBaseUrl.replaceFirst('http', 'ws') + '/api/v1',
+            gatewayUrl: '${gatewayBaseUrl.replaceFirst('http', 'ws')}/api/v1',
           ),
         )
         .singleton();

@@ -1,9 +1,7 @@
 // BLoC для управления сессиями (Presentation слой)
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:fpdart/fpdart.dart';
 import 'package:logger/logger.dart';
-import '../../../../core/usecases/usecase.dart';
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/session.dart';
 import '../../domain/usecases/create_session.dart';

@@ -1,6 +1,5 @@
 // Repository interface для выполнения инструментов
 import 'package:fpdart/fpdart.dart';
-import '../../../../core/error/failures.dart';
 import '../../../../core/utils/type_defs.dart';
 import '../entities/tool_call.dart';
 import '../entities/tool_result.dart';

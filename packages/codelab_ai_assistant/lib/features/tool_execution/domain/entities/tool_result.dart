@@ -57,12 +57,14 @@ sealed class ToolResult with _$ToolResult {
   bool get isFailure => this is ToolFailure;
 
   /// Получает ID вызова
+  @override
   String get callId => when(
     success: (id, _, __, ___, ____) => id,
     failure: (id, _, __, ___, ____, _____) => id,
   );
 
   /// Получает имя инструмента
+  @override
   String get toolName => when(
     success: (_, name, __, ___, ____) => name,
     failure: (_, name, __, ___, ____, _____) => name,

@@ -61,7 +61,7 @@ class SessionRepositoryImpl implements SessionRepository {
 
       // Конвертируем в entity и возвращаем
       return right(model.toEntity());
-    } on NotFoundException catch (e) {
+    } on NotFoundException {
       print(
         '[SessionRepository] Session not found on server (404), trying session list...',
       );

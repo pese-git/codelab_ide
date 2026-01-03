@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:logger/logger.dart';
-import '../../../../core/error/failures.dart';
 import '../../domain/entities/tool_call.dart';
 import '../../domain/entities/tool_approval.dart';
 import '../../domain/usecases/request_approval.dart';
