@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import '../models/session_models.dart';
+import '../../features/session_management/data/models/session_models.dart';
 
 /// API клиент для Gateway Service (только Dio, без Retrofit)
 /// 

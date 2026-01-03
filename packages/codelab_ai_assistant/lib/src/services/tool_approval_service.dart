@@ -1,5 +1,5 @@
 import 'dart:async';
-import '../models/tool_models.dart';
+import '../../features/tool_execution/data/models/tool_models.dart';
 
 /// Результат запроса подтверждения операции
 enum ToolApprovalResult {

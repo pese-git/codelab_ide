@@ -1,6 +1,6 @@
 // Маппер для конвертации между новыми Message entities и старыми WSMessage моделями
 import 'package:fpdart/fpdart.dart';
-import '../models/ws_message.dart';
+import '../../features/agent_chat/data/models/ws_message.dart';
 import '../../features/agent_chat/domain/entities/message.dart';
 
 /// Утилита для маппинга между domain entities и legacy UI models

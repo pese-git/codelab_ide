@@ -8,10 +8,10 @@ import '../../domain/entities/agent.dart';
 import '../../domain/repositories/agent_repository.dart';
 import '../datasources/agent_remote_datasource.dart';
 import '../models/message_model.dart';
+import '../models/ws_message.dart';
 import '../../../../src/api/gateway_api.dart';
 import '../../../../src/utils/message_mapper.dart';
-import '../../../../src/models/ws_message.dart';
-import '../../../../src/models/session_models.dart';
+import '../../../session_management/data/models/session_models.dart';
 
 /// Реализация репозитория для работы с агентами
 ///
