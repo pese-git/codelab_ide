@@ -28,6 +28,7 @@ class ToolExecutorDataSourceImpl implements ToolExecutorDataSource {
     'list_files',
     'create_directory',
     'run_command',
+    'execute_command',
     'search_in_code',
   ];
   
@@ -87,6 +88,7 @@ class ToolExecutorDataSourceImpl implements ToolExecutorDataSource {
       case 'create_directory':
         return await _executeCreateDirectory(toolCall.arguments);
       case 'run_command':
+      case 'execute_command':
         return await _executeRunCommand(toolCall.arguments);
       case 'search_in_code':
         return await _executeSearchInCode(toolCall.arguments);

@@ -108,6 +108,7 @@ class ToolRepositoryImpl implements ToolRepository {
     const criticalTools = [
       'write_file',
       'run_command',
+      'execute_command',
       'create_directory',
     ];
     
@@ -142,6 +143,7 @@ class ToolRepositoryImpl implements ToolRepository {
         return _validateDirectoryPath(toolCall.arguments['path']);
         
       case 'run_command':
+      case 'execute_command':
         return _validateCommand(toolCall.arguments['command']);
         
       case 'search_in_code':
