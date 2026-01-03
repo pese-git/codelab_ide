@@ -1,19 +1,18 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../features/session_management/presentation/bloc/session_manager_bloc.dart';
-import '../utils/session_mapper.dart';
-import '../models/session_models.dart';
+import '../../features/session_management/domain/entities/session.dart';
 
-/// Виджет для управления сессиями чата
+/// Виджет для управления сессиями чата (Clean Architecture версия)
 ///
 /// Функции:
 /// - Показать список всех сессий
 /// - Создать новую сессию
 /// - Переключиться на другую сессию
-/// - Удалить сессию (TODO: требует endpoint в Gateway)
+/// - Удалить сессию
 class SessionManagerWidget extends StatelessWidget {
   final SessionManagerBloc bloc;
-  final void Function(SessionHistory history)? onSessionChanged;
+  final void Function(Session session)? onSessionChanged;
   final VoidCallback? onNewSession;
 
   const SessionManagerWidget({
@@ -30,16 +29,16 @@ class SessionManagerWidget extends StatelessWidget {
       child: BlocConsumer<SessionManagerBloc, SessionManagerState>(
         listener: (context, state) {
           state.maybeWhen(
-            sessionSwitched: (sessionId, history) {
-              // Уведомить о смене сессии с историей
-              onSessionChanged?.call(history);
+            sessionSwitched: (sessionId, session) {
+              // Уведомить о смене сессии
+              onSessionChanged?.call(session);
 
               // Показать уведомление
               displayInfoBar(
                 context,
                 builder: (context, close) => InfoBar(
                   title: const Text('Session switched'),
-                  content: Text('Loaded ${history.messageCount} messages'),
+                  content: Text('Loaded ${session.messageCount} messages'),
                   severity: InfoBarSeverity.success,
                 ),
               );
@@ -178,7 +177,7 @@ class SessionManagerWidget extends StatelessWidget {
                               ),
                             IconButton(
                               icon: Icon(FluentIcons.delete, color: Colors.red),
-                              onPressed: () => _confirmDelete(context, SessionMapper.toSessionInfo(session)),
+                              onPressed: () => _confirmDelete(context, session),
                             ),
                           ],
                         ),
@@ -223,14 +222,14 @@ class SessionManagerWidget extends StatelessWidget {
     );
   }
 
-  Future<void> _confirmDelete(BuildContext context, SessionInfo session) async {
+  Future<void> _confirmDelete(BuildContext context, Session session) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => ContentDialog(
         title: const Text('Delete Session'),
         content: Text(
           'Are you sure you want to delete this session?\n\n'
-          'Session ID: ${session.sessionId}\n'
+          'Session: ${session.displayTitle}\n'
           'Messages: ${session.messageCount}',
         ),
         actions: [
@@ -247,7 +246,7 @@ class SessionManagerWidget extends StatelessWidget {
     );
 
     if (confirmed == true && context.mounted) {
-      bloc.add(SessionManagerEvent.deleteSession(session.sessionId));
+      bloc.add(SessionManagerEvent.deleteSession(session.id));
     }
   }
 

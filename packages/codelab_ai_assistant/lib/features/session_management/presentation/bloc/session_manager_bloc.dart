@@ -10,8 +10,6 @@ import '../../domain/usecases/create_session.dart';
 import '../../domain/usecases/load_session.dart';
 import '../../domain/usecases/list_sessions.dart';
 import '../../domain/usecases/delete_session.dart';
-import '../../../../src/models/session_models.dart';
-import '../../../../src/utils/session_mapper.dart';
 
 part 'session_manager_bloc.freezed.dart';
 
@@ -40,7 +38,7 @@ sealed class SessionManagerState with _$SessionManagerState {
   }) = LoadedState;
   const factory SessionManagerState.sessionSwitched(
     String sessionId,
-    SessionHistory history,
+    Session session,
   ) = SessionSwitchedState;
   const factory SessionManagerState.newSessionCreated(String sessionId) = NewSessionCreatedState;
 }
@@ -141,8 +139,7 @@ class SessionManagerBloc
       },
       (session) {
         _logger.i('Selected session: ${session.id}');
-        final history = SessionMapper.toSessionHistory(session);
-        emit(SessionManagerState.sessionSwitched(session.id, history));
+        emit(SessionManagerState.sessionSwitched(session.id, session));
       },
     );
   }

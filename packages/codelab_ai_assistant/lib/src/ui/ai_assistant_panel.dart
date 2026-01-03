@@ -86,11 +86,11 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
           : SessionListView(
               key: const ValueKey('sessions'),
               sessionManagerBloc: _sessionManagerBloc!,
-              onSessionSelected: (history) {
+              onSessionSelected: (session) {
                 // Отключиться от предыдущей сессии, подключиться к новой и загрузить историю
                 widget.bloc.add(const AgentChatEvent.disconnect());
-                widget.bloc.add(AgentChatEvent.connect(history.sessionId));
-                widget.bloc.add(AgentChatEvent.loadHistory(history.sessionId));
+                widget.bloc.add(AgentChatEvent.connect(session.id));
+                widget.bloc.add(AgentChatEvent.loadHistory(session.id));
                 setState(() {
                   _showChat = true;
                 });

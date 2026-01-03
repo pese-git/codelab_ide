@@ -2,14 +2,13 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../features/session_management/presentation/bloc/session_manager_bloc.dart';
 import '../../features/session_management/domain/entities/session.dart';
-import '../models/session_models.dart';
-import '../utils/session_mapper.dart';
 
-/// Виджет списка сессий в стиле RooCode
+/// Виджет списка сессий в стиле RooCode (Clean Architecture версия)
 /// Отображается при первом открытии панели AI Assistant
+/// Работает напрямую с domain entities
 class SessionListView extends StatelessWidget {
   final SessionManagerBloc sessionManagerBloc;
-  final void Function(SessionHistory history) onSessionSelected;
+  final void Function(Session session) onSessionSelected;
   final void Function(String sessionId) onNewSession;
 
   const SessionListView({
@@ -26,8 +25,8 @@ class SessionListView extends StatelessWidget {
       child: BlocConsumer<SessionManagerBloc, SessionManagerState>(
         listener: (context, state) {
           state.maybeWhen(
-            sessionSwitched: (sessionId, history) {
-              onSessionSelected(history);
+            sessionSwitched: (sessionId, session) {
+              onSessionSelected(session);
             },
             newSessionCreated: (sessionId) {
               onNewSession(sessionId);
@@ -60,7 +59,7 @@ class SessionListView extends StatelessWidget {
                   loaded: (sessions, currentSessionId, currentAgent) =>
                       _buildSessionList(
                         context,
-                        SessionMapper.toSessionInfoList(sessions),
+                        sessions,
                         currentSessionId,
                       ),
                   sessionSwitched: (_, __) => const Center(child: ProgressRing()),
@@ -189,7 +188,7 @@ class SessionListView extends StatelessWidget {
 
   Widget _buildSessionList(
     BuildContext context,
-    List<SessionInfo> sessions,
+    List<Session> sessions,
     String? currentSessionId,
   ) {
     if (sessions.isEmpty) {
@@ -229,7 +228,7 @@ class SessionListView extends StatelessWidget {
             itemCount: sessions.length,
             itemBuilder: (context, index) {
               final session = sessions[index];
-              final isCurrent = session.sessionId == currentSessionId;
+              final isCurrent = session.id == currentSessionId;
               return _buildSessionCard(context, session, isCurrent);
             },
           ),
@@ -240,7 +239,7 @@ class SessionListView extends StatelessWidget {
 
   Widget _buildSessionCard(
     BuildContext context,
-    SessionInfo session,
+    Session session,
     bool isCurrent,
   ) {
     return Card(
@@ -267,7 +266,7 @@ class SessionListView extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                _formatSessionTitle(session.sessionId),
+                session.displayTitle,
                 style: TextStyle(
                   fontWeight: isCurrent ? FontWeight.w600 : FontWeight.w500,
                   fontSize: 14,
@@ -308,7 +307,7 @@ class SessionListView extends StatelessWidget {
               Icon(FluentIcons.clock, size: 12, color: Colors.grey[120]),
               const SizedBox(width: 4),
               Text(
-                _formatDate(session.lastActivity),
+                _formatDate(session.updatedAt.toIso8601String()),
                 style: TextStyle(fontSize: 12, color: Colors.grey[120]),
               ),
             ],
@@ -317,23 +316,22 @@ class SessionListView extends StatelessWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (session.currentAgent != null)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: _getAgentColor(session.currentAgent!).withOpacity(0.2),
+                  color: _getAgentColor(session.currentAgent).withOpacity(0.2),
                   borderRadius: BorderRadius.circular(4),
                   border: Border.all(
-                    color: _getAgentColor(session.currentAgent!),
+                    color: _getAgentColor(session.currentAgent),
                     width: 1,
                   ),
                 ),
                 child: Text(
-                  _formatAgentName(session.currentAgent!),
+                  _formatAgentName(session.currentAgent),
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
-                    color: _getAgentColor(session.currentAgent!),
+                    color: _getAgentColor(session.currentAgent),
                   ),
                 ),
               ),
@@ -349,20 +347,13 @@ class SessionListView extends StatelessWidget {
             ? null
             : () {
                 sessionManagerBloc.add(
-                  SessionManagerEvent.selectSession(session.sessionId),
+                  SessionManagerEvent.selectSession(session.id),
                 );
               },
       ),
     );
   }
 
-  String _formatSessionTitle(String sessionId) {
-    // Форматируем session ID для отображения
-    if (sessionId.length > 30) {
-      return '${sessionId.substring(0, 27)}...';
-    }
-    return sessionId;
-  }
 
   String _formatAgentName(String agent) {
     final agentNames = {
@@ -409,14 +400,14 @@ class SessionListView extends StatelessWidget {
     }
   }
 
-  Future<void> _confirmDelete(BuildContext context, SessionInfo session) async {
+  Future<void> _confirmDelete(BuildContext context, Session session) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => ContentDialog(
         title: const Text('Delete Session'),
         content: Text(
           'Are you sure you want to delete this session?\n\n'
-          'Session: ${_formatSessionTitle(session.sessionId)}\n'
+          'Session: ${session.displayTitle}\n'
           'Messages: ${session.messageCount}',
         ),
         actions: [
@@ -436,7 +427,7 @@ class SessionListView extends StatelessWidget {
     );
 
     if (confirmed == true && context.mounted) {
-      sessionManagerBloc.add(SessionManagerEvent.deleteSession(session.sessionId));
+      sessionManagerBloc.add(SessionManagerEvent.deleteSession(session.id));
     }
   }
 }
