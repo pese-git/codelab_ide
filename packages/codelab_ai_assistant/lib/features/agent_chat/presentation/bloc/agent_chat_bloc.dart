@@ -9,6 +9,7 @@ import '../../../../core/usecases/usecase.dart';
 import '../../domain/entities/message.dart';
 import '../../domain/entities/agent.dart';
 import '../../domain/usecases/send_message.dart';
+import '../../domain/usecases/send_tool_result.dart';
 import '../../domain/usecases/receive_messages.dart';
 import '../../domain/usecases/switch_agent.dart';
 import '../../domain/usecases/load_history.dart';
@@ -61,6 +62,7 @@ abstract class AgentChatState with _$AgentChatState {
 /// - Обрабатывает Either<Failure, T> из use cases
 class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
   final SendMessageUseCase _sendMessage;
+  final SendToolResultUseCase _sendToolResult;
   final ReceiveMessagesUseCase _receiveMessages;
   final SwitchAgentUseCase _switchAgent;
   final LoadHistoryUseCase _loadHistory;
@@ -72,6 +74,7 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
 
   AgentChatBloc({
     required SendMessageUseCase sendMessage,
+    required SendToolResultUseCase sendToolResult,
     required ReceiveMessagesUseCase receiveMessages,
     required SwitchAgentUseCase switchAgent,
     required LoadHistoryUseCase loadHistory,
@@ -79,6 +82,7 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     required ExecuteToolUseCase executeTool,
     required Logger logger,
   }) : _sendMessage = sendMessage,
+       _sendToolResult = sendToolResult,
        _receiveMessages = receiveMessages,
        _switchAgent = switchAgent,
        _loadHistory = loadHistory,
@@ -175,15 +179,11 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
         result.fold(
           (failure) async {
             _logger.e('Tool execution failed: ${failure.message}');
-            // Send error result back to server
-            await _sendMessage.call(SendMessageParams(
-              text: '', // Empty text for tool result
-              metadata: some({
-                'type': 'tool_result',
-                'call_id': callId,
-                'tool_name': toolName,
-                'error': failure.message,
-              }),
+            // Send error result back to server using dedicated use case
+            await _sendToolResult(SendToolResultParams(
+              callId: callId,
+              toolName: toolName,
+              error: failure.message,
             ));
           },
           (toolResult) async {
@@ -191,25 +191,17 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
             // Send result back to server using when for exhaustive matching
             await toolResult.when(
               success: (id, name, data, duration, time) async {
-                await _sendMessage.call(SendMessageParams(
-                  text: '', // Empty text for tool result
-                  metadata: some({
-                    'type': 'tool_result',
-                    'call_id': callId,
-                    'tool_name': toolName,
-                    'result': data,
-                  }),
+                await _sendToolResult(SendToolResultParams(
+                  callId: callId,
+                  toolName: toolName,
+                  result: data,
                 ));
               },
               failure: (id, name, code, msg, details, time) async {
-                await _sendMessage.call(SendMessageParams(
-                  text: '', // Empty text for tool result
-                  metadata: some({
-                    'type': 'tool_result',
-                    'call_id': callId,
-                    'tool_name': toolName,
-                    'error': msg,
-                  }),
+                await _sendToolResult(SendToolResultParams(
+                  callId: callId,
+                  toolName: toolName,
+                  error: msg,
                 ));
               },
             );

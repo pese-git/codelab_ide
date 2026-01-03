@@ -54,6 +54,7 @@ export 'features/agent_chat/domain/entities/message.dart';
 export 'features/agent_chat/domain/entities/agent.dart';
 export 'features/agent_chat/domain/repositories/agent_repository.dart';
 export 'features/agent_chat/domain/usecases/send_message.dart';
+export 'features/agent_chat/domain/usecases/send_tool_result.dart';
 export 'features/agent_chat/domain/usecases/receive_messages.dart';
 export 'features/agent_chat/domain/usecases/switch_agent.dart';
 export 'features/agent_chat/domain/usecases/load_history.dart';

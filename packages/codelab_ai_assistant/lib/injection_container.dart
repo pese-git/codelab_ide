@@ -31,6 +31,7 @@ import 'features/agent_chat/data/datasources/agent_remote_datasource.dart';
 import 'features/agent_chat/data/repositories/agent_repository_impl.dart';
 import 'features/agent_chat/domain/repositories/agent_repository.dart';
 import 'features/agent_chat/domain/usecases/send_message.dart';
+import 'features/agent_chat/domain/usecases/send_tool_result.dart';
 import 'features/agent_chat/domain/usecases/receive_messages.dart';
 import 'features/agent_chat/domain/usecases/switch_agent.dart';
 import 'features/agent_chat/domain/usecases/load_history.dart';
@@ -257,6 +258,10 @@ class AiAssistantCleanModule extends Module {
       () => SendMessageUseCase(currentScope.resolve<AgentRepository>()),
     );
 
+    bind<SendToolResultUseCase>().toProvide(
+      () => SendToolResultUseCase(currentScope.resolve<AgentRepository>()),
+    );
+
     bind<ReceiveMessagesUseCase>().toProvide(
       () => ReceiveMessagesUseCase(currentScope.resolve<AgentRepository>()),
     );
@@ -294,6 +299,7 @@ class AiAssistantCleanModule extends Module {
     bind<AgentChatBloc>().toProvide(
       () => AgentChatBloc(
         sendMessage: currentScope.resolve<SendMessageUseCase>(),
+        sendToolResult: currentScope.resolve<SendToolResultUseCase>(),
         receiveMessages: currentScope.resolve<ReceiveMessagesUseCase>(),
         switchAgent: currentScope.resolve<SwitchAgentUseCase>(),
         loadHistory: currentScope.resolve<LoadHistoryUseCase>(),
