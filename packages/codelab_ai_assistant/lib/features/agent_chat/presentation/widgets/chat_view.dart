@@ -2,9 +2,9 @@ import 'package:codelab_uikit/codelab_uikit.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
-import '../../features/agent_chat/presentation/bloc/agent_chat_bloc.dart';
-import '../../features/agent_chat/domain/entities/message.dart';
-import '../widgets/tool_approval_dialog.dart' as hitl;
+import '../bloc/agent_chat_bloc.dart';
+import '../../domain/entities/message.dart';
+import '../../../tool_execution/presentation/widgets/tool_approval_dialog.dart' as hitl;
 
 /// Виджет чата с AI агентом
 class ChatView extends StatefulWidget {

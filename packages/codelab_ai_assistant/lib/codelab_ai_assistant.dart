@@ -61,26 +61,24 @@ export 'features/agent_chat/domain/usecases/load_history.dart';
 
 // Presentation
 export 'features/agent_chat/presentation/bloc/agent_chat_bloc.dart';
+export 'features/agent_chat/presentation/widgets/ai_assistant_panel.dart';
+export 'features/agent_chat/presentation/widgets/chat_view.dart';
+
+// ============================================================================
+// Session Management Widgets
+// ============================================================================
+
+export 'features/session_management/presentation/widgets/session_list_view.dart';
+export 'features/session_management/presentation/widgets/session_manager_widget.dart';
+
+// ============================================================================
+// Tool Execution Widgets
+// ============================================================================
+
+export 'features/tool_execution/presentation/widgets/tool_approval_dialog.dart';
 
 // ============================================================================
 // Dependency Injection
 // ============================================================================
 
 export 'injection_container.dart';
-
-// ============================================================================
-// Legacy UI (временно, требуют миграции на новые BLoCs)
-// ============================================================================
-
-// TODO: Мигрировать UI компоненты на новые BLoCs
-export 'src/ui/ai_assistant_panel.dart';
-export 'src/ui/chat_view.dart';
-export 'src/ui/session_list_view.dart';
-
-// Legacy widgets (требуют миграции)
-export 'src/widgets/tool_approval_dialog.dart';
-export 'src/widgets/session_manager_widget.dart';
-
-// NOTE: Legacy models, services, API не экспортируются
-// Они используются только внутри модуля (в UI и адаптерах)
-// Внешние пользователи должны использовать новые entities и BLoCs

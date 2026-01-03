@@ -1,7 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../features/session_management/presentation/bloc/session_manager_bloc.dart';
-import '../../features/session_management/domain/entities/session.dart';
+import '../bloc/session_manager_bloc.dart';
+import '../../domain/entities/session.dart';
 
 /// Виджет списка сессий в стиле RooCode (Clean Architecture версия)
 /// Отображается при первом открытии панели AI Assistant

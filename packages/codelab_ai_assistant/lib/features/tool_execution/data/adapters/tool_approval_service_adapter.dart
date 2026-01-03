@@ -5,7 +5,7 @@ import '../../domain/entities/tool_call.dart';
 import '../../domain/entities/tool_approval.dart';
 import '../models/tool_models.dart' as legacy_models;
 import '../repositories/tool_repository_impl.dart';
-import '../../../../src/services/tool_approval_service.dart' as legacy;
+import '../services/tool_approval_service.dart' as legacy;
 
 /// Адаптер для интеграции нового ToolApprovalService с существующим
 /// 

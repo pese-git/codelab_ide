@@ -5,7 +5,7 @@ import 'package:logger/logger.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // API
-import 'src/api/gateway_api.dart';
+import 'features/agent_chat/data/datasources/gateway_api.dart';
 
 // Session Management
 import 'features/session_management/data/datasources/session_remote_datasource.dart';
@@ -48,7 +48,7 @@ import 'features/tool_execution/presentation/bloc/tool_approval_bloc.dart';
 import 'features/tool_execution/data/adapters/tool_approval_service_adapter.dart';
 
 // Legacy services (для адаптеров)
-import 'src/services/tool_approval_service.dart' as legacy;
+import 'features/tool_execution/data/services/tool_approval_service.dart' as legacy;
 
 /// Модуль DI для AI Assistant с Clean Architecture
 ///

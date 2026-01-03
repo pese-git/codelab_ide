@@ -2,9 +2,9 @@
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:cherrypick/cherrypick.dart';
-import '../../features/agent_chat/presentation/bloc/agent_chat_bloc.dart';
-import '../../features/session_management/presentation/bloc/session_manager_bloc.dart';
-import 'session_list_view.dart';
+import '../bloc/agent_chat_bloc.dart';
+import '../../../session_management/presentation/bloc/session_manager_bloc.dart';
+import '../../../session_management/presentation/widgets/session_list_view.dart';
 import 'chat_view.dart';
 
 /// Главная панель AI Assistant с навигацией между списком сессий и чатом
