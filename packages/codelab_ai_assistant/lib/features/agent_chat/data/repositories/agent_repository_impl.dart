@@ -1,4 +1,5 @@
 // Реализация AgentRepository (Data слой)
+import 'package:dio/dio.dart';
 import 'package:fpdart/fpdart.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/error/failures.dart';
@@ -7,17 +8,23 @@ import '../../domain/entities/agent.dart';
 import '../../domain/repositories/agent_repository.dart';
 import '../datasources/agent_remote_datasource.dart';
 import '../models/message_model.dart';
+import '../../../../src/api/gateway_api.dart';
+import '../../../../src/utils/message_mapper.dart';
+import '../../../../src/models/ws_message.dart';
 
 /// Реализация репозитория для работы с агентами
-/// 
-/// Координирует работу с WebSocket data source.
+///
+/// Координирует работу с WebSocket data source и REST API.
 /// Конвертирует exceptions в failures и возвращает Either<Failure, T>.
 class AgentRepositoryImpl implements AgentRepository {
   final AgentRemoteDataSource _remoteDataSource;
+  final GatewayApi _gatewayApi;
   
   AgentRepositoryImpl({
     required AgentRemoteDataSource remoteDataSource,
-  }) : _remoteDataSource = remoteDataSource;
+    required GatewayApi gatewayApi,
+  }) : _remoteDataSource = remoteDataSource,
+       _gatewayApi = gatewayApi;
   
   @override
   Future<Either<Failure, Unit>> sendMessage(SendMessageParams params) async {
@@ -35,6 +42,31 @@ class AgentRepositoryImpl implements AgentRepository {
       return left(Failure.network(e.message));
     } catch (e) {
       return left(Failure.unknown('Failed to send message: $e'));
+    }
+  }
+  
+  @override
+  Future<Either<Failure, Unit>> sendToolResult({
+    required String callId,
+    required String toolName,
+    Map<String, dynamic>? result,
+    String? error,
+  }) async {
+    try {
+      final model = MessageModel(
+        type: 'tool_result',
+        callId: callId,
+        toolName: toolName,
+        result: result,
+        error: error,
+      );
+      
+      await _remoteDataSource.sendMessage(model);
+      return right(unit);
+    } on WebSocketException catch (e) {
+      return left(Failure.network(e.message));
+    } catch (e) {
+      return left(Failure.unknown('Failed to send tool result: $e'));
     }
   }
   
@@ -79,13 +111,32 @@ class AgentRepositoryImpl implements AgentRepository {
   @override
   Future<Either<Failure, List<Message>>> loadHistory(LoadHistoryParams params) async {
     try {
-      // История загружается через REST API (не WebSocket)
-      // Это будет реализовано через отдельный data source
-      // Пока возвращаем пустой список
-      return right([]);
+      // Загружаем историю через REST API
+      final sessionHistory = await _gatewayApi.getSessionHistory(params.sessionId);
+      
+      // Конвертируем ChatMessage в Message entities через WSMessage
+      final messages = sessionHistory.messages
+          .map((chatMsg) {
+            final wsMsg = _chatMessageToWSMessage(chatMsg);
+            return MessageMapper.fromWSMessage(wsMsg);
+          })
+          .toList();
+      
+      return right(messages);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        return left(Failure.notFound('Session not found'));
+      }
+      return left(Failure.server('Failed to load history: ${e.message}'));
     } catch (e) {
       return left(Failure.server('Failed to load history: $e'));
     }
+  }
+  
+  /// Конвертирует ChatMessage в WSMessage
+  WSMessage _chatMessageToWSMessage(dynamic chatMsg) {
+    // TODO: Implement proper conversion
+    return WSMessage.assistantMessage(content: chatMsg.content ?? '', isFinal: true);
   }
   
   @override

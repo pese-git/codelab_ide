@@ -9,8 +9,15 @@ part of 'session_model.dart';
 _SessionModel _$SessionModelFromJson(Map<String, dynamic> json) =>
     _SessionModel(
       id: json['session_id'] as String,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      createdAt: json['created_at'] == null
+          ? null
+          : DateTime.parse(json['created_at'] as String),
+      updatedAt: json['updated_at'] == null
+          ? null
+          : DateTime.parse(json['updated_at'] as String),
+      lastActivity: json['last_activity'] == null
+          ? null
+          : DateTime.parse(json['last_activity'] as String),
       currentAgent: json['current_agent'] as String,
       messageCount: (json['message_count'] as num).toInt(),
       title: json['title'] as String?,
@@ -20,8 +27,9 @@ _SessionModel _$SessionModelFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$SessionModelToJson(_SessionModel instance) =>
     <String, dynamic>{
       'session_id': instance.id,
-      'created_at': instance.createdAt.toIso8601String(),
-      'updated_at': instance.updatedAt.toIso8601String(),
+      'created_at': instance.createdAt?.toIso8601String(),
+      'updated_at': instance.updatedAt?.toIso8601String(),
+      'last_activity': instance.lastActivity?.toIso8601String(),
       'current_agent': instance.currentAgent,
       'message_count': instance.messageCount,
       'title': instance.title,

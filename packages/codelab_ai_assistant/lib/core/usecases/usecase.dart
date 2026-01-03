@@ -1,5 +1,4 @@
 // Base use case interfaces
-import 'package:fpdart/fpdart.dart';
 import '../error/failures.dart';
 import '../utils/type_defs.dart';
 

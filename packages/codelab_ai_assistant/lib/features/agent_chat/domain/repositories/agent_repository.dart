@@ -13,6 +13,16 @@ abstract class AgentRepository {
   /// Возвращает [Right] с Unit при успехе или [Left] с ошибкой
   FutureEither<Unit> sendMessage(SendMessageParams params);
   
+  /// Отправляет результат выполнения tool call
+  ///
+  /// Возвращает [Right] с Unit при успехе или [Left] с ошибкой
+  FutureEither<Unit> sendToolResult({
+    required String callId,
+    required String toolName,
+    Map<String, dynamic>? result,
+    String? error,
+  });
+  
   /// Получает поток входящих сообщений от агента
   /// 
   /// Возвращает Stream с Either - каждое сообщение может быть успешным или ошибкой

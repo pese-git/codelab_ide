@@ -2,13 +2,14 @@ import 'package:codelab_uikit/codelab_uikit.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
-import '../bloc/ai_agent_bloc.dart';
+import '../../features/agent_chat/presentation/bloc/agent_chat_bloc.dart';
 import '../models/ws_message.dart';
+import '../utils/message_mapper.dart';
 import '../widgets/tool_approval_dialog.dart' as hitl;
 
 /// Виджет чата с AI агентом
 class ChatView extends StatefulWidget {
-  final AiAgentBloc bloc;
+  final AgentChatBloc bloc;
   final VoidCallback onBackToSessions;
 
   const ChatView({
@@ -34,19 +35,13 @@ class _ChatViewState extends State<ChatView> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<AiAgentBloc, AiAgentState>(
+    return BlocBuilder<AgentChatBloc, AgentChatState>(
       bloc: widget.bloc,
       builder: (context, state) {
-        final chat = state.maybeMap<ChatState?>(
-          chat: (value) => value,
-          orElse: () => null,
-        );
-        final waiting = chat?.waitingResponse ?? false;
-        final pendingApproval = chat?.pendingApproval;
-        final List<WSMessage> history = (chat != null) ? chat.history : [];
-        final currentAgent = AgentType.fromString(
-          chat?.currentAgent ?? 'orchestrator',
-        );
+        final waiting = state.isLoading;
+        final pendingApproval = null; // TODO: Implement approval handling
+        final List<WSMessage> history = MessageMapper.toWSMessageList(state.messages);
+        final currentAgent = AgentType.fromString(state.currentAgent);
 
         return Column(
           children: [
@@ -99,7 +94,7 @@ class _ChatViewState extends State<ChatView> {
             currentAgent: currentAgent,
             onAgentSelected: (agentType) {
               widget.bloc.add(
-                AiAgentEvent.switchAgent(
+                AgentChatEvent.switchAgent(
                   agentType.toApiString(),
                   'Switched to ${agentType.displayName}',
                 ),
@@ -209,38 +204,21 @@ class _ChatViewState extends State<ChatView> {
             children: [
               Button(
                 onPressed: () {
-                  widget.bloc.add(const AiAgentEvent.rejectToolCall());
+                  // TODO: Implement reject with new BLoC
                 },
                 child: const Text('Reject'),
               ),
               const SizedBox(width: 8),
               Button(
                 onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (ctx) => hitl.ToolApprovalDialog(
-                      callId: toolCall.callId,
-                      toolName: toolName,
-                      arguments: toolCall.arguments,
-                      reason: 'This operation requires user approval',
-                      onDecision: (decision, {modifiedArguments, feedback}) {
-                        if (decision == 'approve') {
-                          widget.bloc.add(const AiAgentEvent.approveToolCall());
-                        } else if (decision == 'reject') {
-                          widget.bloc.add(const AiAgentEvent.rejectToolCall());
-                        } else if (decision == 'edit') {
-                          widget.bloc.add(const AiAgentEvent.approveToolCall());
-                        }
-                      },
-                    ),
-                  );
+                  // TODO: Implement review dialog with new BLoC
                 },
                 child: const Text('Review Details'),
               ),
               const SizedBox(width: 8),
               FilledButton(
                 onPressed: () {
-                  widget.bloc.add(const AiAgentEvent.approveToolCall());
+                  // TODO: Implement approve with new BLoC
                 },
                 child: const Text('Approve'),
               ),
@@ -254,7 +232,7 @@ class _ChatViewState extends State<ChatView> {
   void _send() {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
-    widget.bloc.add(AiAgentEvent.sendUserMessage(text));
+    widget.bloc.add(AgentChatEvent.sendMessage(text));
     _controller.clear();
 
     // Scroll to bottom after sending
@@ -408,7 +386,7 @@ class _ChatViewState extends State<ChatView> {
       toolResult: (callId, toolName, result, error) =>
           error ?? (result != null ? '```json\n$result\n```' : 'No result'),
       agentSwitched: (content, fromAgent, toAgent, reason, confidence) =>
-          '${content ?? "Agent switched"}\n\n**Reason:** $reason',
+          '${content ?? "Agent switched: $fromAgent → $toAgent"}${reason != null ? "\n\n**Reason:** $reason" : ""}',
       error: (content) {
         if (content == null || content.isEmpty) {
           return '**Error:** Unknown error occurred. Please check the logs for details.';

@@ -2,18 +2,17 @@
 
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:cherrypick/cherrypick.dart';
-import '../bloc/ai_agent_bloc.dart';
-import '../bloc/session_manager_bloc.dart';
-import '../models/session_models.dart';
+import '../../features/agent_chat/presentation/bloc/agent_chat_bloc.dart';
+import '../../features/session_management/presentation/bloc/session_manager_bloc.dart';
 import 'session_list_view.dart';
 import 'chat_view.dart';
 
 /// Главная панель AI Assistant с навигацией между списком сессий и чатом
-/// 
+///
 /// При открытии панели отображается список сессий (как в RooCode).
 /// После выбора сессии или создания новой открывается чат.
 class AiAssistantPanel extends StatefulWidget {
-  final AiAgentBloc bloc;
+  final AgentChatBloc bloc;
   const AiAssistantPanel({super.key, required this.bloc});
 
   @override
@@ -35,14 +34,14 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
       // Получить SessionManagerBloc из DI
       _sessionManagerBloc = CherryPick.openRootScope()
           .resolve<SessionManagerBloc>();
-      
+
       // Загрузить список сессий при инициализации
       _sessionManagerBloc?.add(const SessionManagerEvent.loadSessions());
-      
-      // Проверить, есть ли активная сессия с историей
+
+      // Проверить, есть ли активная сессия с сообщениями
       final currentState = widget.bloc.state;
-      if (currentState is ChatState && currentState.history.isNotEmpty) {
-        // Если есть история, показываем чат
+      if (currentState.messages.isNotEmpty) {
+        // Если есть сообщения, показываем чат
         setState(() {
           _showChat = true;
         });
@@ -79,32 +78,27 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
                   _showChat = false;
                 });
                 // Перезагрузить список сессий
-                _sessionManagerBloc?.add(const SessionManagerEvent.loadSessions());
+                _sessionManagerBloc?.add(
+                  const SessionManagerEvent.loadSessions(),
+                );
               },
             )
           : SessionListView(
               key: const ValueKey('sessions'),
               sessionManagerBloc: _sessionManagerBloc!,
               onSessionSelected: (history) {
-                // Загрузить историю в чат
-                widget.bloc.add(AiAgentEvent.loadHistory(history));
+                // Отключиться от предыдущей сессии, подключиться к новой и загрузить историю
+                widget.bloc.add(const AgentChatEvent.disconnect());
+                widget.bloc.add(AgentChatEvent.connect(history.sessionId));
+                widget.bloc.add(AgentChatEvent.loadHistory(history.sessionId));
                 setState(() {
                   _showChat = true;
                 });
               },
-              onNewSession: () {
-                // Очистить чат для новой сессии
-                widget.bloc.add(AiAgentEvent.loadHistory(
-                  SessionHistory(
-                    sessionId: _sessionManagerBloc?.state.maybeMap(
-                      loaded: (state) => state.currentSessionId ?? 'new-session',
-                      newSessionCreated: (state) => state.sessionId,
-                      orElse: () => 'new-session',
-                    ) ?? 'new-session',
-                    messages: [],
-                    messageCount: 0,
-                  ),
-                ));
+              onNewSession: (sessionId) {
+                // Отключиться от предыдущей сессии и подключиться к новой
+                widget.bloc.add(const AgentChatEvent.disconnect());
+                widget.bloc.add(AgentChatEvent.connect(sessionId));
                 setState(() {
                   _showChat = true;
                 });

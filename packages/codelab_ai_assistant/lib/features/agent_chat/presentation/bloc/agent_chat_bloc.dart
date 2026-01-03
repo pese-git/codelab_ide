@@ -12,6 +12,10 @@ import '../../domain/usecases/send_message.dart';
 import '../../domain/usecases/receive_messages.dart';
 import '../../domain/usecases/switch_agent.dart';
 import '../../domain/usecases/load_history.dart';
+import '../../domain/usecases/connect.dart';
+import '../../../tool_execution/domain/usecases/execute_tool.dart';
+import '../../../tool_execution/domain/entities/tool_call.dart';
+import '../../../tool_execution/domain/entities/tool_result.dart';
 
 part 'agent_chat_bloc.freezed.dart';
 
@@ -60,6 +64,8 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
   final ReceiveMessagesUseCase _receiveMessages;
   final SwitchAgentUseCase _switchAgent;
   final LoadHistoryUseCase _loadHistory;
+  final ConnectUseCase _connect;
+  final ExecuteToolUseCase _executeTool;
   final Logger _logger;
 
   StreamSubscription<Either<Failure, Message>>? _messageSubscription;
@@ -69,11 +75,15 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     required ReceiveMessagesUseCase receiveMessages,
     required SwitchAgentUseCase switchAgent,
     required LoadHistoryUseCase loadHistory,
+    required ConnectUseCase connect,
+    required ExecuteToolUseCase executeTool,
     required Logger logger,
   }) : _sendMessage = sendMessage,
        _receiveMessages = receiveMessages,
        _switchAgent = switchAgent,
        _loadHistory = loadHistory,
+       _connect = connect,
+       _executeTool = executeTool,
        _logger = logger,
        super(AgentChatState.initial()) {
     on<SendMessageEvent>(_onSendMessage);
@@ -146,6 +156,68 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
         isLoading: false,
       ),
     );
+    
+    // Автоматически выполняем tool calls
+    await event.message.content.maybeWhen(
+      toolCall: (callId, toolName, arguments) async {
+        _logger.i('Executing tool: $toolName');
+        
+        final toolCall = ToolCall(
+          id: callId,
+          toolName: toolName,
+          arguments: arguments,
+          requiresApproval: false,
+          createdAt: DateTime.now(),
+        );
+        
+        final result = await _executeTool(ExecuteToolParams(toolCall: toolCall));
+        
+        result.fold(
+          (failure) async {
+            _logger.e('Tool execution failed: ${failure.message}');
+            // Send error result back to server
+            await _sendMessage.call(SendMessageParams(
+              text: '', // Empty text for tool result
+              metadata: some({
+                'type': 'tool_result',
+                'call_id': callId,
+                'tool_name': toolName,
+                'error': failure.message,
+              }),
+            ));
+          },
+          (toolResult) async {
+            _logger.i('Tool executed successfully: $toolName');
+            // Send result back to server using when for exhaustive matching
+            await toolResult.when(
+              success: (id, name, data, duration, time) async {
+                await _sendMessage.call(SendMessageParams(
+                  text: '', // Empty text for tool result
+                  metadata: some({
+                    'type': 'tool_result',
+                    'call_id': callId,
+                    'tool_name': toolName,
+                    'result': data,
+                  }),
+                ));
+              },
+              failure: (id, name, code, msg, details, time) async {
+                await _sendMessage.call(SendMessageParams(
+                  text: '', // Empty text for tool result
+                  metadata: some({
+                    'type': 'tool_result',
+                    'call_id': callId,
+                    'tool_name': toolName,
+                    'error': msg,
+                  }),
+                ));
+              },
+            );
+          },
+        );
+      },
+      orElse: () async {},
+    );
   }
 
   Future<void> _onSwitchAgent(
@@ -204,18 +276,30 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
   ) async {
     emit(state.copyWith(isLoading: true, error: none()));
 
-    // Подписываемся на поток сообщений
-    _messageSubscription?.cancel();
-    _messageSubscription = _receiveMessages(const NoParams()).listen((either) {
-      either.fold(
-        (failure) => add(AgentChatEvent.error(failure)),
-        (message) => add(AgentChatEvent.messageReceived(message)),
-      );
-    });
+    // Подключаемся к WebSocket через use case
+    final connectResult = await _connect(ConnectParams(sessionId: event.sessionId));
+    
+    connectResult.fold(
+      (failure) {
+        _logger.e('Failed to connect: ${failure.message}');
+        emit(state.copyWith(isLoading: false, error: some(failure.message)));
+        return;
+      },
+      (_) {
+        _logger.i('Connected to WebSocket: ${event.sessionId}');
+        
+        // Подписываемся на поток сообщений
+        _messageSubscription?.cancel();
+        _messageSubscription = _receiveMessages(const NoParams()).listen((either) {
+          either.fold(
+            (failure) => add(AgentChatEvent.error(failure)),
+            (message) => add(AgentChatEvent.messageReceived(message)),
+          );
+        });
 
-    emit(state.copyWith(isConnected: true, isLoading: false));
-
-    _logger.i('Connected to session: ${event.sessionId}');
+        emit(state.copyWith(isConnected: true, isLoading: false));
+      },
+    );
   }
 
   Future<void> _onDisconnect(

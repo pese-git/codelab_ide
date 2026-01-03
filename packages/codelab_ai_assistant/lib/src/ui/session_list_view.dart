@@ -1,14 +1,16 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../bloc/session_manager_bloc.dart';
+import '../../features/session_management/presentation/bloc/session_manager_bloc.dart';
+import '../../features/session_management/domain/entities/session.dart';
 import '../models/session_models.dart';
+import '../utils/session_mapper.dart';
 
 /// Виджет списка сессий в стиле RooCode
 /// Отображается при первом открытии панели AI Assistant
 class SessionListView extends StatelessWidget {
   final SessionManagerBloc sessionManagerBloc;
   final void Function(SessionHistory history) onSessionSelected;
-  final VoidCallback onNewSession;
+  final void Function(String sessionId) onNewSession;
 
   const SessionListView({
     super.key,
@@ -28,7 +30,7 @@ class SessionListView extends StatelessWidget {
               onSessionSelected(history);
             },
             newSessionCreated: (sessionId) {
-              onNewSession();
+              onNewSession(sessionId);
             },
             error: (message) {
               displayInfoBar(
@@ -56,7 +58,11 @@ class SessionListView extends StatelessWidget {
                   loading: () => const Center(child: ProgressRing()),
                   error: (message) => _buildErrorState(context, message),
                   loaded: (sessions, currentSessionId, currentAgent) =>
-                      _buildSessionList(context, sessions, currentSessionId),
+                      _buildSessionList(
+                        context,
+                        SessionMapper.toSessionInfoList(sessions),
+                        currentSessionId,
+                      ),
                   sessionSwitched: (_, __) => const Center(child: ProgressRing()),
                   newSessionCreated: (_) => const Center(child: ProgressRing()),
                 ),
@@ -123,7 +129,7 @@ class SessionListView extends StatelessWidget {
           const SizedBox(height: 32),
           FilledButton(
             onPressed: () {
-              sessionManagerBloc.add(const SessionManagerEvent.createNewSession());
+              sessionManagerBloc.add(const SessionManagerEvent.createSession());
             },
             child: const Padding(
               padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
@@ -199,7 +205,7 @@ class SessionListView extends StatelessWidget {
             width: double.infinity,
             child: FilledButton(
               onPressed: () {
-                sessionManagerBloc.add(const SessionManagerEvent.createNewSession());
+                sessionManagerBloc.add(const SessionManagerEvent.createSession());
               },
               child: const Padding(
                 padding: EdgeInsets.symmetric(vertical: 12),
@@ -343,7 +349,7 @@ class SessionListView extends StatelessWidget {
             ? null
             : () {
                 sessionManagerBloc.add(
-                  SessionManagerEvent.switchToSession(session.sessionId),
+                  SessionManagerEvent.selectSession(session.sessionId),
                 );
               },
       ),

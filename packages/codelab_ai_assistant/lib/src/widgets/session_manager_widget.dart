@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../bloc/session_manager_bloc.dart';
+import '../../features/session_management/presentation/bloc/session_manager_bloc.dart';
+import '../utils/session_mapper.dart';
 import '../models/session_models.dart';
 
 /// Виджет для управления сессиями чата
@@ -127,7 +128,7 @@ class SessionManagerWidget extends StatelessWidget {
                           FilledButton(
                             onPressed: () {
                               bloc.add(
-                                const SessionManagerEvent.createNewSession(),
+                                const SessionManagerEvent.createSession(),
                               );
                             },
                             child: const Text('Create First Session'),
@@ -141,7 +142,7 @@ class SessionManagerWidget extends StatelessWidget {
                     itemCount: sessions.length,
                     itemBuilder: (context, index) {
                       final session = sessions[index];
-                      final isCurrent = session.sessionId == currentSessionId;
+                      final isCurrent = session.id == currentSessionId;
 
                       return ListTile(
                         leading: Icon(
@@ -149,7 +150,7 @@ class SessionManagerWidget extends StatelessWidget {
                           color: isCurrent ? Colors.blue : null,
                         ),
                         title: Text(
-                          session.sessionId,
+                          session.id,
                           style: TextStyle(
                             fontWeight: isCurrent
                                 ? FontWeight.bold
@@ -159,7 +160,7 @@ class SessionManagerWidget extends StatelessWidget {
                         subtitle: Text(
                           'Messages: ${session.messageCount} | '
                           'Agent: ${session.currentAgent ?? "N/A"} | '
-                          'Last: ${_formatDate(session.lastActivity)}',
+                          'Last: ${_formatDate(session.updatedAt.toIso8601String())}',
                         ),
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -169,15 +170,15 @@ class SessionManagerWidget extends StatelessWidget {
                                 icon: const Icon(FluentIcons.switch_user),
                                 onPressed: () {
                                   bloc.add(
-                                    SessionManagerEvent.switchToSession(
-                                      session.sessionId,
+                                    SessionManagerEvent.selectSession(
+                                      session.id,
                                     ),
                                   );
                                 },
                               ),
                             IconButton(
                               icon: Icon(FluentIcons.delete, color: Colors.red),
-                              onPressed: () => _confirmDelete(context, session),
+                              onPressed: () => _confirmDelete(context, SessionMapper.toSessionInfo(session)),
                             ),
                           ],
                         ),
@@ -185,8 +186,8 @@ class SessionManagerWidget extends StatelessWidget {
                             ? null
                             : () {
                                 bloc.add(
-                                  SessionManagerEvent.switchToSession(
-                                    session.sessionId,
+                                  SessionManagerEvent.selectSession(
+                                    session.id,
                                   ),
                                 );
                               },
@@ -211,7 +212,7 @@ class SessionManagerWidget extends StatelessWidget {
               ),
               FilledButton(
                 onPressed: () {
-                  bloc.add(const SessionManagerEvent.createNewSession());
+                  bloc.add(const SessionManagerEvent.createSession());
                 },
                 child: const Text('New Session'),
               ),

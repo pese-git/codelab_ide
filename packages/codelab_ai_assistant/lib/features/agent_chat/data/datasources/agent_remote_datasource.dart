@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../../../../core/error/exceptions.dart';
 import '../models/message_model.dart';
-import '../models/agent_model.dart';
 
 /// Интерфейс для удаленного источника данных агентов
 abstract class AgentRemoteDataSource {

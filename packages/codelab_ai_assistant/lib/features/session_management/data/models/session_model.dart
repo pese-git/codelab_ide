@@ -19,11 +19,15 @@ abstract class SessionModel with _$SessionModel {
 
     /// Дата и время создания сессии (ISO 8601)
     // ignore: invalid_annotation_target
-    @JsonKey(name: 'created_at') required DateTime createdAt,
+    @JsonKey(name: 'created_at') DateTime? createdAt,
 
     /// Дата и время последнего обновления (ISO 8601)
     // ignore: invalid_annotation_target
-    @JsonKey(name: 'updated_at') required DateTime updatedAt,
+    @JsonKey(name: 'updated_at') DateTime? updatedAt,
+    
+    /// Дата последней активности (ISO 8601) - используется если created_at/updated_at отсутствуют
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'last_activity') DateTime? lastActivity,
 
     /// Текущий активный агент в сессии
     // ignore: invalid_annotation_target
@@ -50,10 +54,14 @@ abstract class SessionModel with _$SessionModel {
   ///
   /// Преобразует nullable поля в Option<T> для функционального стиля
   Session toEntity() {
+    // Используем lastActivity если created_at/updated_at отсутствуют
+    final effectiveCreatedAt = createdAt ?? lastActivity ?? DateTime.now();
+    final effectiveUpdatedAt = updatedAt ?? lastActivity ?? DateTime.now();
+    
     return Session(
       id: id,
-      createdAt: createdAt,
-      updatedAt: updatedAt,
+      createdAt: effectiveCreatedAt,
+      updatedAt: effectiveUpdatedAt,
       currentAgent: currentAgent,
       messageCount: messageCount,
       title: title != null ? some(title!) : none(),

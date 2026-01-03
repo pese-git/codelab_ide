@@ -10,6 +10,8 @@ import '../../domain/usecases/create_session.dart';
 import '../../domain/usecases/load_session.dart';
 import '../../domain/usecases/list_sessions.dart';
 import '../../domain/usecases/delete_session.dart';
+import '../../../../src/models/session_models.dart';
+import '../../../../src/utils/session_mapper.dart';
 
 part 'session_manager_bloc.freezed.dart';
 
@@ -27,22 +29,20 @@ class SessionManagerEvent with _$SessionManagerEvent {
 
 /// Состояния для SessionManagerBloc
 @freezed
-abstract class SessionManagerState with _$SessionManagerState {
-  const factory SessionManagerState({
+sealed class SessionManagerState with _$SessionManagerState {
+  const factory SessionManagerState.initial() = InitialState;
+  const factory SessionManagerState.loading() = LoadingState;
+  const factory SessionManagerState.error(String message) = ErrorState;
+  const factory SessionManagerState.loaded({
     required List<Session> sessions,
-    required bool isLoading,
-    required bool isRefreshing,
-    required Option<Session> selectedSession,
-    required Option<String> error,
-  }) = _SessionManagerState;
-
-  factory SessionManagerState.initial() => SessionManagerState(
-    sessions: const [],
-    isLoading: false,
-    isRefreshing: false,
-    selectedSession: none(),
-    error: none(),
-  );
+    String? currentSessionId,
+    String? currentAgent,
+  }) = LoadedState;
+  const factory SessionManagerState.sessionSwitched(
+    String sessionId,
+    SessionHistory history,
+  ) = SessionSwitchedState;
+  const factory SessionManagerState.newSessionCreated(String sessionId) = NewSessionCreatedState;
 }
 
 /// BLoC для управления сессиями с использованием Use Cases
@@ -82,20 +82,22 @@ class SessionManagerBloc
     LoadSessions event,
     Emitter<SessionManagerState> emit,
   ) async {
-    emit(state.copyWith(isLoading: true, error: none()));
+    emit(const SessionManagerState.loading());
 
     final result = await _listSessions();
 
     result.fold(
       (failure) {
         _logger.e('Failed to load sessions: ${failure.message}');
-        emit(state.copyWith(isLoading: false, error: some(failure.message)));
+        emit(SessionManagerState.error(failure.message));
       },
       (sessions) {
         _logger.i('Loaded ${sessions.length} sessions');
-        emit(
-          state.copyWith(sessions: sessions, isLoading: false, error: none()),
-        );
+        emit(SessionManagerState.loaded(
+          sessions: sessions,
+          currentSessionId: null,
+          currentAgent: null,
+        ));
       },
     );
   }
@@ -104,29 +106,20 @@ class SessionManagerBloc
     CreateSession event,
     Emitter<SessionManagerState> emit,
   ) async {
-    emit(state.copyWith(isLoading: true, error: none()));
+    emit(const SessionManagerState.loading());
 
     final result = await _createSession(CreateSessionParams.defaults());
 
     result.fold(
       (failure) {
         _logger.e('Failed to create session: ${failure.message}');
-        emit(state.copyWith(isLoading: false, error: some(failure.message)));
+        emit(SessionManagerState.error(failure.message));
       },
       (session) {
         _logger.i('Created session: ${session.id}');
-
-        // Добавляем новую сессию в список
-        final updatedSessions = [session, ...state.sessions];
-
-        emit(
-          state.copyWith(
-            sessions: updatedSessions,
-            selectedSession: some(session),
-            isLoading: false,
-            error: none(),
-          ),
-        );
+        emit(SessionManagerState.newSessionCreated(session.id));
+        // Перезагружаем список сессий после создания
+        add(const SessionManagerEvent.loadSessions());
       },
     );
   }
@@ -135,7 +128,7 @@ class SessionManagerBloc
     SelectSession event,
     Emitter<SessionManagerState> emit,
   ) async {
-    emit(state.copyWith(isLoading: true, error: none()));
+    emit(const SessionManagerState.loading());
 
     final result = await _loadSession(
       LoadSessionParams(sessionId: event.sessionId),
@@ -144,17 +137,12 @@ class SessionManagerBloc
     result.fold(
       (failure) {
         _logger.e('Failed to load session: ${failure.message}');
-        emit(state.copyWith(isLoading: false, error: some(failure.message)));
+        emit(SessionManagerState.error(failure.message));
       },
       (session) {
         _logger.i('Selected session: ${session.id}');
-        emit(
-          state.copyWith(
-            selectedSession: some(session),
-            isLoading: false,
-            error: none(),
-          ),
-        );
+        final history = SessionMapper.toSessionHistory(session);
+        emit(SessionManagerState.sessionSwitched(session.id, history));
       },
     );
   }
@@ -163,7 +151,7 @@ class SessionManagerBloc
     DeleteSession event,
     Emitter<SessionManagerState> emit,
   ) async {
-    emit(state.copyWith(isLoading: true, error: none()));
+    emit(const SessionManagerState.loading());
 
     final result = await _deleteSession(
       DeleteSessionParams(sessionId: event.sessionId),
@@ -172,31 +160,12 @@ class SessionManagerBloc
     result.fold(
       (failure) {
         _logger.e('Failed to delete session: ${failure.message}');
-        emit(state.copyWith(isLoading: false, error: some(failure.message)));
+        emit(SessionManagerState.error(failure.message));
       },
       (_) {
         _logger.i('Deleted session: ${event.sessionId}');
-
-        // Удаляем сессию из списка
-        final updatedSessions = state.sessions
-            .where((s) => s.id != event.sessionId)
-            .toList();
-
-        // Сбрасываем выбранную сессию если она была удалена
-        final updatedSelected = state.selectedSession.fold(
-          () => none<Session>(),
-          (selected) =>
-              selected.id == event.sessionId ? none<Session>() : some(selected),
-        );
-
-        emit(
-          state.copyWith(
-            sessions: updatedSessions,
-            selectedSession: updatedSelected,
-            isLoading: false,
-            error: none(),
-          ),
-        );
+        // Перезагружаем список после удаления
+        add(const SessionManagerEvent.loadSessions());
       },
     );
   }
@@ -205,24 +174,22 @@ class SessionManagerBloc
     RefreshSessions event,
     Emitter<SessionManagerState> emit,
   ) async {
-    emit(state.copyWith(isRefreshing: true, error: none()));
+    emit(const SessionManagerState.loading());
 
     final result = await _listSessions();
 
     result.fold(
       (failure) {
         _logger.e('Failed to refresh sessions: ${failure.message}');
-        emit(state.copyWith(isRefreshing: false, error: some(failure.message)));
+        emit(SessionManagerState.error(failure.message));
       },
       (sessions) {
         _logger.i('Refreshed ${sessions.length} sessions');
-        emit(
-          state.copyWith(
-            sessions: sessions,
-            isRefreshing: false,
-            error: none(),
-          ),
-        );
+        emit(SessionManagerState.loaded(
+          sessions: sessions,
+          currentSessionId: null,
+          currentAgent: null,
+        ));
       },
     );
   }
