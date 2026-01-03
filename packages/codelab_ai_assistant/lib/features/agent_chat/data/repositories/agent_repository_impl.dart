@@ -112,32 +112,40 @@ class AgentRepositoryImpl implements AgentRepository {
   @override
   Future<Either<Failure, List<Message>>> loadHistory(LoadHistoryParams params) async {
     try {
+      print('[AgentRepository] Loading history for session: ${params.sessionId}');
       // Загружаем историю через REST API
       final sessionHistory = await _gatewayApi.getSessionHistory(params.sessionId);
+      print('[AgentRepository] Got ${sessionHistory.messages.length} messages from API');
       
       // Конвертируем ChatMessage в Message entities через WSMessage
       final messages = sessionHistory.messages
           .map((chatMsg) {
             try {
+              print('[AgentRepository] Converting message: role=${chatMsg.role}, content=${chatMsg.content?.substring(0, 50)}...');
               final wsMsg = _chatMessageToWSMessage(chatMsg);
               return MessageMapper.fromWSMessage(wsMsg);
             } catch (e) {
               // Пропускаем сообщения, которые не удалось конвертировать
+              print('[AgentRepository] Failed to convert message: $e');
               return null;
             }
           })
           .whereType<Message>()
           .toList();
       
+      print('[AgentRepository] Converted ${messages.length} messages successfully');
       return right(messages);
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) {
+        print('[AgentRepository] Session not found (404), returning empty history');
         // Если сессия не найдена, возвращаем пустую историю вместо ошибки
         // Это позволит начать новый диалог
         return right([]);
       }
+      print('[AgentRepository] Dio error loading history: ${e.message}');
       return left(Failure.server('Failed to load history: ${e.message}'));
     } catch (e) {
+      print('[AgentRepository] Unexpected error loading history: $e');
       return left(Failure.server('Failed to load history: $e'));
     }
   }

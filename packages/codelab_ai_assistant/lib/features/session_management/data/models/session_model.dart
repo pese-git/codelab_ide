@@ -31,7 +31,7 @@ abstract class SessionModel with _$SessionModel {
 
     /// Текущий активный агент в сессии
     // ignore: invalid_annotation_target
-    @JsonKey(name: 'current_agent') required String currentAgent,
+    @JsonKey(name: 'current_agent') String? currentAgent,
 
     /// Количество сообщений в сессии
     // ignore: invalid_annotation_target
@@ -62,7 +62,7 @@ abstract class SessionModel with _$SessionModel {
       id: id,
       createdAt: effectiveCreatedAt,
       updatedAt: effectiveUpdatedAt,
-      currentAgent: currentAgent,
+      currentAgent: currentAgent ?? 'orchestrator', // Default to orchestrator if null
       messageCount: messageCount,
       title: title != null ? some(title!) : none(),
       description: description != null ? some(description!) : none(),

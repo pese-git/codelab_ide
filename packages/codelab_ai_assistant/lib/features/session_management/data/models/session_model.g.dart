@@ -18,7 +18,7 @@ _SessionModel _$SessionModelFromJson(Map<String, dynamic> json) =>
       lastActivity: json['last_activity'] == null
           ? null
           : DateTime.parse(json['last_activity'] as String),
-      currentAgent: json['current_agent'] as String,
+      currentAgent: json['current_agent'] as String?,
       messageCount: (json['message_count'] as num).toInt(),
       title: json['title'] as String?,
       description: json['description'] as String?,
