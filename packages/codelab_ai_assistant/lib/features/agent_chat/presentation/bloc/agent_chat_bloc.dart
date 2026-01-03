@@ -17,6 +17,8 @@ import '../../domain/usecases/connect.dart';
 import '../../../tool_execution/domain/usecases/execute_tool.dart';
 import '../../../tool_execution/domain/entities/tool_call.dart';
 import '../../../tool_execution/domain/entities/tool_result.dart';
+import '../../../tool_execution/domain/entities/tool_approval.dart';
+import '../../../tool_execution/data/services/tool_approval_service_impl.dart';
 
 part 'agent_chat_bloc.freezed.dart';
 
@@ -32,6 +34,10 @@ class AgentChatEvent with _$AgentChatEvent {
   const factory AgentChatEvent.connect(String sessionId) = ConnectEvent;
   const factory AgentChatEvent.disconnect() = DisconnectEvent;
   const factory AgentChatEvent.error(Failure failure) = ErrorEvent;
+  const factory AgentChatEvent.approvalRequested(ApprovalRequestWithCompleter request) = ApprovalRequestedEvent;
+  const factory AgentChatEvent.approveToolCall() = ApproveToolCallEvent;
+  const factory AgentChatEvent.rejectToolCall(String reason) = RejectToolCallEvent;
+  const factory AgentChatEvent.cancelToolCall() = CancelToolCallEvent;
 }
 
 /// Состояния для AgentChatBloc
@@ -43,6 +49,7 @@ abstract class AgentChatState with _$AgentChatState {
     required bool isConnected,
     required String currentAgent,
     required Option<String> error,
+    required Option<ApprovalRequestWithCompleter> pendingApproval,
   }) = _AgentChatState;
 
   factory AgentChatState.initial() => AgentChatState(
@@ -51,6 +58,7 @@ abstract class AgentChatState with _$AgentChatState {
     isConnected: false,
     currentAgent: AgentType.orchestrator,
     error: none(),
+    pendingApproval: none(),
   );
 }
 
@@ -68,9 +76,11 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
   final LoadHistoryUseCase _loadHistory;
   final ConnectUseCase _connect;
   final ExecuteToolUseCase _executeTool;
+  final ToolApprovalServiceImpl _approvalService;
   final Logger _logger;
 
   StreamSubscription<Either<Failure, Message>>? _messageSubscription;
+  StreamSubscription<ApprovalRequestWithCompleter>? _approvalSubscription;
 
   AgentChatBloc({
     required SendMessageUseCase sendMessage,
@@ -80,6 +90,7 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     required LoadHistoryUseCase loadHistory,
     required ConnectUseCase connect,
     required ExecuteToolUseCase executeTool,
+    required ToolApprovalServiceImpl approvalService,
     required Logger logger,
   }) : _sendMessage = sendMessage,
        _sendToolResult = sendToolResult,
@@ -88,6 +99,7 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
        _loadHistory = loadHistory,
        _connect = connect,
        _executeTool = executeTool,
+       _approvalService = approvalService,
        _logger = logger,
        super(AgentChatState.initial()) {
     on<SendMessageEvent>(_onSendMessage);
@@ -97,6 +109,15 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     on<ConnectEvent>(_onConnect);
     on<DisconnectEvent>(_onDisconnect);
     on<ErrorEvent>(_onError);
+    on<ApprovalRequestedEvent>(_onApprovalRequested);
+    on<ApproveToolCallEvent>(_onApproveToolCall);
+    on<RejectToolCallEvent>(_onRejectToolCall);
+    on<CancelToolCallEvent>(_onCancelToolCall);
+    
+    // Подписываемся на запросы подтверждения
+    _approvalSubscription = _approvalService.approvalRequests.listen((request) {
+      add(AgentChatEvent.approvalRequested(request));
+    });
   }
 
   Future<void> _onSendMessage(
@@ -316,9 +337,60 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     emit(state.copyWith(error: some(event.failure.message), isLoading: false));
   }
 
+  Future<void> _onApprovalRequested(
+    ApprovalRequestedEvent event,
+    Emitter<AgentChatState> emit,
+  ) async {
+    _logger.i('Tool approval requested: ${event.request.toolCall.toolName}');
+    emit(state.copyWith(pendingApproval: some(event.request)));
+  }
+
+  Future<void> _onApproveToolCall(
+    ApproveToolCallEvent event,
+    Emitter<AgentChatState> emit,
+  ) async {
+    state.pendingApproval.fold(
+      () => _logger.w('No pending approval to approve'),
+      (request) {
+        _logger.i('Tool call approved: ${request.toolCall.toolName}');
+        request.completer.complete(const ApprovalDecision.approved());
+        emit(state.copyWith(pendingApproval: none()));
+      },
+    );
+  }
+
+  Future<void> _onRejectToolCall(
+    RejectToolCallEvent event,
+    Emitter<AgentChatState> emit,
+  ) async {
+    state.pendingApproval.fold(
+      () => _logger.w('No pending approval to reject'),
+      (request) {
+        _logger.i('Tool call rejected: ${request.toolCall.toolName}, reason: ${event.reason}');
+        request.completer.complete(ApprovalDecision.rejected(reason: some(event.reason)));
+        emit(state.copyWith(pendingApproval: none()));
+      },
+    );
+  }
+
+  Future<void> _onCancelToolCall(
+    CancelToolCallEvent event,
+    Emitter<AgentChatState> emit,
+  ) async {
+    state.pendingApproval.fold(
+      () => _logger.w('No pending approval to cancel'),
+      (request) {
+        _logger.i('Tool call cancelled: ${request.toolCall.toolName}');
+        request.completer.complete(const ApprovalDecision.cancelled());
+        emit(state.copyWith(pendingApproval: none()));
+      },
+    );
+  }
+
   @override
   Future<void> close() async {
     await _messageSubscription?.cancel();
+    await _approvalSubscription?.cancel();
     return super.close();
   }
 }

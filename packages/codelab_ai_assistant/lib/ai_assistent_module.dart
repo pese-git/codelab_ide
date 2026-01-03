@@ -42,12 +42,8 @@ import 'features/session_management/presentation/bloc/session_manager_bloc.dart'
 import 'features/agent_chat/presentation/bloc/agent_chat_bloc.dart';
 import 'features/tool_execution/presentation/bloc/tool_approval_bloc.dart';
 
-// Adapters
-import 'features/tool_execution/data/adapters/tool_approval_service_adapter.dart';
-
-// Legacy services (для адаптеров)
-import 'features/tool_execution/data/services/tool_approval_service.dart'
-    as legacy;
+// Services
+import 'features/tool_execution/data/services/tool_approval_service_impl.dart';
 
 /// Модуль DI для AI Assistant с Clean Architecture
 ///
@@ -194,17 +190,15 @@ class AiAssistantModule extends Module {
       ),
     );
 
-    // Legacy ToolApprovalService (для адаптера)
-    bind<legacy.ToolApprovalService>()
-        .toProvide(() => legacy.ToolApprovalServiceImpl())
+    // ToolApprovalService implementation
+    bind<ToolApprovalServiceImpl>()
+        .toProvide(() => ToolApprovalServiceImpl())
         .singleton();
 
-    // ToolApprovalService adapter
+    // ToolApprovalService interface for repository
     bind<ToolApprovalService>()
         .toProvide(
-          () => ToolApprovalServiceFactory.createAdapter(
-            currentScope.resolve<legacy.ToolApprovalService>(),
-          ),
+          () => currentScope.resolve<ToolApprovalServiceImpl>(),
         )
         .singleton();
 
@@ -306,6 +300,7 @@ class AiAssistantModule extends Module {
         loadHistory: currentScope.resolve<LoadHistoryUseCase>(),
         connect: currentScope.resolve<ConnectUseCase>(),
         executeTool: currentScope.resolve<ExecuteToolUseCase>(),
+        approvalService: currentScope.resolve<ToolApprovalServiceImpl>(),
         logger: currentScope.resolve<Logger>(),
       ),
     );

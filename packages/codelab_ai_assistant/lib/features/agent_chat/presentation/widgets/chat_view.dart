@@ -37,7 +37,7 @@ class _ChatViewState extends State<ChatView> {
       bloc: widget.bloc,
       builder: (context, state) {
         final waiting = state.isLoading;
-        final pendingApproval = null; // TODO: Implement approval handling
+        final pendingApproval = state.pendingApproval.toNullable();
         final messages = state.messages;
         final currentAgent = AgentType.fromString(state.currentAgent);
 
@@ -166,6 +166,7 @@ class _ChatViewState extends State<ChatView> {
   Widget _buildApprovalButtons(BuildContext context, dynamic pendingApproval) {
     final toolCall = pendingApproval.toolCall;
     final toolName = toolCall.toolName;
+    final arguments = toolCall.arguments;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -196,27 +197,50 @@ class _ChatViewState extends State<ChatView> {
             'This operation requires your approval before execution.',
             style: TextStyle(color: Colors.grey[130], fontSize: 13),
           ),
+          if (arguments.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.grey[20],
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                'Arguments: ${arguments.toString()}',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontFamily: 'monospace',
+                  color: Colors.grey[130],
+                ),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               Button(
                 onPressed: () {
-                  // TODO: Implement reject with new BLoC
+                  widget.bloc.add(
+                    const AgentChatEvent.rejectToolCall('User rejected'),
+                  );
                 },
                 child: const Text('Reject'),
               ),
               const SizedBox(width: 8),
               Button(
                 onPressed: () {
-                  // TODO: Implement review dialog with new BLoC
+                  // TODO: Implement review dialog with detailed view
+                  widget.bloc.add(const AgentChatEvent.cancelToolCall());
                 },
-                child: const Text('Review Details'),
+                child: const Text('Cancel'),
               ),
               const SizedBox(width: 8),
               FilledButton(
                 onPressed: () {
-                  // TODO: Implement approve with new BLoC
+                  widget.bloc.add(const AgentChatEvent.approveToolCall());
                 },
                 child: const Text('Approve'),
               ),
