@@ -11,6 +11,7 @@ import '../models/message_model.dart';
 import '../../../../src/api/gateway_api.dart';
 import '../../../../src/utils/message_mapper.dart';
 import '../../../../src/models/ws_message.dart';
+import '../../../../src/models/session_models.dart';
 
 /// Реализация репозитория для работы с агентами
 ///
@@ -117,15 +118,23 @@ class AgentRepositoryImpl implements AgentRepository {
       // Конвертируем ChatMessage в Message entities через WSMessage
       final messages = sessionHistory.messages
           .map((chatMsg) {
-            final wsMsg = _chatMessageToWSMessage(chatMsg);
-            return MessageMapper.fromWSMessage(wsMsg);
+            try {
+              final wsMsg = _chatMessageToWSMessage(chatMsg);
+              return MessageMapper.fromWSMessage(wsMsg);
+            } catch (e) {
+              // Пропускаем сообщения, которые не удалось конвертировать
+              return null;
+            }
           })
+          .whereType<Message>()
           .toList();
       
       return right(messages);
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) {
-        return left(Failure.notFound('Session not found'));
+        // Если сессия не найдена, возвращаем пустую историю вместо ошибки
+        // Это позволит начать новый диалог
+        return right([]);
       }
       return left(Failure.server('Failed to load history: ${e.message}'));
     } catch (e) {
@@ -134,9 +143,39 @@ class AgentRepositoryImpl implements AgentRepository {
   }
   
   /// Конвертирует ChatMessage в WSMessage
-  WSMessage _chatMessageToWSMessage(dynamic chatMsg) {
-    // TODO: Implement proper conversion
-    return WSMessage.assistantMessage(content: chatMsg.content ?? '', isFinal: true);
+  WSMessage _chatMessageToWSMessage(ChatMessage chatMsg) {
+    // Обрабатываем tool calls
+    if (chatMsg.toolCalls != null && chatMsg.toolCalls!.isNotEmpty) {
+      final toolCall = chatMsg.toolCalls!.first;
+      return WSMessage.toolCall(
+        callId: toolCall['id'] as String? ?? '',
+        toolName: toolCall['function']?['name'] as String? ?? '',
+        arguments: toolCall['function']?['arguments'] as Map<String, dynamic>? ?? {},
+      );
+    }
+    
+    // Обрабатываем tool result
+    if (chatMsg.toolCallId != null) {
+      return WSMessage.toolResult(
+        callId: chatMsg.toolCallId!,
+        toolName: chatMsg.name,
+        result: chatMsg.content != null ? {'content': chatMsg.content} : null,
+      );
+    }
+    
+    // Обрабатываем сообщения пользователя
+    if (chatMsg.role == 'user') {
+      return WSMessage.userMessage(
+        content: chatMsg.content ?? '',
+        role: chatMsg.role,
+      );
+    }
+    
+    // Обрабатываем сообщения ассистента
+    return WSMessage.assistantMessage(
+      content: chatMsg.content,
+      isFinal: true,
+    );
   }
   
   @override
