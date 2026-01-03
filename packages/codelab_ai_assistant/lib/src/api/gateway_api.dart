@@ -15,11 +15,11 @@ class GatewayApi {
   }) : _dio = dio;
 
   /// Получить историю сессии
-  /// 
-  /// GET /sessions/{sessionId}/history
+  ///
+  /// GET /api/v1/sessions/{sessionId}/history
   Future<SessionHistory> getSessionHistory(String sessionId) async {
     final response = await _dio.get(
-      '$baseUrl/sessions/$sessionId/history',
+      '$baseUrl/api/v1/sessions/$sessionId/history',
     );
     return SessionHistory.fromJson(response.data);
   }
