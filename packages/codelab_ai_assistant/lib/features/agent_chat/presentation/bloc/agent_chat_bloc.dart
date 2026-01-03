@@ -166,11 +166,16 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
       toolCall: (callId, toolName, arguments) async {
         _logger.i('Executing tool: $toolName');
         
+        // Проверяем, требует ли инструмент подтверждения
+        // Критичные операции: write_file, execute_command, create_directory
+        final criticalTools = ['write_file', 'write_to_file', 'execute_command', 'run_command', 'create_directory'];
+        final requiresApproval = criticalTools.contains(toolName);
+        
         final toolCall = ToolCall(
           id: callId,
           toolName: toolName,
           arguments: arguments,
-          requiresApproval: false,
+          requiresApproval: requiresApproval,
           createdAt: DateTime.now(),
         );
         
