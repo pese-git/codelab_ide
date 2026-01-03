@@ -46,7 +46,8 @@ import 'features/tool_execution/presentation/bloc/tool_approval_bloc.dart';
 import 'features/tool_execution/data/adapters/tool_approval_service_adapter.dart';
 
 // Legacy services (для адаптеров)
-import 'features/tool_execution/data/services/tool_approval_service.dart' as legacy;
+import 'features/tool_execution/data/services/tool_approval_service.dart'
+    as legacy;
 
 /// Модуль DI для AI Assistant с Clean Architecture
 ///
@@ -56,12 +57,12 @@ import 'features/tool_execution/data/services/tool_approval_service.dart' as leg
 /// 3. Repositories
 /// 4. Use Cases
 /// 5. BLoCs (в будущем)
-class AiAssistantCleanModule extends Module {
+class AiAssistantModule extends Module {
   final String gatewayBaseUrl;
   final String internalApiKey;
   final SharedPreferences? sharedPreferences;
 
-  AiAssistantCleanModule({
+  AiAssistantModule({
     this.gatewayBaseUrl = 'http://localhost:8000',
     this.internalApiKey = 'change-me-internal-key',
     this.sharedPreferences,
@@ -114,13 +115,15 @@ class AiAssistantCleanModule extends Module {
     if (sharedPreferences != null) {
       bind<SharedPreferences>().toProvide(() => sharedPreferences!).singleton();
     }
-    
+
     // GatewayApi
     bind<GatewayApi>()
-        .toProvide(() => GatewayApi(
-              dio: currentScope.resolve<Dio>(),
-              baseUrl: gatewayBaseUrl,
-            ))
+        .toProvide(
+          () => GatewayApi(
+            dio: currentScope.resolve<Dio>(),
+            baseUrl: gatewayBaseUrl,
+          ),
+        )
         .singleton();
 
     // ========================================================================

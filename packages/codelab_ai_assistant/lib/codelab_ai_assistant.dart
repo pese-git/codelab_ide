@@ -81,4 +81,4 @@ export 'features/tool_execution/presentation/widgets/tool_approval_dialog.dart';
 // Dependency Injection
 // ============================================================================
 
-export 'injection_container.dart';
+export 'ai_assistent_module.dart';

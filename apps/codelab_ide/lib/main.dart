@@ -28,7 +28,7 @@ void main() async {
   CherryPick.openRootScope().installModules([
     AppDiModule(),
     EngineDiModule(),
-    AiAssistantCleanModule(
+    AiAssistantModule(
       gatewayBaseUrl: 'http://localhost:8000',
       internalApiKey: 'my-super-secret-key',
       sharedPreferences: sharedPreferences,
