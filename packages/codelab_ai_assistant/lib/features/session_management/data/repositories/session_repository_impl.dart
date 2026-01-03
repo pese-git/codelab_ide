@@ -57,7 +57,10 @@ class SessionRepositoryImpl implements SessionRepository {
       // Конвертируем в entity и возвращаем
       return right(model.toEntity());
     } on NotFoundException catch (e) {
-      return left(Failure.notFound(e.message));
+      // Если сессия не найдена на сервере, пытаемся найти её в списке сессий
+      // Это может произойти если endpoint /sessions/{id} не реализован,
+      // но сессия существует в списке
+      return _loadFromSessionList(params.sessionId);
     } on ServerException catch (e) {
       return left(Failure.server(e.message));
     } on NetworkException catch (e) {
@@ -68,6 +71,27 @@ class SessionRepositoryImpl implements SessionRepository {
       return left(Failure.cache(e.message));
     } catch (e) {
       return left(Failure.unknown('Unexpected error loading session: $e'));
+    }
+  }
+  
+  /// Вспомогательный метод для загрузки сессии из списка сессий
+  Future<Either<Failure, Session>> _loadFromSessionList(String sessionId) async {
+    try {
+      // Пытаемся найти сессию в списке
+      final sessions = await _remoteDataSource.listSessions();
+      final session = sessions.firstWhere(
+        (s) => s.id == sessionId,
+        orElse: () => throw NotFoundException('Session not found in list', null),
+      );
+      
+      // Кешируем
+      await _localDataSource.cacheSession(session);
+      
+      return right(session.toEntity());
+    } on NotFoundException catch (e) {
+      return left(Failure.notFound(e.message));
+    } catch (e) {
+      return left(Failure.server('Failed to load session from list: $e'));
     }
   }
   
