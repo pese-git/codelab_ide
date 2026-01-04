@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:logger/logger.dart';
 import '../../domain/entities/tool_call.dart';
 import '../../domain/entities/tool_approval.dart';
+import '../../domain/entities/tool_result.dart';
 import '../repositories/tool_repository_impl.dart';
 import 'approval_sync_service.dart';
 
@@ -13,8 +14,15 @@ class ApprovalRequestWithCompleter {
   
   /// Completer для возврата результата
   final Completer<ApprovalDecision> completer;
+  
+  /// Флаг, указывающий что это восстановленный запрос
+  final bool isRestored;
 
-  ApprovalRequestWithCompleter(this.request, this.completer);
+  ApprovalRequestWithCompleter(
+    this.request,
+    this.completer, {
+    this.isRestored = false,
+  });
   
   /// Удобный доступ к toolCall
   ToolCall get toolCall => request.toolCall;
@@ -32,6 +40,9 @@ class ToolApprovalServiceImpl implements ToolApprovalService {
 
   /// Храним активные completers для восстановления
   final Map<String, Completer<ApprovalDecision>> _activeCompleters = {};
+  
+  /// Callback для выполнения tool после approve (для восстановленных запросов)
+  Future<ToolResult> Function(ToolCall)? onExecuteRestoredTool;
 
   ToolApprovalServiceImpl({
     required ApprovalSyncService syncService,
@@ -100,11 +111,13 @@ class ToolApprovalServiceImpl implements ToolApprovalService {
         final requestWithCompleter =
             ApprovalRequestWithCompleter(request, completer);
 
-        // Эмитируем в stream для отображения в UI
-        _approvalController.add(requestWithCompleter);
+        // Эмитируем в stream для отображения в UI (с флагом isRestored)
+        _approvalController.add(
+          ApprovalRequestWithCompleter(request, completer, isRestored: true),
+        );
 
-        // Запускаем асинхронное ожидание решения
-        _waitForDecision(request.toolCall.id, completer);
+        // Запускаем асинхронное ожидание решения с выполнением tool
+        _waitForRestoredDecision(request.toolCall, completer);
       }
 
       _logger.i('Successfully restored ${pending.length} pending approvals');
@@ -118,17 +131,23 @@ class ToolApprovalServiceImpl implements ToolApprovalService {
     }
   }
 
-  /// Ожидание решения для восстановленного запроса
-  Future<void> _waitForDecision(
-      String callId, Completer<ApprovalDecision> completer) async {
+  /// Ожидание решения для восстановленного запроса с выполнением tool
+  Future<void> _waitForRestoredDecision(
+      ToolCall toolCall, Completer<ApprovalDecision> completer) async {
     try {
       // Ждем решения (без таймаута)
-      await completer.future;
-      _activeCompleters.remove(callId);
-      _logger.d('Decision received for restored approval: $callId');
+      final decision = await completer.future;
+      _activeCompleters.remove(toolCall.id);
+      _logger.d('Decision received for restored approval: ${toolCall.id}');
+      
+      // Если есть callback для выполнения - вызываем его
+      if (onExecuteRestoredTool != null && decision.isApproved) {
+        _logger.i('Executing restored tool after approval: ${toolCall.toolName}');
+        await onExecuteRestoredTool!(toolCall);
+      }
     } catch (e) {
       _logger.e('Error waiting for decision: $e');
-      _activeCompleters.remove(callId);
+      _activeCompleters.remove(toolCall.id);
     }
   }
 

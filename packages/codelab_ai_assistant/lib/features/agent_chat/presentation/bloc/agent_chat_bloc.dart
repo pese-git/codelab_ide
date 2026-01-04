@@ -118,6 +118,62 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     _approvalSubscription = _approvalService.approvalRequests.listen((request) {
       add(AgentChatEvent.approvalRequested(request));
     });
+    
+    // Устанавливаем callback для выполнения восстановленных tool
+    _approvalService.onExecuteRestoredTool = _executeRestoredTool;
+  }
+  
+  /// Выполнить восстановленный tool после approve
+  Future<ToolResult> _executeRestoredTool(ToolCall toolCall) async {
+    _logger.i('Executing restored tool: ${toolCall.toolName}');
+    
+    // Выполняем tool (без повторного запроса подтверждения)
+    final result = await _executeTool(ExecuteToolParams(toolCall: toolCall.copyWith(requiresApproval: false)));
+    
+    return result.fold(
+      (failure) async {
+        _logger.e('Restored tool execution failed: ${failure.message}');
+        
+        // Отправляем ошибку на сервер
+        await _sendToolResult(SendToolResultParams(
+          callId: toolCall.id,
+          toolName: toolCall.toolName,
+          error: failure.message,
+        ));
+        
+        return ToolResult.failure(
+          callId: toolCall.id,
+          toolName: toolCall.toolName,
+          errorCode: 'execution_failed',
+          errorMessage: failure.message,
+          details: none(),
+          failedAt: DateTime.now(),
+        );
+      },
+      (toolResult) async {
+        _logger.i('Restored tool executed successfully: ${toolCall.toolName}');
+        
+        // Отправляем результат на сервер
+        await toolResult.when(
+          success: (id, name, data, duration, time) async {
+            await _sendToolResult(SendToolResultParams(
+              callId: toolCall.id,
+              toolName: toolCall.toolName,
+              result: data,
+            ));
+          },
+          failure: (id, name, code, msg, details, time) async {
+            await _sendToolResult(SendToolResultParams(
+              callId: toolCall.id,
+              toolName: toolCall.toolName,
+              error: msg,
+            ));
+          },
+        );
+        
+        return toolResult;
+      },
+    );
   }
 
   Future<void> _onSendMessage(
