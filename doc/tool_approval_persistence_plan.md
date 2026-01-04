@@ -59,25 +59,36 @@
 
 **Источник истины - база данных на сервере**, а не память. Это решает все проблемы с перезапуском и переустановкой.
 
-### 1. База данных для хранения ожидающих подтверждений
+### 1. SQLAlchemy модель для хранения ожидающих подтверждений
 
-```sql
-CREATE TABLE pending_approvals (
-    approval_id VARCHAR(255) PRIMARY KEY,
-    session_id VARCHAR(255) NOT NULL,
-    call_id VARCHAR(255) NOT NULL,
-    tool_name VARCHAR(255) NOT NULL,
-    arguments JSONB NOT NULL,
-    reason TEXT,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    status VARCHAR(50) NOT NULL DEFAULT 'pending',
+```python
+# agent-runtime/app/models/db_models.py
+
+from sqlalchemy import Column, String, Text, DateTime, ForeignKey, Index
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.ext.declarative import declarative_base
+from datetime import datetime
+
+Base = declarative_base()
+
+class PendingApproval(Base):
+    """SQLAlchemy модель для ожидающих подтверждений"""
+    __tablename__ = 'pending_approvals'
     
-    INDEX idx_session_id (session_id),
-    INDEX idx_status (status),
-    INDEX idx_created_at (created_at),
+    approval_id = Column(String(255), primary_key=True)
+    session_id = Column(String(255), ForeignKey('sessions.session_id', ondelete='CASCADE'), nullable=False)
+    call_id = Column(String(255), nullable=False)
+    tool_name = Column(String(255), nullable=False)
+    arguments = Column(JSONB, nullable=False)
+    reason = Column(Text, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    status = Column(String(50), nullable=False, default='pending')
     
-    FOREIGN KEY (session_id) REFERENCES sessions(session_id) ON DELETE CASCADE
-);
+    __table_args__ = (
+        Index('idx_pending_approvals_session_id', 'session_id'),
+        Index('idx_pending_approvals_status', 'status'),
+        Index('idx_pending_approvals_created_at', 'created_at'),
+    )
 ```
 
 ### 2. Модификация HITLManager (сервер)
@@ -167,12 +178,24 @@ class HITLManager:
         return True
 ```
 
-### 3. Добавление методов в Database (сервер)
+### 3. Добавление методов в Database с использованием SQLAlchemy (сервер)
 
 ```python
 # agent-runtime/app/services/database.py
 
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy import select, delete
+from app.models.db_models import PendingApproval
+import json
+
 class Database:
+    def __init__(self, database_url: str):
+        self.engine = create_async_engine(database_url, echo=True)
+        self.async_session = sessionmaker(
+            self.engine, class_=AsyncSession, expire_on_commit=False
+        )
+    
     async def save_pending_approval(
         self,
         session_id: str,
@@ -181,47 +204,48 @@ class Database:
         arguments: Dict,
         reason: Optional[str] = None
     ):
-        """Сохранить ожидающее подтверждение в БД"""
-        query = """
-            INSERT INTO pending_approvals 
-            (approval_id, session_id, call_id, tool_name, arguments, reason, status)
-            VALUES ($1, $2, $3, $4, $5, $6, 'pending')
-        """
-        await self.pool.execute(
-            query,
-            call_id,  # approval_id = call_id
-            session_id,
-            call_id,
-            tool_name,
-            json.dumps(arguments),
-            reason
-        )
+        """Сохранить ожидающее подтверждение в БД используя SQLAlchemy"""
+        async with self.async_session() as session:
+            pending_approval = PendingApproval(
+                approval_id=call_id,  # approval_id = call_id
+                session_id=session_id,
+                call_id=call_id,
+                tool_name=tool_name,
+                arguments=arguments,  # SQLAlchemy автоматически сериализует JSONB
+                reason=reason,
+                status='pending'
+            )
+            session.add(pending_approval)
+            await session.commit()
     
     async def get_pending_approvals(self, session_id: str) -> List[Dict]:
-        """Получить все ожидающие подтверждения для сессии"""
-        query = """
-            SELECT call_id, tool_name, arguments, reason, created_at
-            FROM pending_approvals
-            WHERE session_id = $1 AND status = 'pending'
-            ORDER BY created_at ASC
-        """
-        rows = await self.pool.fetch(query, session_id)
-        
-        return [
-            {
-                'call_id': row['call_id'],
-                'tool_name': row['tool_name'],
-                'arguments': json.loads(row['arguments']),
-                'reason': row['reason'],
-                'created_at': row['created_at']
-            }
-            for row in rows
-        ]
+        """Получить все ожидающие подтверждения для сессии используя SQLAlchemy"""
+        async with self.async_session() as session:
+            stmt = select(PendingApproval).where(
+                PendingApproval.session_id == session_id,
+                PendingApproval.status == 'pending'
+            ).order_by(PendingApproval.created_at.asc())
+            
+            result = await session.execute(stmt)
+            rows = result.scalars().all()
+            
+            return [
+                {
+                    'call_id': row.call_id,
+                    'tool_name': row.tool_name,
+                    'arguments': row.arguments,  # JSONB автоматически десериализуется
+                    'reason': row.reason,
+                    'created_at': row.created_at
+                }
+                for row in rows
+            ]
     
     async def delete_pending_approval(self, call_id: str):
-        """Удалить ожидающее подтверждение"""
-        query = "DELETE FROM pending_approvals WHERE call_id = $1"
-        await self.pool.execute(query, call_id)
+        """Удалить ожидающее подтверждение используя SQLAlchemy"""
+        async with self.async_session() as session:
+            stmt = delete(PendingApproval).where(PendingApproval.call_id == call_id)
+            await session.execute(stmt)
+            await session.commit()
 ```
 
 ### 4. REST API для получения ожидающих подтверждений
@@ -261,6 +285,46 @@ async def get_pending_approvals(session_id: str):
         ],
         "count": len(pending_approvals)
     }
+```
+
+### 8. Gateway проксирование запроса
+
+Gateway должен проксировать REST запрос к Agent-Runtime:
+
+```python
+# gateway/app/api/v1/endpoints.py
+
+@router.get("/sessions/{session_id}/pending-approvals")
+async def get_pending_approvals_proxy(session_id: str):
+    """
+    Проксировать запрос на получение ожидающих подтверждений к Agent-Runtime.
+    
+    Client → Gateway → Agent-Runtime
+    """
+    logger.debug(f"Proxying pending-approvals request for session {session_id}")
+    
+    try:
+        # Проксируем запрос к Agent-Runtime
+        agent_runtime_url = f"{AGENT_RUNTIME_BASE_URL}/sessions/{session_id}/pending-approvals"
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.get(agent_runtime_url, timeout=10.0)
+            
+            if response.status_code == 404:
+                return JSONResponse(
+                    content={"error": f"Session {session_id} not found"},
+                    status_code=404
+                )
+            
+            response.raise_for_status()
+            return response.json()
+            
+    except httpx.HTTPError as e:
+        logger.error(f"Failed to proxy pending-approvals request: {e}")
+        return JSONResponse(
+            content={"error": "Failed to fetch pending approvals"},
+            status_code=500
+        )
 ```
 
 ### 5. Клиентский сервис для синхронизации
@@ -515,44 +579,113 @@ Future<void> _onConnect(
 
 ### Сервер (Python)
 
-1. `agent-runtime/app/services/database.py` - добавить методы для pending_approvals
-2. `agent-runtime/app/services/hitl_manager.py` - добавить персистентность в БД
-3. `agent-runtime/app/api/v1/endpoints.py` - добавить GET /sessions/{id}/pending-approvals
-4. `agent-runtime/migrations/` - создать миграцию для таблицы pending_approvals
+1. `agent-runtime/app/models/db_models.py` - **новый** - SQLAlchemy модель PendingApproval
+2. `agent-runtime/app/services/database.py` - добавить методы для pending_approvals с SQLAlchemy
+3. `agent-runtime/app/services/hitl_manager.py` - добавить персистентность в БД
+4. `agent-runtime/app/api/v1/endpoints.py` - добавить GET /sessions/{id}/pending-approvals
+5. `agent-runtime/migrations/` - создать Alembic миграцию для таблицы pending_approvals
+6. `gateway/app/api/v1/endpoints.py` - добавить проксирование GET /sessions/{id}/pending-approvals
 
 ### Клиент (Dart/Flutter)
 
-5. `lib/features/tool_execution/data/services/approval_sync_service.dart` - **новый**
-6. `lib/features/tool_execution/data/services/tool_approval_service_impl.dart` - добавить restorePendingApprovals()
-7. `lib/features/agent_chat/presentation/bloc/agent_chat_bloc.dart` - вызывать восстановление при подключении
-8. `lib/features/agent_chat/data/datasources/gateway_api.dart` - добавить метод для GET pending-approvals
+7. `lib/features/tool_execution/data/services/approval_sync_service.dart` - **новый**
+8. `lib/features/tool_execution/data/services/tool_approval_service_impl.dart` - добавить restorePendingApprovals()
+9. `lib/features/agent_chat/presentation/bloc/agent_chat_bloc.dart` - вызывать восстановление при подключении
+10. `lib/features/agent_chat/data/datasources/gateway_api.dart` - добавить метод для GET pending-approvals
 
-## Миграция базы данных
+## Миграция базы данных (Alembic)
 
-```sql
--- migrations/003_add_pending_approvals.sql
+```python
+# agent-runtime/migrations/versions/003_add_pending_approvals.py
 
-CREATE TABLE IF NOT EXISTS pending_approvals (
-    approval_id VARCHAR(255) PRIMARY KEY,
-    session_id VARCHAR(255) NOT NULL,
-    call_id VARCHAR(255) NOT NULL,
-    tool_name VARCHAR(255) NOT NULL,
-    arguments JSONB NOT NULL,
-    reason TEXT,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    status VARCHAR(50) NOT NULL DEFAULT 'pending',
+"""add pending approvals table
+
+Revision ID: 003
+Revises: 002
+Create Date: 2026-01-04 07:00:00.000000
+
+"""
+from alembic import op
+import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
+
+# revision identifiers, used by Alembic.
+revision = '003'
+down_revision = '002'
+branch_labels = None
+depends_on = None
+
+
+def upgrade():
+    """Create pending_approvals table"""
+    op.create_table(
+        'pending_approvals',
+        sa.Column('approval_id', sa.String(length=255), nullable=False),
+        sa.Column('session_id', sa.String(length=255), nullable=False),
+        sa.Column('call_id', sa.String(length=255), nullable=False),
+        sa.Column('tool_name', sa.String(length=255), nullable=False),
+        sa.Column('arguments', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column('reason', sa.Text(), nullable=True),
+        sa.Column('created_at', sa.DateTime(), nullable=False, server_default=sa.text('now()')),
+        sa.Column('status', sa.String(length=50), nullable=False, server_default='pending'),
+        sa.ForeignKeyConstraint(['session_id'], ['sessions.session_id'], ondelete='CASCADE'),
+        sa.PrimaryKeyConstraint('approval_id')
+    )
     
-    CONSTRAINT fk_session
-        FOREIGN KEY (session_id) 
-        REFERENCES sessions(session_id) 
-        ON DELETE CASCADE
-);
+    # Create indexes
+    op.create_index('idx_pending_approvals_session_id', 'pending_approvals', ['session_id'])
+    op.create_index('idx_pending_approvals_status', 'pending_approvals', ['status'])
+    op.create_index('idx_pending_approvals_created_at', 'pending_approvals', ['created_at'])
 
-CREATE INDEX idx_pending_approvals_session_id ON pending_approvals(session_id);
-CREATE INDEX idx_pending_approvals_status ON pending_approvals(status);
-CREATE INDEX idx_pending_approvals_created_at ON pending_approvals(created_at);
+
+def downgrade():
+    """Drop pending_approvals table"""
+    op.drop_index('idx_pending_approvals_created_at', table_name='pending_approvals')
+    op.drop_index('idx_pending_approvals_status', table_name='pending_approvals')
+    op.drop_index('idx_pending_approvals_session_id', table_name='pending_approvals')
+    op.drop_table('pending_approvals')
 ```
+
+### Применение миграции
+
+```bash
+# В директории agent-runtime
+alembic upgrade head
+```
+
+## Технические детали
+
+### Использование SQLAlchemy
+
+- **Async SQLAlchemy** для асинхронных операций с БД
+- **Автоматическая сериализация JSONB** - SQLAlchemy автоматически конвертирует Python dict ↔ JSONB
+- **Type safety** - модели SQLAlchemy обеспечивают типобезопасность
+- **Миграции через Alembic** - версионирование схемы БД
+
+### Gateway как прокси
+
+- Gateway проксирует REST запросы к Agent-Runtime
+- Client → Gateway → Agent-Runtime
+- Gateway не хранит состояние, только проксирует
+- Упрощает архитектуру - клиент работает только с Gateway
+
+### Архитектурные преимущества
+
+1. **Разделение ответственности:**
+   - Agent-Runtime: бизнес-логика + БД
+   - Gateway: проксирование + WebSocket
+   - Client: UI + локальное состояние
+
+2. **Масштабируемость:**
+   - БД может быть отдельным сервисом
+   - Agent-Runtime может иметь несколько инстансов
+   - Gateway может балансировать нагрузку
+
+3. **Надежность:**
+   - БД - единственный источник истины
+   - Автоматическое восстановление при сбоях
+   - Транзакционность операций через SQLAlchemy
 
 ## Заключение
 
-Это решение обеспечивает полную персистентность запросов на подтверждение при сохранении требования о бесконечном ожидании. База данных на сервере является единственным источником истины, что решает все проблемы с перезапуском, переустановкой и работой с нескольких устройств.
+Это решение обеспечивает полную персистентность запросов на подтверждение при сохранении требования о бесконечном ожидании. База данных на сервере с использованием SQLAlchemy является единственным источником истины, что решает все проблемы с перезапуском, переустановкой и работой с нескольких устройств. Gateway проксирует запросы, обеспечивая единую точку входа для клиента.
