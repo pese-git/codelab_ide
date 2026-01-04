@@ -153,6 +153,31 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
       (toolResult) async {
         _logger.i('Restored tool executed successfully: ${toolCall.toolName}');
         
+        // Добавляем результат в UI сразу
+        final resultMessage = Message(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          role: MessageRole.assistant,
+          content: toolResult.when(
+            success: (id, name, data, duration, time) => MessageContent.toolResult(
+              callId: id,
+              toolName: name,
+              result: some(data),
+              error: none(),
+            ),
+            failure: (id, name, code, msg, details, time) => MessageContent.toolResult(
+              callId: id,
+              toolName: name,
+              result: none(),
+              error: some(msg),
+            ),
+          ),
+          timestamp: DateTime.now(),
+          metadata: none(),
+        );
+        
+        // Добавляем сообщение в чат
+        add(AgentChatEvent.messageReceived(resultMessage));
+        
         // Отправляем результат на сервер
         await toolResult.when(
           success: (id, name, data, duration, time) async {
