@@ -230,14 +230,6 @@ class _ChatViewState extends State<ChatView> {
                 child: const Text('Reject'),
               ),
               const SizedBox(width: 8),
-              Button(
-                onPressed: () {
-                  // TODO: Implement review dialog with detailed view
-                  widget.bloc.add(const AgentChatEvent.cancelToolCall());
-                },
-                child: const Text('Cancel'),
-              ),
-              const SizedBox(width: 8),
               FilledButton(
                 onPressed: () {
                   widget.bloc.add(const AgentChatEvent.approveToolCall());

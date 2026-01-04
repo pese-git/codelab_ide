@@ -34,9 +34,12 @@ class AgentChatEvent with _$AgentChatEvent {
   const factory AgentChatEvent.connect(String sessionId) = ConnectEvent;
   const factory AgentChatEvent.disconnect() = DisconnectEvent;
   const factory AgentChatEvent.error(Failure failure) = ErrorEvent;
-  const factory AgentChatEvent.approvalRequested(ApprovalRequestWithCompleter request) = ApprovalRequestedEvent;
+  const factory AgentChatEvent.approvalRequested(
+    ApprovalRequestWithCompleter request,
+  ) = ApprovalRequestedEvent;
   const factory AgentChatEvent.approveToolCall() = ApproveToolCallEvent;
-  const factory AgentChatEvent.rejectToolCall(String reason) = RejectToolCallEvent;
+  const factory AgentChatEvent.rejectToolCall(String reason) =
+      RejectToolCallEvent;
   const factory AgentChatEvent.cancelToolCall() = CancelToolCallEvent;
 }
 
@@ -112,31 +115,32 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     on<ApprovalRequestedEvent>(_onApprovalRequested);
     on<ApproveToolCallEvent>(_onApproveToolCall);
     on<RejectToolCallEvent>(_onRejectToolCall);
-    on<CancelToolCallEvent>(_onCancelToolCall);
-    
+
     // Подписываемся на запросы подтверждения
     _approvalSubscription = _approvalService.approvalRequests.listen((request) {
       add(AgentChatEvent.approvalRequested(request));
     });
-    
+
     // Устанавливаем callback для выполнения восстановленных tool
     _approvalService.onExecuteRestoredTool = _executeRestoredTool;
-    
+
     // Устанавливаем callback для отправки rejection на сервер
     _approvalService.onRejectRestoredTool = _rejectRestoredTool;
   }
-  
+
   /// Отправить rejection для восстановленного tool на сервер
   Future<void> _rejectRestoredTool(ToolCall toolCall, String reason) async {
     _logger.i('Rejecting restored tool: ${toolCall.toolName}, reason: $reason');
-    
+
     // Отправляем rejection на сервер
-    await _sendToolResult(SendToolResultParams(
-      callId: toolCall.id,
-      toolName: toolCall.toolName,
-      error: 'User rejected: $reason',
-    ));
-    
+    await _sendToolResult(
+      SendToolResultParams(
+        callId: toolCall.id,
+        toolName: toolCall.toolName,
+        error: 'User rejected: $reason',
+      ),
+    );
+
     // Добавляем сообщение об отклонении в UI
     final rejectionMessage = Message(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -150,28 +154,32 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
       timestamp: DateTime.now(),
       metadata: none(),
     );
-    
+
     add(AgentChatEvent.messageReceived(rejectionMessage));
   }
-  
+
   /// Выполнить восстановленный tool после approve
   Future<ToolResult> _executeRestoredTool(ToolCall toolCall) async {
     _logger.i('Executing restored tool: ${toolCall.toolName}');
-    
+
     // Выполняем tool (без повторного запроса подтверждения)
-    final result = await _executeTool(ExecuteToolParams(toolCall: toolCall.copyWith(requiresApproval: false)));
-    
+    final result = await _executeTool(
+      ExecuteToolParams(toolCall: toolCall.copyWith(requiresApproval: false)),
+    );
+
     return result.fold(
       (failure) async {
         _logger.e('Restored tool execution failed: ${failure.message}');
-        
+
         // Отправляем ошибку на сервер
-        await _sendToolResult(SendToolResultParams(
-          callId: toolCall.id,
-          toolName: toolCall.toolName,
-          error: failure.message,
-        ));
-        
+        await _sendToolResult(
+          SendToolResultParams(
+            callId: toolCall.id,
+            toolName: toolCall.toolName,
+            error: failure.message,
+          ),
+        );
+
         return ToolResult.failure(
           callId: toolCall.id,
           toolName: toolCall.toolName,
@@ -183,50 +191,56 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
       },
       (toolResult) async {
         _logger.i('Restored tool executed successfully: ${toolCall.toolName}');
-        
+
         // Добавляем результат в UI сразу
         final resultMessage = Message(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           role: MessageRole.assistant,
           content: toolResult.when(
-            success: (id, name, data, duration, time) => MessageContent.toolResult(
-              callId: id,
-              toolName: name,
-              result: some(data),
-              error: none(),
-            ),
-            failure: (id, name, code, msg, details, time) => MessageContent.toolResult(
-              callId: id,
-              toolName: name,
-              result: none(),
-              error: some(msg),
-            ),
+            success: (id, name, data, duration, time) =>
+                MessageContent.toolResult(
+                  callId: id,
+                  toolName: name,
+                  result: some(data),
+                  error: none(),
+                ),
+            failure: (id, name, code, msg, details, time) =>
+                MessageContent.toolResult(
+                  callId: id,
+                  toolName: name,
+                  result: none(),
+                  error: some(msg),
+                ),
           ),
           timestamp: DateTime.now(),
           metadata: none(),
         );
-        
+
         // Добавляем сообщение в чат
         add(AgentChatEvent.messageReceived(resultMessage));
-        
+
         // Отправляем результат на сервер
         await toolResult.when(
           success: (id, name, data, duration, time) async {
-            await _sendToolResult(SendToolResultParams(
-              callId: toolCall.id,
-              toolName: toolCall.toolName,
-              result: data,
-            ));
+            await _sendToolResult(
+              SendToolResultParams(
+                callId: toolCall.id,
+                toolName: toolCall.toolName,
+                result: data,
+              ),
+            );
           },
           failure: (id, name, code, msg, details, time) async {
-            await _sendToolResult(SendToolResultParams(
-              callId: toolCall.id,
-              toolName: toolCall.toolName,
-              error: msg,
-            ));
+            await _sendToolResult(
+              SendToolResultParams(
+                callId: toolCall.id,
+                toolName: toolCall.toolName,
+                error: msg,
+              ),
+            );
           },
         );
-        
+
         return toolResult;
       },
     );
@@ -283,7 +297,9 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
         // Проверяем, что toAgent не пустой
         if (to.isNotEmpty) {
           newAgent = to;
-          _logger.i('Agent switched: ${from.isNotEmpty ? from : "unknown"} → $to');
+          _logger.i(
+            'Agent switched: ${from.isNotEmpty ? from : "unknown"} → $to',
+          );
         } else {
           _logger.w('Agent switch message received but toAgent is empty');
         }
@@ -298,26 +314,23 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
         isLoading: false,
       ),
     );
-    
+
     // Автоматически выполняем tool calls
     await event.message.content.maybeWhen(
       toolCall: (callId, toolName, arguments) async {
         _logger.i('Executing tool: $toolName');
-        
+
         // Получаем флаг requiresApproval из сообщения
         // Проверяем WSMessage для получения фактического значения
         bool requiresApproval = false;
-        
+
         // Пытаемся получить requiresApproval из metadata сообщения
-        event.message.metadata?.fold(
-          () => null,
-          (meta) {
-            if (meta.containsKey('requires_approval')) {
-              requiresApproval = meta['requires_approval'] as bool? ?? false;
-            }
-          },
-        );
-        
+        event.message.metadata?.fold(() => null, (meta) {
+          if (meta.containsKey('requires_approval')) {
+            requiresApproval = meta['requires_approval'] as bool? ?? false;
+          }
+        });
+
         final toolCall = ToolCall(
           id: callId,
           toolName: toolName,
@@ -325,36 +338,44 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
           requiresApproval: requiresApproval,
           createdAt: DateTime.now(),
         );
-        
-        final result = await _executeTool(ExecuteToolParams(toolCall: toolCall));
-        
+
+        final result = await _executeTool(
+          ExecuteToolParams(toolCall: toolCall),
+        );
+
         result.fold(
           (failure) async {
             _logger.e('Tool execution failed: ${failure.message}');
             // Send error result back to server using dedicated use case
-            await _sendToolResult(SendToolResultParams(
-              callId: callId,
-              toolName: toolName,
-              error: failure.message,
-            ));
+            await _sendToolResult(
+              SendToolResultParams(
+                callId: callId,
+                toolName: toolName,
+                error: failure.message,
+              ),
+            );
           },
           (toolResult) async {
             _logger.i('Tool executed successfully: $toolName');
             // Send result back to server using when for exhaustive matching
             await toolResult.when(
               success: (id, name, data, duration, time) async {
-                await _sendToolResult(SendToolResultParams(
-                  callId: callId,
-                  toolName: toolName,
-                  result: data,
-                ));
+                await _sendToolResult(
+                  SendToolResultParams(
+                    callId: callId,
+                    toolName: toolName,
+                    result: data,
+                  ),
+                );
               },
               failure: (id, name, code, msg, details, time) async {
-                await _sendToolResult(SendToolResultParams(
-                  callId: callId,
-                  toolName: toolName,
-                  error: msg,
-                ));
+                await _sendToolResult(
+                  SendToolResultParams(
+                    callId: callId,
+                    toolName: toolName,
+                    error: msg,
+                  ),
+                );
               },
             );
           },
@@ -421,8 +442,10 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     emit(state.copyWith(isLoading: true, error: none()));
 
     // Подключаемся к WebSocket через use case
-    final connectResult = await _connect(ConnectParams(sessionId: event.sessionId));
-    
+    final connectResult = await _connect(
+      ConnectParams(sessionId: event.sessionId),
+    );
+
     await connectResult.fold(
       (failure) async {
         _logger.e('Failed to connect: ${failure.message}');
@@ -431,10 +454,12 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
       },
       (_) async {
         _logger.i('Connected to WebSocket: ${event.sessionId}');
-        
+
         // Подписываемся на поток сообщений
         _messageSubscription?.cancel();
-        _messageSubscription = _receiveMessages(const NoParams()).listen((either) {
+        _messageSubscription = _receiveMessages(const NoParams()).listen((
+          either,
+        ) {
           either.fold(
             (failure) => add(AgentChatEvent.error(failure)),
             (message) => add(AgentChatEvent.messageReceived(message)),
@@ -499,14 +524,17 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     RejectToolCallEvent event,
     Emitter<AgentChatState> emit,
   ) async {
-    state.pendingApproval.fold(
-      () => _logger.w('No pending approval to reject'),
-      (request) {
-        _logger.i('Tool call rejected: ${request.toolCall.toolName}, reason: ${event.reason}');
-        request.completer.complete(ApprovalDecision.rejected(reason: some(event.reason)));
-        emit(state.copyWith(pendingApproval: none()));
-      },
-    );
+    state.pendingApproval.fold(() => _logger.w('No pending approval to reject'), (
+      request,
+    ) {
+      _logger.i(
+        'Tool call rejected: ${request.toolCall.toolName}, reason: ${event.reason}',
+      );
+      request.completer.complete(
+        ApprovalDecision.rejected(reason: some(event.reason)),
+      );
+      emit(state.copyWith(pendingApproval: none()));
+    });
   }
 
   Future<void> _onCancelToolCall(

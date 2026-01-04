@@ -12,10 +12,10 @@ import 'approval_sync_service.dart';
 class ApprovalRequestWithCompleter {
   /// Domain entity запроса
   final ToolApprovalRequest request;
-  
+
   /// Completer для возврата результата
   final Completer<ApprovalDecision> completer;
-  
+
   /// Флаг, указывающий что это восстановленный запрос
   final bool isRestored;
 
@@ -24,7 +24,7 @@ class ApprovalRequestWithCompleter {
     this.completer, {
     this.isRestored = false,
   });
-  
+
   /// Удобный доступ к toolCall
   ToolCall get toolCall => request.toolCall;
 }
@@ -41,21 +41,21 @@ class ToolApprovalServiceImpl implements ToolApprovalService {
 
   /// Храним активные completers для восстановления
   final Map<String, Completer<ApprovalDecision>> _activeCompleters = {};
-  
+
   /// Храним отклоненные tool calls чтобы не показывать диалог повторно
   final Set<String> _rejectedToolCalls = {};
-  
+
   /// Callback для выполнения tool после approve (для восстановленных запросов)
   Future<ToolResult> Function(ToolCall)? onExecuteRestoredTool;
-  
+
   /// Callback для отправки rejection на сервер (для восстановленных запросов)
   Future<void> Function(ToolCall, String reason)? onRejectRestoredTool;
 
   ToolApprovalServiceImpl({
     required ApprovalSyncService syncService,
     required Logger logger,
-  })  : _syncService = syncService,
-        _logger = logger;
+  }) : _syncService = syncService,
+       _logger = logger;
 
   /// Stream запросов на подтверждение с completer
   Stream<ApprovalRequestWithCompleter> get approvalRequests =>
@@ -66,10 +66,14 @@ class ToolApprovalServiceImpl implements ToolApprovalService {
     // Проверяем, не был ли этот tool уже отклонен
     final toolKey = '${toolCall.toolName}_${toolCall.arguments.toString()}';
     if (_rejectedToolCalls.contains(toolKey)) {
-      _logger.i('Tool call was previously rejected, auto-rejecting: ${toolCall.toolName}');
-      return ApprovalDecision.rejected(reason: some('Previously rejected by user'));
+      _logger.i(
+        'Tool call was previously rejected, auto-rejecting: ${toolCall.toolName}',
+      );
+      return ApprovalDecision.rejected(
+        reason: some('Previously rejected by user'),
+      );
     }
-    
+
     final completer = Completer<ApprovalDecision>();
 
     // Сохраняем completer для возможного восстановления
@@ -82,8 +86,10 @@ class ToolApprovalServiceImpl implements ToolApprovalService {
       requestedAt: DateTime.now(),
     );
 
-    final requestWithCompleter =
-        ApprovalRequestWithCompleter(domainRequest, completer);
+    final requestWithCompleter = ApprovalRequestWithCompleter(
+      domainRequest,
+      completer,
+    );
 
     // Эмитируем запрос в stream
     _approvalController.add(requestWithCompleter);
@@ -93,7 +99,7 @@ class ToolApprovalServiceImpl implements ToolApprovalService {
 
     // Удаляем completer после получения решения
     _activeCompleters.remove(toolCall.id);
-    
+
     // Если отклонен, запоминаем
     if (decision.isRejected) {
       _rejectedToolCalls.add(toolKey);
@@ -120,7 +126,8 @@ class ToolApprovalServiceImpl implements ToolApprovalService {
         // Проверяем, нет ли уже активного completer
         if (_activeCompleters.containsKey(request.toolCall.id)) {
           _logger.d(
-              'Completer already exists for ${request.toolCall.id}, skipping');
+            'Completer already exists for ${request.toolCall.id}, skipping',
+          );
           continue;
         }
 
@@ -151,46 +158,62 @@ class ToolApprovalServiceImpl implements ToolApprovalService {
 
   /// Ожидание решения для восстановленного запроса с выполнением tool
   Future<void> _waitForRestoredDecision(
-      ToolCall toolCall, Completer<ApprovalDecision> completer) async {
+    ToolCall toolCall,
+    Completer<ApprovalDecision> completer,
+  ) async {
     try {
       // Ждем решения (без таймаута)
       final decision = await completer.future;
       _activeCompleters.remove(toolCall.id);
       _logger.d('Decision received for restored approval: ${toolCall.id}');
-      
+
       // Обрабатываем решение пользователя
       await decision.when(
         approved: () async {
           // Если есть callback для выполнения - вызываем его
           if (onExecuteRestoredTool != null) {
-            _logger.i('Executing restored tool after approval: ${toolCall.toolName}');
+            _logger.i(
+              'Executing restored tool after approval: ${toolCall.toolName}',
+            );
             await onExecuteRestoredTool!(toolCall);
           }
         },
         rejected: (reason) async {
           // Запоминаем отклоненный tool
-          final toolKey = '${toolCall.toolName}_${toolCall.arguments.toString()}';
+          final toolKey =
+              '${toolCall.toolName}_${toolCall.arguments.toString()}';
           _rejectedToolCalls.add(toolKey);
           _logger.d('Added to rejected list: $toolKey');
-          
+
           // Отправляем rejection на сервер
           if (onRejectRestoredTool != null) {
-            final rejectReason = reason?.fold(() => 'User rejected', (r) => r) ?? 'User rejected';
-            _logger.i('Restored tool rejected: ${toolCall.toolName}, reason: $rejectReason');
+            final rejectReason =
+                reason?.fold(() => 'User rejected', (r) => r) ??
+                'User rejected';
+            _logger.i(
+              'Restored tool rejected: ${toolCall.toolName}, reason: $rejectReason',
+            );
             await onRejectRestoredTool!(toolCall, rejectReason);
           }
         },
         modified: (modifiedArguments, comment) async {
           // Для modified выполняем tool с измененными аргументами
           if (onExecuteRestoredTool != null) {
-            _logger.i('Executing restored tool with modified arguments: ${toolCall.toolName}');
-            final modifiedToolCall = toolCall.copyWith(arguments: modifiedArguments);
+            _logger.i(
+              'Executing restored tool with modified arguments: ${toolCall.toolName}',
+            );
+            final modifiedToolCall = toolCall.copyWith(
+              arguments: modifiedArguments,
+            );
             await onExecuteRestoredTool!(modifiedToolCall);
           }
         },
         cancelled: () async {
           _logger.i('Restored tool cancelled: ${toolCall.toolName}');
-          // Для cancelled просто логируем, не отправляем на сервер
+          // Для cancelled используем тот же механизм что и для reject
+          if (onRejectRestoredTool != null) {
+            await onRejectRestoredTool!(toolCall, 'User cancelled');
+          }
         },
       );
     } catch (e) {
@@ -204,7 +227,7 @@ class ToolApprovalServiceImpl implements ToolApprovalService {
     _rejectedToolCalls.clear();
     _logger.d('Cleared rejected tools list');
   }
-  
+
   /// Закрывает сервис и освобождает ресурсы
   void dispose() {
     // Очищаем все активные completers для предотвращения memory leak
@@ -218,7 +241,7 @@ class ToolApprovalServiceImpl implements ToolApprovalService {
     }
     _activeCompleters.clear();
     _rejectedToolCalls.clear();
-    
+
     _approvalController.close();
   }
 }
