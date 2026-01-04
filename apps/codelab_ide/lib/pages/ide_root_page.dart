@@ -33,8 +33,8 @@ class _IdeRootPageState extends State<IdeRootPage> {
       GlobalKey<engine.ExplorerPanelState>();
 
   // Создаём новый инстанс блока из DI (factory!)
-  late AiAgentBloc aiAgentBloc = CherryPick.openRootScope()
-      .resolve<AiAgentBloc>();
+  late AgentChatBloc aiAgentBloc = CherryPick.openRootScope()
+      .resolve<AgentChatBloc>();
 
   @override
   Widget build(BuildContext context) {

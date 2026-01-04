@@ -8,6 +8,7 @@ library;
 // МОДЕЛИ
 export 'models/file_node.dart';
 export 'models/editor_tab.dart';
+export 'models/agent_info.dart';
 
 // WIDGETS: PANELS
 export 'widgets/panels/main_panel_area.dart';
@@ -26,6 +27,10 @@ export 'widgets/splitters/vertical_splitter.dart';
 // WIDGETS: НАВИГАЦИЯ И HEADER
 export 'widgets/navigation/sidebar_navigation.dart';
 export 'widgets/navigation/main_header.dart';
+
+// WIDGETS: AI Agent
+export 'widgets/ai_assistant_ui/agent_indicator.dart';
+export 'widgets/ai_assistant_ui/agent_selector.dart';
 
 // WIDGETS: STATUS BAR
 export 'widgets/status/status_bar.dart';
