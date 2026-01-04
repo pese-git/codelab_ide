@@ -36,6 +36,10 @@ abstract class MessageModel with _$MessageModel {
     /// Аргументы инструмента (для tool_call)
     Map<String, dynamic>? arguments,
 
+    /// Требует ли инструмент подтверждения (для tool_call)
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'requires_approval') bool? requiresApproval,
+
     /// Результат выполнения (для tool_result)
     Map<String, dynamic>? result,
 
@@ -83,8 +87,25 @@ abstract class MessageModel with _$MessageModel {
       role: messageRole,
       content: messageContent,
       timestamp: timestamp,
-      metadata: metadata != null ? some(metadata!) : none(),
+      metadata: _buildMetadata(),
     );
+  }
+
+  /// Строит metadata для сообщения, включая requiresApproval для tool_call
+  Option<Map<String, dynamic>> _buildMetadata() {
+    final meta = <String, dynamic>{};
+    
+    // Добавляем существующие metadata
+    if (metadata != null) {
+      meta.addAll(metadata!);
+    }
+    
+    // Для tool_call добавляем requiresApproval
+    if (type == 'tool_call' && requiresApproval != null) {
+      meta['requires_approval'] = requiresApproval!;
+    }
+    
+    return meta.isEmpty ? none() : some(meta);
   }
 
   /// Парсит роль из типа сообщения

@@ -168,8 +168,13 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     String newAgent = state.currentAgent;
     event.message.content.maybeWhen(
       agentSwitch: (from, to, reason) {
-        newAgent = to;
-        _logger.i('Agent switched: $from → $to');
+        // Проверяем, что toAgent не пустой
+        if (to.isNotEmpty) {
+          newAgent = to;
+          _logger.i('Agent switched: ${from.isNotEmpty ? from : "unknown"} → $to');
+        } else {
+          _logger.w('Agent switch message received but toAgent is empty');
+        }
       },
       orElse: () {},
     );
@@ -187,10 +192,19 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
       toolCall: (callId, toolName, arguments) async {
         _logger.i('Executing tool: $toolName');
         
-        // Проверяем, требует ли инструмент подтверждения
-        // Критичные операции: write_file, execute_command, create_directory
-        final criticalTools = ['write_file', 'write_to_file', 'execute_command', 'run_command', 'create_directory'];
-        final requiresApproval = criticalTools.contains(toolName);
+        // Получаем флаг requiresApproval из сообщения
+        // Проверяем WSMessage для получения фактического значения
+        bool requiresApproval = false;
+        
+        // Пытаемся получить requiresApproval из metadata сообщения
+        event.message.metadata?.fold(
+          () => null,
+          (meta) {
+            if (meta.containsKey('requires_approval')) {
+              requiresApproval = meta['requires_approval'] as bool? ?? false;
+            }
+          },
+        );
         
         final toolCall = ToolCall(
           id: callId,

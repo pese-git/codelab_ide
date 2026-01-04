@@ -101,12 +101,16 @@ class MessageMapper {
         id: messageId,
         role: MessageRole.system,
         content: MessageContent.agentSwitch(
-          fromAgent: fromAgent ?? '',
-          toAgent: toAgent ?? '',
+          fromAgent: fromAgent ?? 'unknown',
+          toAgent: toAgent ?? 'unknown',
           reason: reason != null ? some(reason) : none(),
         ),
         timestamp: timestamp,
-        metadata: none(),
+        metadata: some({
+          if (fromAgent != null) 'from_agent': fromAgent,
+          if (toAgent != null) 'to_agent': toAgent,
+          if (confidence != null) 'confidence': confidence,
+        }),
       ),
       
       error: (content) => Message(

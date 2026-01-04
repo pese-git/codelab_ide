@@ -192,12 +192,26 @@ class AgentRepositoryImpl implements AgentRepository {
           final parsed = jsonDecode(rawArguments);
           if (parsed is Map) {
             arguments = Map<String, dynamic>.from(parsed);
+          } else {
+            print('[AgentRepository] WARNING: Parsed arguments is not a Map, got ${parsed.runtimeType}');
+            // Сохраняем исходную строку для отладки
+            arguments = {'_raw': rawArguments, '_parse_error': 'Not a Map'};
           }
-        } catch (e) {
-          print('[AgentRepository] Failed to parse arguments JSON: $e');
+        } catch (e, stackTrace) {
+          print('[AgentRepository] ERROR: Failed to parse arguments JSON: $e');
+          print('[AgentRepository] Stack trace: $stackTrace');
+          print('[AgentRepository] Raw arguments: $rawArguments');
+          // Сохраняем ошибку и исходные данные
+          arguments = {
+            '_raw': rawArguments,
+            '_parse_error': e.toString(),
+          };
         }
       } else if (rawArguments is Map) {
         arguments = Map<String, dynamic>.from(rawArguments);
+      } else if (rawArguments != null) {
+        print('[AgentRepository] WARNING: Unexpected arguments type: ${rawArguments.runtimeType}');
+        arguments = {'_raw': rawArguments.toString(), '_parse_error': 'Unexpected type'};
       }
       
       return WSMessage.toolCall(
