@@ -311,13 +311,13 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     // Подключаемся к WebSocket через use case
     final connectResult = await _connect(ConnectParams(sessionId: event.sessionId));
     
-    connectResult.fold(
-      (failure) {
+    await connectResult.fold(
+      (failure) async {
         _logger.e('Failed to connect: ${failure.message}');
         emit(state.copyWith(isLoading: false, error: some(failure.message)));
         return;
       },
-      (_) {
+      (_) async {
         _logger.i('Connected to WebSocket: ${event.sessionId}');
         
         // Подписываемся на поток сообщений
@@ -328,6 +328,16 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
             (message) => add(AgentChatEvent.messageReceived(message)),
           );
         });
+
+        // ВАЖНО: Восстанавливаем ожидающие подтверждения с сервера
+        // Это позволяет продолжить работу после перезапуска/переустановки IDE
+        try {
+          await _approvalService.restorePendingApprovals(event.sessionId);
+          _logger.i('Pending approvals restored successfully');
+        } catch (e) {
+          _logger.e('Failed to restore pending approvals: $e');
+          // Не блокируем подключение из-за ошибки восстановления
+        }
 
         emit(state.copyWith(isConnected: true, isLoading: false));
       },

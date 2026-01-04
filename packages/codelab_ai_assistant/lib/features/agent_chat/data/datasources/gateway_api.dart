@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import '../../../session_management/data/models/session_models.dart';
+import '../../../tool_execution/data/models/pending_approvals_response.dart';
 
 /// API клиент для Gateway Service (только Dio, без Retrofit)
 ///
@@ -54,5 +55,16 @@ class GatewayApi {
   Future<Map<String, dynamic>> createSession() async {
     final response = await _dio.post('$baseUrl/sessions');
     return response.data as Map<String, dynamic>;
+  }
+
+  /// Получить ожидающие подтверждения для сессии
+  ///
+  /// GET /sessions/{sessionId}/pending-approvals
+  Future<PendingApprovalsResponse> getPendingApprovals(String sessionId) async {
+    final response = await _dio.get(
+      '$baseUrl/sessions/$sessionId/pending-approvals',
+    );
+    return PendingApprovalsResponse.fromJson(
+        response.data as Map<String, dynamic>);
   }
 }

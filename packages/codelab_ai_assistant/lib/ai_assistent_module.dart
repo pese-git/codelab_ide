@@ -25,6 +25,7 @@ import 'features/tool_execution/domain/repositories/tool_repository.dart';
 import 'features/tool_execution/domain/usecases/execute_tool.dart';
 import 'features/tool_execution/domain/usecases/request_approval.dart';
 import 'features/tool_execution/domain/usecases/validate_safety.dart';
+import 'features/tool_execution/data/services/approval_sync_service.dart';
 
 // Agent Chat
 import 'features/agent_chat/data/datasources/agent_remote_datasource.dart';
@@ -190,9 +191,24 @@ class AiAssistantModule extends Module {
       ),
     );
 
+    // ApprovalSyncService for restoring pending approvals
+    bind<ApprovalSyncService>()
+        .toProvide(
+          () => ApprovalSyncService(
+            api: currentScope.resolve<GatewayApi>(),
+            logger: currentScope.resolve<Logger>(),
+          ),
+        )
+        .singleton();
+
     // ToolApprovalService implementation
     bind<ToolApprovalServiceImpl>()
-        .toProvide(() => ToolApprovalServiceImpl())
+        .toProvide(
+          () => ToolApprovalServiceImpl(
+            syncService: currentScope.resolve<ApprovalSyncService>(),
+            logger: currentScope.resolve<Logger>(),
+          ),
+        )
         .singleton();
 
     // ToolApprovalService interface for repository
