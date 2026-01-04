@@ -43,6 +43,9 @@ class ToolApprovalServiceImpl implements ToolApprovalService {
   
   /// Callback для выполнения tool после approve (для восстановленных запросов)
   Future<ToolResult> Function(ToolCall)? onExecuteRestoredTool;
+  
+  /// Callback для отправки rejection на сервер (для восстановленных запросов)
+  Future<void> Function(ToolCall, String reason)? onRejectRestoredTool;
 
   ToolApprovalServiceImpl({
     required ApprovalSyncService syncService,
@@ -115,7 +118,7 @@ class ToolApprovalServiceImpl implements ToolApprovalService {
 
         // Запускаем асинхронное ожидание решения с выполнением tool
         // Fire-and-forget паттерн с явной обработкой ошибок внутри метода
-        _waitForRestoredDecision(request.toolCall, completer);
+        unawaited(_waitForRestoredDecision(request.toolCall, completer));
       }
 
       _logger.i('Successfully restored ${pending.length} pending approvals');
@@ -138,11 +141,36 @@ class ToolApprovalServiceImpl implements ToolApprovalService {
       _activeCompleters.remove(toolCall.id);
       _logger.d('Decision received for restored approval: ${toolCall.id}');
       
-      // Если есть callback для выполнения - вызываем его
-      if (onExecuteRestoredTool != null && decision.isApproved) {
-        _logger.i('Executing restored tool after approval: ${toolCall.toolName}');
-        await onExecuteRestoredTool!(toolCall);
-      }
+      // Обрабатываем решение пользователя
+      await decision.when(
+        approved: () async {
+          // Если есть callback для выполнения - вызываем его
+          if (onExecuteRestoredTool != null) {
+            _logger.i('Executing restored tool after approval: ${toolCall.toolName}');
+            await onExecuteRestoredTool!(toolCall);
+          }
+        },
+        rejected: (reason) async {
+          // Отправляем rejection на сервер
+          if (onRejectRestoredTool != null) {
+            final rejectReason = reason?.fold(() => 'User rejected', (r) => r) ?? 'User rejected';
+            _logger.i('Restored tool rejected: ${toolCall.toolName}, reason: $rejectReason');
+            await onRejectRestoredTool!(toolCall, rejectReason);
+          }
+        },
+        modified: (modifiedArguments, comment) async {
+          // Для modified выполняем tool с измененными аргументами
+          if (onExecuteRestoredTool != null) {
+            _logger.i('Executing restored tool with modified arguments: ${toolCall.toolName}');
+            final modifiedToolCall = toolCall.copyWith(arguments: modifiedArguments);
+            await onExecuteRestoredTool!(modifiedToolCall);
+          }
+        },
+        cancelled: () async {
+          _logger.i('Restored tool cancelled: ${toolCall.toolName}');
+          // Для cancelled просто логируем, не отправляем на сервер
+        },
+      );
     } catch (e) {
       _logger.e('Error waiting for decision: $e');
       _activeCompleters.remove(toolCall.id);

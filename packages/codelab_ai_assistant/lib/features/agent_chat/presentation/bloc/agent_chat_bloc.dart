@@ -121,6 +121,37 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     
     // Устанавливаем callback для выполнения восстановленных tool
     _approvalService.onExecuteRestoredTool = _executeRestoredTool;
+    
+    // Устанавливаем callback для отправки rejection на сервер
+    _approvalService.onRejectRestoredTool = _rejectRestoredTool;
+  }
+  
+  /// Отправить rejection для восстановленного tool на сервер
+  Future<void> _rejectRestoredTool(ToolCall toolCall, String reason) async {
+    _logger.i('Rejecting restored tool: ${toolCall.toolName}, reason: $reason');
+    
+    // Отправляем rejection на сервер
+    await _sendToolResult(SendToolResultParams(
+      callId: toolCall.id,
+      toolName: toolCall.toolName,
+      error: 'User rejected: $reason',
+    ));
+    
+    // Добавляем сообщение об отклонении в UI
+    final rejectionMessage = Message(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      role: MessageRole.assistant,
+      content: MessageContent.toolResult(
+        callId: toolCall.id,
+        toolName: toolCall.toolName,
+        result: none(),
+        error: some('User rejected: $reason'),
+      ),
+      timestamp: DateTime.now(),
+      metadata: none(),
+    );
+    
+    add(AgentChatEvent.messageReceived(rejectionMessage));
   }
   
   /// Выполнить восстановленный tool после approve
