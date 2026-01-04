@@ -108,15 +108,13 @@ class ToolApprovalServiceImpl implements ToolApprovalService {
         final completer = Completer<ApprovalDecision>();
         _activeCompleters[request.toolCall.id] = completer;
 
-        final requestWithCompleter =
-            ApprovalRequestWithCompleter(request, completer);
-
         // Эмитируем в stream для отображения в UI (с флагом isRestored)
         _approvalController.add(
           ApprovalRequestWithCompleter(request, completer, isRestored: true),
         );
 
         // Запускаем асинхронное ожидание решения с выполнением tool
+        // Fire-and-forget паттерн с явной обработкой ошибок внутри метода
         _waitForRestoredDecision(request.toolCall, completer);
       }
 
@@ -153,6 +151,17 @@ class ToolApprovalServiceImpl implements ToolApprovalService {
 
   /// Закрывает сервис и освобождает ресурсы
   void dispose() {
+    // Очищаем все активные completers для предотвращения memory leak
+    for (final completer in _activeCompleters.values) {
+      if (!completer.isCompleted) {
+        // Завершаем с ошибкой, чтобы не оставлять висящие futures
+        completer.completeError(
+          StateError('ToolApprovalService disposed while waiting for decision'),
+        );
+      }
+    }
+    _activeCompleters.clear();
+    
     _approvalController.close();
   }
 }

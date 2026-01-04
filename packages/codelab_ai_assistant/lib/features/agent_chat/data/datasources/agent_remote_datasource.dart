@@ -56,22 +56,12 @@ class AgentRemoteDataSourceImpl implements AgentRemoteDataSource {
       
       // Ждем готовности соединения с timeout
       // WebSocketChannel.ready доступен начиная с версии 2.2.0
-      try {
-        await _channel!.ready.timeout(
-          const Duration(seconds: 5),
-          onTimeout: () {
-            throw WebSocketException('WebSocket connection timeout');
-          },
-        );
-      } catch (e) {
-        // Если ready не поддерживается или произошла ошибка,
-        // используем небольшую задержку для установки соединения
-        if (e is NoSuchMethodError) {
-          await Future.delayed(const Duration(milliseconds: 100));
-        } else {
-          rethrow;
-        }
-      }
+      await _channel!.ready.timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          throw WebSocketException('WebSocket connection timeout');
+        },
+      );
     } catch (e) {
       _channel = null;
       _currentSessionId = null;
