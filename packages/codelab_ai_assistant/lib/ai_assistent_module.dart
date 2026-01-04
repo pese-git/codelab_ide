@@ -233,7 +233,7 @@ class AiAssistantModule extends Module {
     bind<AgentRemoteDataSource>()
         .toProvide(
           () => AgentRemoteDataSourceImpl(
-            gatewayUrl: '${gatewayBaseUrl.replaceFirst('http', 'ws')}/api/v1',
+            gatewayUrl: gatewayBaseUrl.replaceFirst('http', 'ws'),
           ),
         )
         .singleton();

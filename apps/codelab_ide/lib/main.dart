@@ -29,7 +29,7 @@ void main() async {
     AppDiModule(),
     EngineDiModule(),
     AiAssistantModule(
-      gatewayBaseUrl: 'http://localhost:8000',
+      gatewayBaseUrl: 'http://localhost:8000/api/v1',
       internalApiKey: 'my-super-secret-key',
       sharedPreferences: sharedPreferences,
     ),

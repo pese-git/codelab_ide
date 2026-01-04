@@ -27,16 +27,15 @@ abstract class SessionRemoteDataSource {
 class SessionRemoteDataSourceImpl implements SessionRemoteDataSource {
   final Dio _dio;
   final String _baseUrl;
-  
-  SessionRemoteDataSourceImpl({
-    required Dio dio,
-    required String baseUrl,
-  }) : _dio = dio, _baseUrl = baseUrl;
-  
+
+  SessionRemoteDataSourceImpl({required Dio dio, required String baseUrl})
+    : _dio = dio,
+      _baseUrl = baseUrl;
+
   @override
   Future<SessionModel> createSession() async {
     try {
-      final response = await _dio.post('$_baseUrl/api/v1/sessions');
+      final response = await _dio.post('$_baseUrl/sessions');
       return SessionModel.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw _handleDioError(e, 'Failed to create session');
@@ -44,11 +43,11 @@ class SessionRemoteDataSourceImpl implements SessionRemoteDataSource {
       throw ServerException('Unexpected error creating session: $e');
     }
   }
-  
+
   @override
   Future<SessionModel> getSession(String sessionId) async {
     try {
-      final response = await _dio.get('$_baseUrl/api/v1/sessions/$sessionId');
+      final response = await _dio.get('$_baseUrl/sessions/$sessionId');
       return SessionModel.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw _handleDioError(e, 'Failed to get session');
@@ -56,14 +55,14 @@ class SessionRemoteDataSourceImpl implements SessionRemoteDataSource {
       throw ServerException('Unexpected error getting session: $e');
     }
   }
-  
+
   @override
   Future<List<SessionModel>> listSessions() async {
     try {
-      final response = await _dio.get('$_baseUrl/api/v1/sessions');
+      final response = await _dio.get('$_baseUrl/sessions');
       final data = response.data as Map<String, dynamic>;
       final sessionsList = data['sessions'] as List<dynamic>;
-      
+
       return sessionsList
           .map((json) => SessionModel.fromJson(json as Map<String, dynamic>))
           .toList();
@@ -73,23 +72,26 @@ class SessionRemoteDataSourceImpl implements SessionRemoteDataSource {
       throw ServerException('Unexpected error listing sessions: $e');
     }
   }
-  
+
   @override
   Future<void> deleteSession(String sessionId) async {
     try {
-      await _dio.delete('$_baseUrl/api/v1/sessions/$sessionId');
+      await _dio.delete('$_baseUrl/sessions/$sessionId');
     } on DioException catch (e) {
       throw _handleDioError(e, 'Failed to delete session');
     } catch (e) {
       throw ServerException('Unexpected error deleting session: $e');
     }
   }
-  
+
   @override
-  Future<SessionModel> updateSessionTitle(String sessionId, String title) async {
+  Future<SessionModel> updateSessionTitle(
+    String sessionId,
+    String title,
+  ) async {
     try {
       final response = await _dio.patch(
-        '$_baseUrl/api/v1/sessions/$sessionId',
+        '$_baseUrl/sessions/$sessionId',
         data: {'title': title},
       );
       return SessionModel.fromJson(response.data as Map<String, dynamic>);
@@ -99,7 +101,7 @@ class SessionRemoteDataSourceImpl implements SessionRemoteDataSource {
       throw ServerException('Unexpected error updating session title: $e');
     }
   }
-  
+
   /// Обрабатывает ошибки Dio и конвертирует их в domain exceptions
   AppException _handleDioError(DioException e, String context) {
     // Timeout errors
@@ -108,12 +110,12 @@ class SessionRemoteDataSourceImpl implements SessionRemoteDataSource {
         e.type == DioExceptionType.sendTimeout) {
       return NetworkException('$context: Connection timeout', e);
     }
-    
+
     // Connection errors
     if (e.type == DioExceptionType.connectionError) {
       return NetworkException('$context: Connection error', e);
     }
-    
+
     // HTTP status code errors
     final statusCode = e.response?.statusCode;
     if (statusCode != null) {
@@ -133,7 +135,7 @@ class SessionRemoteDataSourceImpl implements SessionRemoteDataSource {
           return ServerException('$context: HTTP $statusCode', e);
       }
     }
-    
+
     // Other errors
     return ServerException('$context: ${e.message}', e);
   }
