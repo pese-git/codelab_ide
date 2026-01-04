@@ -1,5 +1,6 @@
 // Реализация сервиса подтверждения tool операций
 import 'dart:async';
+import 'package:fpdart/fpdart.dart';
 import 'package:logger/logger.dart';
 import '../../domain/entities/tool_call.dart';
 import '../../domain/entities/tool_approval.dart';
@@ -41,6 +42,9 @@ class ToolApprovalServiceImpl implements ToolApprovalService {
   /// Храним активные completers для восстановления
   final Map<String, Completer<ApprovalDecision>> _activeCompleters = {};
   
+  /// Храним отклоненные tool calls чтобы не показывать диалог повторно
+  final Set<String> _rejectedToolCalls = {};
+  
   /// Callback для выполнения tool после approve (для восстановленных запросов)
   Future<ToolResult> Function(ToolCall)? onExecuteRestoredTool;
   
@@ -59,6 +63,13 @@ class ToolApprovalServiceImpl implements ToolApprovalService {
 
   @override
   Future<ApprovalDecision> requestApproval(ToolCall toolCall) async {
+    // Проверяем, не был ли этот tool уже отклонен
+    final toolKey = '${toolCall.toolName}_${toolCall.arguments.toString()}';
+    if (_rejectedToolCalls.contains(toolKey)) {
+      _logger.i('Tool call was previously rejected, auto-rejecting: ${toolCall.toolName}');
+      return ApprovalDecision.rejected(reason: some('Previously rejected by user'));
+    }
+    
     final completer = Completer<ApprovalDecision>();
 
     // Сохраняем completer для возможного восстановления
@@ -82,6 +93,12 @@ class ToolApprovalServiceImpl implements ToolApprovalService {
 
     // Удаляем completer после получения решения
     _activeCompleters.remove(toolCall.id);
+    
+    // Если отклонен, запоминаем
+    if (decision.isRejected) {
+      _rejectedToolCalls.add(toolKey);
+      _logger.d('Added to rejected list: $toolKey');
+    }
 
     return decision;
   }
@@ -151,6 +168,11 @@ class ToolApprovalServiceImpl implements ToolApprovalService {
           }
         },
         rejected: (reason) async {
+          // Запоминаем отклоненный tool
+          final toolKey = '${toolCall.toolName}_${toolCall.arguments.toString()}';
+          _rejectedToolCalls.add(toolKey);
+          _logger.d('Added to rejected list: $toolKey');
+          
           // Отправляем rejection на сервер
           if (onRejectRestoredTool != null) {
             final rejectReason = reason?.fold(() => 'User rejected', (r) => r) ?? 'User rejected';
@@ -177,6 +199,12 @@ class ToolApprovalServiceImpl implements ToolApprovalService {
     }
   }
 
+  /// Очистить список отклоненных tool calls (например, при новой сессии)
+  void clearRejectedTools() {
+    _rejectedToolCalls.clear();
+    _logger.d('Cleared rejected tools list');
+  }
+  
   /// Закрывает сервис и освобождает ресурсы
   void dispose() {
     // Очищаем все активные completers для предотвращения memory leak
@@ -189,6 +217,7 @@ class ToolApprovalServiceImpl implements ToolApprovalService {
       }
     }
     _activeCompleters.clear();
+    _rejectedToolCalls.clear();
     
     _approvalController.close();
   }
