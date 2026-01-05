@@ -29,8 +29,8 @@ void main() async {
     AppDiModule(),
     EngineDiModule(),
     AiAssistantModule(
-      gatewayBaseUrl: 'http://localhost/api/v1',
-      authServiceUrl: 'http://localhost', // OAuth эндпоинт: /oauth/token
+      gatewayBaseUrl: 'http://localhost:80/api/v1',
+      authServiceUrl: 'http://localhost:80', // OAuth эндпоинт: /oauth/token
       internalApiKey: 'my-super-secret-key',
       sharedPreferences: sharedPreferences,
       useOAuth: true, // Включаем OAuth авторизацию
