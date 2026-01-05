@@ -66,6 +66,10 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
       return BlocProvider<AuthBloc>.value(
         value: authBloc,
         child: AuthWrapper(
+          onAuthenticated: () {
+            // После успешной авторизации перезагружаем список сессий
+            _sessionManagerBloc?.add(const SessionManagerEvent.loadSessions());
+          },
           child: _buildContent(),
         ),
       );

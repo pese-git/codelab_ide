@@ -1,4 +1,5 @@
 // Dio interceptor для автоматической авторизации и обновления токенов
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:logger/logger.dart';
 import '../datasources/auth_local_datasource.dart';
@@ -14,6 +15,11 @@ class AuthInterceptor extends Interceptor {
   final AuthRemoteDataSource _remoteDataSource;
   final Logger _logger;
   final String _clientId;
+  Dio? _dio; // Ссылка на Dio instance для повторных запросов
+
+  // Stream для уведомлений об истечении токена
+  final _tokenExpiredController = StreamController<void>.broadcast();
+  Stream<void> get tokenExpiredStream => _tokenExpiredController.stream;
 
   // Флаг для предотвращения циклических обновлений
   bool _isRefreshing = false;
@@ -29,6 +35,16 @@ class AuthInterceptor extends Interceptor {
         _remoteDataSource = remoteDataSource,
         _logger = logger,
         _clientId = clientId;
+
+  /// Установить ссылку на Dio instance
+  void setDio(Dio dio) {
+    _dio = dio;
+  }
+
+  /// Закрыть stream при уничтожении interceptor
+  void dispose() {
+    _tokenExpiredController.close();
+  }
 
   @override
   Future<void> onRequest(
@@ -116,14 +132,33 @@ class AuthInterceptor extends Interceptor {
         options.headers['Authorization'] = newToken.authorizationHeader;
 
         _logger.d('[AuthInterceptor] Retrying request with new token');
+        _logger.d('[AuthInterceptor] New token: ${newToken.accessToken.substring(0, 20)}...');
+        _logger.d('[AuthInterceptor] Request URL: ${options.uri}');
+        _logger.d('[AuthInterceptor] Request headers: ${options.headers}');
 
-        final dio = Dio();
-        final response = await dio.fetch(options);
+        // Создаем новый Dio БЕЗ AuthInterceptor для избежания цикла
+        // но копируем базовые настройки
+        final retryDio = Dio(_dio?.options ?? BaseOptions());
+        
+        // Копируем все interceptor'ы КРОМЕ AuthInterceptor
+        if (_dio != null) {
+          for (final interceptor in _dio!.interceptors) {
+            if (interceptor != this) {
+              retryDio.interceptors.add(interceptor);
+            }
+          }
+        }
 
-        // Обрабатываем очередь запросов
-        _processQueue(newToken.authorizationHeader);
-
-        return handler.resolve(response);
+        try {
+          final response = await retryDio.fetch(options);
+          // Обрабатываем очередь запросов
+          _processQueue(newToken.authorizationHeader);
+          return handler.resolve(response);
+        } catch (e) {
+          _logger.e('[AuthInterceptor] Retry failed: $e');
+          _clearQueue(err);
+          return handler.next(err);
+        }
       } else {
         _logger.e('[AuthInterceptor] Token refresh failed');
         // Очищаем очередь с ошибкой
@@ -166,6 +201,10 @@ class AuthInterceptor extends Interceptor {
       _logger.e('[AuthInterceptor] Token refresh failed: $e');
       // При ошибке обновления удаляем старый токен
       await _localDataSource.clearToken();
+      // Уведомляем о том, что токен истек через stream
+      if (!_tokenExpiredController.isClosed) {
+        _tokenExpiredController.add(null);
+      }
       return null;
     } finally {
       _isRefreshing = false;
@@ -176,10 +215,23 @@ class AuthInterceptor extends Interceptor {
   void _processQueue(String authHeader) {
     _logger.d('[AuthInterceptor] Processing ${_requestQueue.length} queued requests');
 
+    if (_dio == null) {
+      _logger.e('[AuthInterceptor] Cannot process queue: Dio instance not set');
+      _requestQueue.clear();
+      return;
+    }
+
+    // Создаем Dio БЕЗ AuthInterceptor для избежания цикла
+    final retryDio = Dio(_dio!.options);
+    for (final interceptor in _dio!.interceptors) {
+      if (interceptor != this) {
+        retryDio.interceptors.add(interceptor);
+      }
+    }
+
     for (final item in _requestQueue) {
       item.options.headers['Authorization'] = authHeader;
-      final dio = Dio();
-      dio.fetch(item.options).then((response) {
+      retryDio.fetch(item.options).then((response) {
         item.handler.resolve(response);
       }).catchError((error) {
         item.handler.next(error as DioException);

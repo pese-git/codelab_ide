@@ -10,10 +10,12 @@ import 'login_form.dart';
 /// иначе показывает дочерний виджет
 class AuthWrapper extends StatefulWidget {
   final Widget child;
+  final VoidCallback? onAuthenticated;
 
   const AuthWrapper({
     super.key,
     required this.child,
+    this.onAuthenticated,
   });
 
   @override
@@ -21,6 +23,8 @@ class AuthWrapper extends StatefulWidget {
 }
 
 class _AuthWrapperState extends State<AuthWrapper> {
+  bool _wasAuthenticated = false;
+
   @override
   void initState() {
     super.initState();
@@ -32,7 +36,22 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<AuthBloc, AuthState>(
+    return BlocConsumer<AuthBloc, AuthState>(
+      listener: (context, state) {
+        // Отслеживаем переход в состояние authenticated
+        state.whenOrNull(
+          authenticated: (token) {
+            if (!_wasAuthenticated) {
+              _wasAuthenticated = true;
+              // Вызываем callback после успешной авторизации
+              widget.onAuthenticated?.call();
+            }
+          },
+          unauthenticated: () {
+            _wasAuthenticated = false;
+          },
+        );
+      },
       builder: (context, state) {
         return state.when(
           // Начальное состояние - показываем загрузку

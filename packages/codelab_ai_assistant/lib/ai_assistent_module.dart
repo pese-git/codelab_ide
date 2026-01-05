@@ -98,18 +98,9 @@ class AiAssistantModule extends Module {
         )
         .singleton();
 
-    // Dio HTTP client
-    bind<Dio>().toProvide(() {
-      final dio = Dio(
-        BaseOptions(
-          connectTimeout: const Duration(seconds: 30),
-          receiveTimeout: const Duration(seconds: 30),
-        ),
-      );
-
-      // Если используется OAuth, добавляем AuthInterceptor
-      if (useOAuth && sharedPreferences != null) {
-        // Создаем отдельный Dio для auth запросов (без interceptor'ов)
+    // AuthInterceptor (если используется OAuth)
+    if (useOAuth && sharedPreferences != null) {
+      bind<AuthInterceptor>().toProvide(() {
         final authDio = Dio(
           BaseOptions(
             connectTimeout: const Duration(seconds: 30),
@@ -123,13 +114,28 @@ class AiAssistantModule extends Module {
           authServiceUrl: authServiceUrl,
         );
 
-        dio.interceptors.add(
-          AuthInterceptor(
-            localDataSource: authLocalDataSource,
-            remoteDataSource: authRemoteDataSource,
-            logger: currentScope.resolve<Logger>(),
-          ),
+        return AuthInterceptor(
+          localDataSource: authLocalDataSource,
+          remoteDataSource: authRemoteDataSource,
+          logger: currentScope.resolve<Logger>(),
         );
+      }).singleton();
+    }
+
+    // Dio HTTP client
+    bind<Dio>().toProvide(() {
+      final dio = Dio(
+        BaseOptions(
+          connectTimeout: const Duration(seconds: 30),
+          receiveTimeout: const Duration(seconds: 30),
+        ),
+      );
+
+      // Если используется OAuth, добавляем AuthInterceptor
+      if (useOAuth && sharedPreferences != null) {
+        final authInterceptor = currentScope.resolve<AuthInterceptor>();
+        authInterceptor.setDio(dio); // Устанавливаем ссылку на Dio
+        dio.interceptors.add(authInterceptor);
       } else {
         // Fallback на Internal auth interceptor
         dio.interceptors.add(
@@ -174,23 +180,19 @@ class AiAssistantModule extends Module {
           )
           .singleton();
 
-      bind<AuthRemoteDataSource>()
-          .toProvide(
-            () {
-              // Создаем отдельный Dio для auth запросов (без interceptor'ов)
-              final authDio = Dio(
-                BaseOptions(
-                  connectTimeout: const Duration(seconds: 30),
-                  receiveTimeout: const Duration(seconds: 30),
-                ),
-              );
-              return AuthRemoteDataSourceImpl(
-                dio: authDio,
-                authServiceUrl: authServiceUrl,
-              );
-            },
-          )
-          .singleton();
+      bind<AuthRemoteDataSource>().toProvide(() {
+        // Создаем отдельный Dio для auth запросов (без interceptor'ов)
+        final authDio = Dio(
+          BaseOptions(
+            connectTimeout: const Duration(seconds: 30),
+            receiveTimeout: const Duration(seconds: 30),
+          ),
+        );
+        return AuthRemoteDataSourceImpl(
+          dio: authDio,
+          authServiceUrl: authServiceUrl,
+        );
+      }).singleton();
 
       // Repository
       bind<AuthRepository>()
@@ -293,9 +295,7 @@ class AiAssistantModule extends Module {
 
     // ToolApprovalService interface for repository
     bind<ToolApprovalService>()
-        .toProvide(
-          () => currentScope.resolve<ToolApprovalServiceImpl>(),
-        )
+        .toProvide(() => currentScope.resolve<ToolApprovalServiceImpl>())
         .singleton();
 
     // Repository
@@ -376,10 +376,16 @@ class AiAssistantModule extends Module {
     // AuthBloc
     if (sharedPreferences != null) {
       bind<AuthBloc>().toProvide(
-        () => AuthBloc(
-          authRepository: currentScope.resolve<AuthRepository>(),
-          logger: currentScope.resolve<Logger>(),
-        ),
+        () {
+          final authBloc = AuthBloc(
+            authRepository: currentScope.resolve<AuthRepository>(),
+            logger: currentScope.resolve<Logger>(),
+            tokenExpiredStream: useOAuth
+              ? currentScope.resolve<AuthInterceptor>().tokenExpiredStream
+              : null,
+          );
+          return authBloc;
+        },
       );
     }
 

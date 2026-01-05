@@ -1,4 +1,5 @@
 // BLoC для управления состоянием авторизации
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:logger/logger.dart';
@@ -57,10 +58,12 @@ class AuthState with _$AuthState {
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository _authRepository;
   final Logger _logger;
+  StreamSubscription<void>? _tokenExpiredSubscription;
 
   AuthBloc({
     required AuthRepository authRepository,
     required Logger logger,
+    Stream<void>? tokenExpiredStream,
   })  : _authRepository = authRepository,
         _logger = logger,
         super(const AuthState.initial()) {
@@ -68,6 +71,20 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<Login>(_onLogin);
     on<Logout>(_onLogout);
     on<RefreshTokenEvent>(_onRefreshToken);
+
+    // Подписываемся на события истечения токена
+    if (tokenExpiredStream != null) {
+      _tokenExpiredSubscription = tokenExpiredStream.listen((_) {
+        _logger.w('[AuthBloc] Token expired, checking auth status');
+        add(const AuthEvent.checkAuthStatus());
+      });
+    }
+  }
+
+  @override
+  Future<void> close() {
+    _tokenExpiredSubscription?.cancel();
+    return super.close();
   }
 
   /// Проверить статус авторизации

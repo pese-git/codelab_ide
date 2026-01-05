@@ -50,7 +50,8 @@ abstract class AuthToken with _$AuthToken {
 
   /// Возвращает Authorization заголовок для HTTP запросов
   String get authorizationHeader {
-    return '$tokenType $accessToken';
+    // Всегда используем "Bearer" с заглавной буквы согласно RFC 6750
+    return 'Bearer $accessToken';
   }
 
   /// Возвращает scope или дефолтное значение
