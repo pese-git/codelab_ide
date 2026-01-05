@@ -7,6 +7,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 // API
 import 'features/agent_chat/data/datasources/gateway_api.dart';
 
+// Authentication
+import 'features/authentication/data/datasources/auth_remote_datasource.dart';
+import 'features/authentication/data/datasources/auth_local_datasource.dart';
+import 'features/authentication/data/repositories/auth_repository_impl.dart';
+import 'features/authentication/domain/repositories/auth_repository.dart';
+import 'features/authentication/data/services/auth_interceptor.dart';
+
 // Session Management
 import 'features/session_management/data/datasources/session_remote_datasource.dart';
 import 'features/session_management/data/datasources/session_local_datasource.dart';
@@ -39,6 +46,7 @@ import 'features/agent_chat/domain/usecases/load_history.dart';
 import 'features/agent_chat/domain/usecases/connect.dart';
 
 // Presentation
+import 'features/authentication/presentation/bloc/auth_bloc.dart';
 import 'features/session_management/presentation/bloc/session_manager_bloc.dart';
 import 'features/agent_chat/presentation/bloc/agent_chat_bloc.dart';
 import 'features/tool_execution/presentation/bloc/tool_approval_bloc.dart';
@@ -56,13 +64,17 @@ import 'features/tool_execution/data/services/tool_approval_service_impl.dart';
 /// 5. BLoCs (в будущем)
 class AiAssistantModule extends Module {
   final String gatewayBaseUrl;
+  final String authServiceUrl;
   final String internalApiKey;
   final SharedPreferences? sharedPreferences;
+  final bool useOAuth;
 
   AiAssistantModule({
     this.gatewayBaseUrl = 'http://localhost:8000',
+    this.authServiceUrl = 'http://localhost', // OAuth эндпоинт: /oauth/token
     this.internalApiKey = 'change-me-internal-key',
     this.sharedPreferences,
+    this.useOAuth = false,
   });
 
   @override
@@ -95,15 +107,40 @@ class AiAssistantModule extends Module {
         ),
       );
 
-      // Internal auth interceptor
-      dio.interceptors.add(
-        InterceptorsWrapper(
-          onRequest: (options, handler) {
-            options.headers['X-Internal-Auth'] = internalApiKey;
-            return handler.next(options);
-          },
-        ),
-      );
+      // Если используется OAuth, добавляем AuthInterceptor
+      if (useOAuth && sharedPreferences != null) {
+        // Создаем отдельный Dio для auth запросов (без interceptor'ов)
+        final authDio = Dio(
+          BaseOptions(
+            connectTimeout: const Duration(seconds: 30),
+            receiveTimeout: const Duration(seconds: 30),
+          ),
+        );
+
+        final authLocalDataSource = AuthLocalDataSourceImpl(sharedPreferences!);
+        final authRemoteDataSource = AuthRemoteDataSourceImpl(
+          dio: authDio,
+          authServiceUrl: authServiceUrl,
+        );
+
+        dio.interceptors.add(
+          AuthInterceptor(
+            localDataSource: authLocalDataSource,
+            remoteDataSource: authRemoteDataSource,
+            logger: currentScope.resolve<Logger>(),
+          ),
+        );
+      } else {
+        // Fallback на Internal auth interceptor
+        dio.interceptors.add(
+          InterceptorsWrapper(
+            onRequest: (options, handler) {
+              options.headers['X-Internal-Auth'] = internalApiKey;
+              return handler.next(options);
+            },
+          ),
+        );
+      }
 
       return dio;
     }).singleton();
@@ -122,6 +159,49 @@ class AiAssistantModule extends Module {
           ),
         )
         .singleton();
+
+    // ========================================================================
+    // Authentication Feature
+    // ========================================================================
+
+    if (sharedPreferences != null) {
+      // Data Sources
+      bind<AuthLocalDataSource>()
+          .toProvide(
+            () => AuthLocalDataSourceImpl(
+              currentScope.resolve<SharedPreferences>(),
+            ),
+          )
+          .singleton();
+
+      bind<AuthRemoteDataSource>()
+          .toProvide(
+            () {
+              // Создаем отдельный Dio для auth запросов (без interceptor'ов)
+              final authDio = Dio(
+                BaseOptions(
+                  connectTimeout: const Duration(seconds: 30),
+                  receiveTimeout: const Duration(seconds: 30),
+                ),
+              );
+              return AuthRemoteDataSourceImpl(
+                dio: authDio,
+                authServiceUrl: authServiceUrl,
+              );
+            },
+          )
+          .singleton();
+
+      // Repository
+      bind<AuthRepository>()
+          .toProvide(
+            () => AuthRepositoryImpl(
+              remoteDataSource: currentScope.resolve<AuthRemoteDataSource>(),
+              localDataSource: currentScope.resolve<AuthLocalDataSource>(),
+            ),
+          )
+          .singleton();
+    }
 
     // ========================================================================
     // Session Management Feature
@@ -292,6 +372,16 @@ class AiAssistantModule extends Module {
     // ========================================================================
     // Presentation Layer (BLoCs)
     // ========================================================================
+
+    // AuthBloc
+    if (sharedPreferences != null) {
+      bind<AuthBloc>().toProvide(
+        () => AuthBloc(
+          authRepository: currentScope.resolve<AuthRepository>(),
+          logger: currentScope.resolve<Logger>(),
+        ),
+      );
+    }
 
     // SessionManagerBloc
     if (sharedPreferences != null) {

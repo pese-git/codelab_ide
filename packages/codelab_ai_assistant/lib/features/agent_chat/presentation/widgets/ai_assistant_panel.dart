@@ -1,8 +1,11 @@
 // lib/ai_agent/ui/ai_assistant_panel.dart
 
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:cherrypick/cherrypick.dart';
 import '../bloc/agent_chat_bloc.dart';
+import '../../../authentication/presentation/bloc/auth_bloc.dart';
+import '../../../authentication/presentation/widgets/auth_wrapper.dart';
 import '../../../session_management/presentation/bloc/session_manager_bloc.dart';
 import '../../../session_management/presentation/widgets/session_list_view.dart';
 import 'chat_view.dart';
@@ -56,6 +59,23 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
 
   @override
   Widget build(BuildContext context) {
+    // Оборачиваем в AuthWrapper для проверки авторизации
+    try {
+      final authBloc = CherryPick.openRootScope().resolve<AuthBloc>();
+      
+      return BlocProvider<AuthBloc>.value(
+        value: authBloc,
+        child: AuthWrapper(
+          child: _buildContent(),
+        ),
+      );
+    } catch (e) {
+      // AuthBloc не зарегистрирован (OAuth отключен), показываем контент напрямую
+      return _buildContent();
+    }
+  }
+
+  Widget _buildContent() {
     // Если SessionManagerBloc не доступен, показываем только чат
     if (_sessionManagerBloc == null) {
       return ChatView(
