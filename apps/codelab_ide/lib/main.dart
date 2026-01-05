@@ -8,6 +8,7 @@ import 'package:codelab_ide/codelab_app.dart';
 import 'package:codelab_ide/di/app_di_module.dart';
 import 'package:codelab_engine/codelab_engine.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:xterm/core.dart';
 
 import 'package:logger/logger.dart'
@@ -21,12 +22,16 @@ void main() async {
   final logDir = Directory('${Platform.environment['HOME']}/.codelab_ide/logs/')
     ..createSync(recursive: true); // обязательно создать поддиректорию!
 
+  // Инициализировать SharedPreferences для сохранения сессий
+  final sharedPreferences = await SharedPreferences.getInstance();
+
   CherryPick.openRootScope().installModules([
     AppDiModule(),
     EngineDiModule(),
     AiAssistantModule(
-      wsUrl: 'ws://localhost:8000/ws/ide-session',
-      useMockApi: false,
+      gatewayBaseUrl: 'http://localhost:8000/api/v1',
+      internalApiKey: 'my-super-secret-key',
+      sharedPreferences: sharedPreferences,
     ),
   ]);
   // Настройка CodelabLogger вместо initLogger

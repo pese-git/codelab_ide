@@ -28,6 +28,10 @@ dependencies:
   codelab_core: any
   logger: ^2.5.0
   glob: ^2.1.2
+  # HTTP client for REST API
+  dio: ^5.4.0
+  # Shared preferences for session persistence
+  shared_preferences: ^2.2.2
 
 dev_dependencies:
   build_runner: ^2.5.4

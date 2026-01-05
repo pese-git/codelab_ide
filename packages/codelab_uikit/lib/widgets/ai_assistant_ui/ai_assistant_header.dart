@@ -1,13 +1,20 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import '../../models/agent_info.dart';
+import 'agent_selector.dart';
 
-/// Верхний бар AI ассистента, без логики. Вызывает onClear при нажатии на крестик.
+/// Верхний бар AI ассистента с индикатором текущего агента
 class AIAssistantHeader extends StatelessWidget {
   final VoidCallback? onClear;
   final String title;
+  final AgentType currentAgent;
+  final Function(AgentType)? onAgentSelected;
+  
   const AIAssistantHeader({
     super.key,
     this.onClear,
     this.title = 'AI Assistant',
+    this.currentAgent = AgentType.orchestrator,
+    this.onAgentSelected,
   });
 
   @override
@@ -23,6 +30,13 @@ class AIAssistantHeader extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Text(title, style: FluentTheme.of(context).typography.title),
+          const SizedBox(width: 12),
+          // Индикатор текущего агента
+          if (onAgentSelected != null)
+            AgentSelector(
+              currentAgent: currentAgent,
+              onAgentSelected: onAgentSelected!,
+            ),
           const Spacer(),
           IconButton(
             icon: const Icon(FluentIcons.clear),
