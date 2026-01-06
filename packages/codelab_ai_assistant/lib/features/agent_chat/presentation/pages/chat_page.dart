@@ -5,6 +5,7 @@ import 'package:codelab_uikit/codelab_uikit.dart' as uikit;
 import '../../../shared/presentation/theme/app_theme.dart';
 import '../../../shared/presentation/molecules/feedback/empty_state.dart';
 import '../../../shared/presentation/atoms/buttons/primary_button.dart';
+import '../../../shared/utils/extensions/agent_type_extensions.dart';
 import '../bloc/agent_chat_bloc.dart';
 import '../molecules/message_bubble.dart';
 import '../organisms/chat_input_bar.dart';
@@ -59,11 +60,11 @@ class _ChatPageState extends State<ChatPage> {
             // Header с использованием нового компонента
             ChatHeader(
               onBack: widget.onBackToSessions,
-              currentAgent: _stringToUikitAgentType(currentAgentStr),
+              currentAgent: currentAgentStr.toUikitAgentType(), // ✅ Используем extension
               onAgentSelected: (agentType) {
                 widget.bloc.add(
                   AgentChatEvent.switchAgent(
-                    agentType.toApiString(),
+                    agentType.toDomainString(), // ✅ Используем extension
                     'Switched to ${agentType.displayName}',
                   ),
                 );
@@ -83,8 +84,15 @@ class _ChatPageState extends State<ChatPage> {
                       controller: _scrollController,
                       padding: AppSpacing.paddingLg,
                       itemCount: messages.length,
-                      itemBuilder: (ctx, idx) => MessageBubble(
-                        message: messages[idx],
+                      // ✅ Оптимизация производительности
+                      addAutomaticKeepAlives: false,
+                      addRepaintBoundaries: true,
+                      cacheExtent: 200,
+                      itemBuilder: (ctx, idx) => RepaintBoundary(
+                        child: MessageBubble(
+                          key: ValueKey(messages[idx].id), // ✅ Ключ для оптимизации
+                          message: messages[idx],
+                        ),
                       ),
                     ),
             ),
@@ -216,23 +224,5 @@ class _ChatPageState extends State<ChatPage> {
       }
     });
   }
-
-  // Маппинг строки агента в uikit AgentType
-  uikit.AgentType _stringToUikitAgentType(String agentStr) {
-    switch (agentStr.toLowerCase()) {
-      case 'orchestrator':
-        return uikit.AgentType.orchestrator;
-      case 'code':
-      case 'coder':
-        return uikit.AgentType.coder;
-      case 'architect':
-        return uikit.AgentType.architect;
-      case 'debug':
-        return uikit.AgentType.debug;
-      case 'ask':
-        return uikit.AgentType.ask;
-      default:
-        return uikit.AgentType.orchestrator;
-    }
-  }
+  // ✅ Удален _stringToUikitAgentType - теперь используется extension
 }

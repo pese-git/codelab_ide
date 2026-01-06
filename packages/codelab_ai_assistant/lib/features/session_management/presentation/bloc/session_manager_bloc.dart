@@ -1,4 +1,5 @@
 // BLoC для управления сессиями (Presentation слой)
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:logger/logger.dart';
@@ -10,6 +11,28 @@ import '../../domain/usecases/list_sessions.dart';
 import '../../domain/usecases/delete_session.dart';
 
 part 'session_manager_bloc.freezed.dart';
+
+/// Side effects для событий (не состояния)
+/// Используется для одноразовых событий типа навигации, уведомлений
+sealed class SessionManagerSideEffect {
+  const SessionManagerSideEffect();
+}
+
+class SessionSwitchedEffect extends SessionManagerSideEffect {
+  final String sessionId;
+  final Session session;
+  
+  const SessionSwitchedEffect({
+    required this.sessionId,
+    required this.session,
+  });
+}
+
+class NewSessionCreatedEffect extends SessionManagerSideEffect {
+  final String sessionId;
+  
+  const NewSessionCreatedEffect({required this.sessionId});
+}
 
 /// События для SessionManagerBloc
 @freezed
@@ -47,6 +70,7 @@ sealed class SessionManagerState with _$SessionManagerState {
 /// - Не содержит бизнес-логики (она в Use Cases)
 /// - Работает только с domain entities
 /// - Обрабатывает Either<Failure, T> из use cases
+/// - Использует отдельный Stream для side effects (события)
 class SessionManagerBloc
     extends Bloc<SessionManagerEvent, SessionManagerState> {
   final CreateSessionUseCase _createSession;
@@ -54,6 +78,10 @@ class SessionManagerBloc
   final ListSessionsUseCase _listSessions;
   final DeleteSessionUseCase _deleteSession;
   final Logger _logger;
+  
+  // ✅ Отдельный Stream для side effects (событий)
+  final _sideEffectsController = StreamController<SessionManagerSideEffect>.broadcast();
+  Stream<SessionManagerSideEffect> get sideEffects => _sideEffectsController.stream;
 
   SessionManagerBloc({
     required CreateSessionUseCase createSession,
@@ -72,6 +100,12 @@ class SessionManagerBloc
     on<SelectSession>(_onSelectSession);
     on<DeleteSession>(_onDeleteSession);
     on<RefreshSessions>(_onRefreshSessions);
+  }
+  
+  @override
+  Future<void> close() {
+    _sideEffectsController.close();
+    return super.close();
   }
 
   Future<void> _onLoadSessions(
@@ -115,11 +149,14 @@ class SessionManagerBloc
       },
       (session) {
         _logger.i('[SessionManagerBloc] ✅ Created session: ${session.id}');
-        // ✅ Эмитим событийное состояние для listener
-        emit(SessionManagerState.newSessionCreated(session.id));
+        
+        // ✅ Эмитим side effect для listener (навигация, уведомления)
+        _sideEffectsController.add(
+          NewSessionCreatedEffect(sessionId: session.id),
+        );
         
         // ✅ Сразу перезагружаем список, чтобы вернуться в состояние loaded
-        // Это предотвращает застревание UI в состоянии newSessionCreated при resize
+        // Больше не используем событийные состояния
         _logger.d('[SessionManagerBloc] 🔄 Reloading sessions after creation');
         add(const SessionManagerEvent.loadSessions());
       },
@@ -144,11 +181,14 @@ class SessionManagerBloc
       },
       (session) {
         _logger.i('[SessionManagerBloc] ✅ Selected session: ${session.id}');
-        // ✅ Эмитим событийное состояние для listener
-        emit(SessionManagerState.sessionSwitched(session.id, session));
+        
+        // ✅ Эмитим side effect для listener (навигация, уведомления)
+        _sideEffectsController.add(
+          SessionSwitchedEffect(sessionId: session.id, session: session),
+        );
         
         // ✅ Сразу перезагружаем список, чтобы вернуться в состояние loaded
-        // Это предотвращает застревание UI в состоянии sessionSwitched при resize
+        // Больше не используем событийные состояния
         _logger.d('[SessionManagerBloc] 🔄 Reloading sessions after selection');
         add(const SessionManagerEvent.loadSessions());
       },

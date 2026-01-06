@@ -90,6 +90,7 @@ export 'features/shared/presentation/atoms/buttons/primary_button.dart';
 export 'features/shared/presentation/molecules/feedback/empty_state.dart';
 export 'features/shared/presentation/molecules/cards/base_card.dart';
 export 'features/shared/utils/extensions/context_extensions.dart';
+export 'features/shared/utils/extensions/agent_type_extensions.dart';
 export 'features/shared/utils/formatters/date_formatter.dart';
 export 'features/shared/utils/formatters/agent_formatter.dart';
 

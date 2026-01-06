@@ -25,8 +25,6 @@ class AuthWrapper extends StatefulWidget {
 
 class _AuthWrapperState extends State<AuthWrapper> {
   bool _wasAuthenticated = false;
-  bool _hasCheckedAuth = false; // ✅ Флаг для предотвращения повторных проверок
-  AuthState? _lastKnownState; // ✅ Кешируем последнее известное состояние
   
   static final _logger = Logger();
 
@@ -34,14 +32,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
   void initState() {
     super.initState();
     _logger.d('[AuthWrapper] 🏗️ initState');
-    // Проверяем статус авторизации при инициализации ОДИН РАЗ
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_hasCheckedAuth && mounted) {
-        _hasCheckedAuth = true;
-        _logger.d('[AuthWrapper] 🔍 Checking auth status');
-        context.read<AuthBloc>().add(const AuthEvent.checkAuthStatus());
-      }
-    });
+    // ✅ Больше не нужно вручную проверять статус - AuthBloc делает это автоматически
   }
 
   @override
@@ -70,19 +61,10 @@ class _AuthWrapperState extends State<AuthWrapper> {
       builder: (context, state) {
         _logger.d('[AuthWrapper] 🎨 Builder received state: ${state.runtimeType}');
         
-        // ✅ Кешируем состояние, если оно не initial
-        if (state is! AuthInitial) {
-          _lastKnownState = state;
-        }
+        // ✅ Больше не нужен workaround с кешированием - AuthBloc автоматически
+        // проверяет статус при создании и быстро переходит в нужное состояние
         
-        // ✅ Если получили initial, но есть кешированное состояние - используем его
-        final effectiveState = (state is AuthInitial && _lastKnownState != null)
-            ? _lastKnownState!
-            : state;
-        
-        _logger.d('[AuthWrapper] 🎯 Using effective state: ${effectiveState.runtimeType}');
-        
-        return effectiveState.when(
+        return state.when(
           // Начальное состояние - показываем загрузку
           initial: () {
             _logger.d('[AuthWrapper] 📄 Showing initial state with ProgressRing');

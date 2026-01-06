@@ -1,4 +1,5 @@
 // Новая страница списка сессий с применением рефакторинга
+import 'dart:async';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logger/logger.dart';
@@ -18,7 +19,7 @@ import '../../domain/entities/session.dart';
 /// - Меньше кода (~180 строк vs 440)
 /// - Использует расширения контекста для ошибок
 /// - Легче тестировать
-class SessionListPage extends StatelessWidget {
+class SessionListPage extends StatefulWidget {
   final SessionManagerBloc sessionManagerBloc;
   final void Function(Session session) onSessionSelected;
   final void Function(String sessionId) onNewSession;
@@ -34,24 +35,49 @@ class SessionListPage extends StatelessWidget {
   });
 
   @override
+  State<SessionListPage> createState() => _SessionListPageState();
+}
+
+class _SessionListPageState extends State<SessionListPage> {
+  StreamSubscription<SessionManagerSideEffect>? _sideEffectSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    // ✅ Подписываемся на side effects
+    _sideEffectSubscription = widget.sessionManagerBloc.sideEffects.listen((effect) {
+      if (!mounted) return;
+      
+      if (effect is NewSessionCreatedEffect) {
+        SessionListPage._logger.i('[SessionListPage] ✅ New session created: ${effect.sessionId}');
+        widget.onNewSession(effect.sessionId);
+      } else if (effect is SessionSwitchedEffect) {
+        SessionListPage._logger.i('[SessionListPage] 🔄 Session switched: ${effect.sessionId}');
+        widget.onSessionSelected(effect.session);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _sideEffectSubscription?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    _logger.d('[SessionListPage] 🏗️ Building widget');
+    SessionListPage._logger.d('[SessionListPage] 🏗️ Building widget');
 
     return BlocProvider.value(
-      value: sessionManagerBloc,
+      value: widget.sessionManagerBloc,
       child: BlocConsumer<SessionManagerBloc, SessionManagerState>(
         listener: (context, state) {
-          _logger.d(
+          SessionListPage._logger.d(
             '[SessionListPage] 👂 Listener received state: ${state.runtimeType}',
           );
           state.maybeWhen(
-            // ✅ Убрали sessionSwitched из listener - callback вызывается сразу при клике
-            newSessionCreated: (sessionId) {
-              _logger.i('[SessionListPage] ✅ New session created: $sessionId');
-              onNewSession(sessionId);
-            },
             error: (message) {
-              _logger.e('[SessionListPage] ❌ Error: $message');
+              SessionListPage._logger.e('[SessionListPage] ❌ Error: $message');
               // ✅ Использование расширения вместо встроенного кода
               context.showError(message);
             },
@@ -59,7 +85,7 @@ class SessionListPage extends StatelessWidget {
           );
         },
         builder: (context, state) {
-          _logger.d(
+          SessionListPage._logger.d(
             '[SessionListPage] 🎨 Builder received state: ${state.runtimeType}',
           );
           return Column(
@@ -76,21 +102,21 @@ class SessionListPage extends StatelessWidget {
               Expanded(
                 child: state.when(
                   initial: () {
-                    _logger.d('[SessionListPage] 📄 Showing initial state');
+                    SessionListPage._logger.d('[SessionListPage] 📄 Showing initial state');
                     return _buildEmptyState(context);
                   },
                   loading: () {
-                    _logger.d('[SessionListPage] ⏳ Showing loading state');
+                    SessionListPage._logger.d('[SessionListPage] ⏳ Showing loading state');
                     return const Center(child: ProgressRing());
                   },
                   error: (message) {
-                    _logger.d(
+                    SessionListPage._logger.d(
                       '[SessionListPage] ❌ Showing error state: $message',
                     );
                     return _buildErrorState(context, message);
                   },
                   loaded: (sessions, currentSessionId, currentAgent) {
-                    _logger.d(
+                    SessionListPage._logger.d(
                       '[SessionListPage] ✅ Showing loaded state with ${sessions.length} sessions',
                     );
                     return _buildSessionList(
@@ -99,18 +125,9 @@ class SessionListPage extends StatelessWidget {
                       currentSessionId,
                     );
                   },
-                  sessionSwitched: (sessionId, session) {
-                    _logger.w(
-                      '[SessionListPage] 🔄 Showing sessionSwitched state for $sessionId - THIS SHOULD BE BRIEF!',
-                    );
-                    return const SizedBox.shrink();
-                  },
-                  newSessionCreated: (sessionId) {
-                    _logger.w(
-                      '[SessionListPage] ➕ Showing newSessionCreated state for $sessionId - THIS SHOULD BE BRIEF!',
-                    );
-                    return const SizedBox.shrink();
-                  },
+                  // ✅ Больше не используем событийные состояния - они заменены на side effects
+                  sessionSwitched: (sessionId, session) => const SizedBox.shrink(),
+                  newSessionCreated: (sessionId) => const SizedBox.shrink(),
                 ),
               ),
             ],
@@ -135,7 +152,7 @@ class SessionListPage extends StatelessWidget {
           IconButton(
             icon: const Icon(FluentIcons.refresh),
             onPressed: () {
-              sessionManagerBloc.add(const SessionManagerEvent.loadSessions());
+              widget.sessionManagerBloc.add(const SessionManagerEvent.loadSessions());
             },
           ),
         ],
@@ -152,7 +169,7 @@ class SessionListPage extends StatelessWidget {
       iconSize: 64,
       action: PrimaryButton(
         onPressed: () {
-          sessionManagerBloc.add(const SessionManagerEvent.createSession());
+          widget.sessionManagerBloc.add(const SessionManagerEvent.createSession());
         },
         child: const Padding(
           padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
@@ -178,7 +195,7 @@ class SessionListPage extends StatelessWidget {
       iconSize: 64,
       action: Button(
         onPressed: () {
-          sessionManagerBloc.add(const SessionManagerEvent.loadSessions());
+          widget.sessionManagerBloc.add(const SessionManagerEvent.loadSessions());
         },
         child: const Text('Retry'),
       ),
@@ -213,7 +230,7 @@ class SessionListPage extends StatelessWidget {
                   ],
                 ),
               ),
-              onPressed: () => sessionManagerBloc.add(
+              onPressed: () => widget.sessionManagerBloc.add(
                 const SessionManagerEvent.createSession(),
               ),
             ),
@@ -251,9 +268,9 @@ class SessionListPage extends StatelessWidget {
                         ? null
                         : () {
                             // ✅ Сразу вызываем callback, чтобы избежать показа loader
-                            onSessionSelected(session);
+                            widget.onSessionSelected(session);
                             // Затем отправляем событие в bloc для обновления состояния
-                            sessionManagerBloc.add(
+                            widget.sessionManagerBloc.add(
                               SessionManagerEvent.selectSession(session.id),
                             );
                           },
@@ -281,7 +298,7 @@ class SessionListPage extends StatelessWidget {
     );
 
     if (confirmed && context.mounted) {
-      sessionManagerBloc.add(SessionManagerEvent.deleteSession(session.id));
+      widget.sessionManagerBloc.add(SessionManagerEvent.deleteSession(session.id));
     }
   }
 }

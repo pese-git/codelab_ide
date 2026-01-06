@@ -51,7 +51,7 @@ class AuthState with _$AuthState {
   const factory AuthState.error({required String message}) = AuthError;
 }
 
-/// BLoC для управления авторизацией
+/// BLoC для управления авторизацией с автоматической проверкой статуса
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository _authRepository;
   final Logger _logger;
@@ -76,6 +76,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         add(const AuthEvent.checkAuthStatus());
       });
     }
+    
+    // ✅ Автоматически проверяем статус авторизации при создании блока
+    // Это решает проблему с initial состоянием при пересоздании блока
+    _logger.d('[AuthBloc] 🔄 Auto-checking auth status on bloc creation');
+    add(const AuthEvent.checkAuthStatus());
   }
 
   @override

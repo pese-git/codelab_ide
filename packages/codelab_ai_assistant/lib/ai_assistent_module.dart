@@ -386,18 +386,16 @@ class AiAssistantModule extends Module {
 
     // AuthBloc
     if (sharedPreferences != null) {
-      bind<AuthBloc>().toProvide(
-        () {
-          final authBloc = AuthBloc(
-            authRepository: currentScope.resolve<AuthRepository>(),
-            logger: currentScope.resolve<Logger>(),
-            tokenExpiredStream: useOAuth
+      bind<AuthBloc>().toProvide(() {
+        final authBloc = AuthBloc(
+          authRepository: currentScope.resolve<AuthRepository>(),
+          logger: currentScope.resolve<Logger>(),
+          tokenExpiredStream: useOAuth
               ? currentScope.resolve<AuthInterceptor>().tokenExpiredStream
               : null,
-          );
-          return authBloc;
-        },
-      );
+        );
+        return authBloc;
+      });
     }
 
     // SessionManagerBloc
