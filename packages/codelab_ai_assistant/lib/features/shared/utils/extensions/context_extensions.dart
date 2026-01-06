@@ -1,6 +1,5 @@
 // Расширения для BuildContext
 import 'package:fluent_ui/fluent_ui.dart';
-import '../../presentation/theme/app_theme.dart';
 
 /// Расширения для удобного доступа к теме и навигации
 extension ContextExtensions on BuildContext {

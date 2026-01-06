@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:cherrypick/cherrypick.dart';
-import 'package:code_forge/code_forge.dart';
 import 'package:codelab_ai_assistant/codelab_ai_assistant.dart';
 import 'package:codelab_core/codelab_core.dart';
 import 'package:codelab_ide/codelab_app.dart';

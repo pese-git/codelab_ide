@@ -4,7 +4,6 @@ import 'package:logger/logger.dart';
 import '../../../agent_chat/data/datasources/gateway_api.dart';
 import '../../domain/entities/tool_approval.dart';
 import '../../domain/entities/tool_call.dart';
-import '../models/pending_approvals_response.dart';
 
 /// Сервис для синхронизации запросов на подтверждение с сервером
 ///

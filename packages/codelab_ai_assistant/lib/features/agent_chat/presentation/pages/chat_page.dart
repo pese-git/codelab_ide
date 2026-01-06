@@ -1,16 +1,13 @@
 // Новая страница чата с применением рефакторинга
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:codelab_uikit/codelab_uikit.dart' as uikit;
 import '../../../shared/presentation/theme/app_theme.dart';
 import '../../../shared/presentation/molecules/feedback/empty_state.dart';
-import '../../../shared/presentation/atoms/buttons/primary_button.dart';
 import '../../../shared/utils/extensions/agent_type_extensions.dart';
 import '../bloc/agent_chat_bloc.dart';
 import '../molecules/message_bubble.dart';
 import '../organisms/chat_input_bar.dart';
 import '../organisms/chat_header.dart';
-import '../../domain/entities/agent.dart';
 
 /// Новая страница чата с применением Atomic Design
 /// 

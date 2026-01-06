@@ -1,6 +1,5 @@
 // Extension для маппинга между domain AgentType и uikit AgentType
 import 'package:codelab_uikit/codelab_uikit.dart' as uikit;
-import '../../../agent_chat/domain/entities/agent.dart' as domain;
 
 /// Extension для конвертации между domain и UI типами агентов
 extension AgentTypeMapping on String {

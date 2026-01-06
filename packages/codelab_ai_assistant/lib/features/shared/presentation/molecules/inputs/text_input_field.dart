@@ -1,9 +1,8 @@
 // Переиспользуемое поле ввода текста
 import 'package:fluent_ui/fluent_ui.dart';
-import '../../theme/app_theme.dart';
 
 /// Переиспользуемое поле ввода текста с консистентным стилем
-/// 
+///
 /// Поддерживает валидацию, placeholder, иконки и различные состояния
 class TextInputField extends StatelessWidget {
   final TextEditingController? controller;
@@ -55,10 +54,7 @@ class TextInputField extends StatelessWidget {
     );
 
     if (label != null) {
-      return InfoLabel(
-        label: label!,
-        child: field,
-      );
+      return InfoLabel(label: label!, child: field);
     }
 
     return field;
