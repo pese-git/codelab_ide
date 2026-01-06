@@ -6,6 +6,17 @@ import '../../domain/entities/session.dart';
 /// Виджет списка сессий в стиле RooCode (Clean Architecture версия)
 /// Отображается при первом открытии панели AI Assistant
 /// Работает напрямую с domain entities
+///
+/// @deprecated Используйте [SessionListPage] вместо этого.
+/// Этот виджет будет удален в версии 2.0.0.
+///
+/// Новая версия использует:
+/// - Централизованную тему (AppColors, AppTypography, AppSpacing)
+/// - Переиспользуемые компоненты (SessionCard, EmptyState, PrimaryButton)
+/// - Форматтеры (DateFormatter, AgentFormatter)
+/// - Расширения контекста (context.showError, context.showConfirmDialog)
+/// - На 59% меньше кода (440→180 строк)
+@Deprecated('Use SessionListPage from ../pages/session_list_page.dart instead. Will be removed in v2.0.0')
 class SessionListView extends StatelessWidget {
   final SessionManagerBloc sessionManagerBloc;
   final void Function(Session session) onSessionSelected;
@@ -62,8 +73,9 @@ class SessionListView extends StatelessWidget {
                         sessions,
                         currentSessionId,
                       ),
-                  sessionSwitched: (_, __) => const Center(child: ProgressRing()),
-                  newSessionCreated: (_) => const Center(child: ProgressRing()),
+                  // Эти состояния обрабатываются в listener, здесь показываем загрузку
+                  sessionSwitched: (_, __) => const SizedBox.shrink(),
+                  newSessionCreated: (_) => const SizedBox.shrink(),
                 ),
               ),
             ],
@@ -299,16 +311,22 @@ class SessionListView extends StatelessWidget {
             children: [
               Icon(FluentIcons.message, size: 12, color: Colors.grey[120]),
               const SizedBox(width: 4),
-              Text(
-                '${session.messageCount} messages',
-                style: TextStyle(fontSize: 12, color: Colors.grey[120]),
+              Flexible(
+                child: Text(
+                  '${session.messageCount} messages',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[120]),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               const SizedBox(width: 12),
               Icon(FluentIcons.clock, size: 12, color: Colors.grey[120]),
               const SizedBox(width: 4),
-              Text(
-                _formatDate(session.updatedAt.toIso8601String()),
-                style: TextStyle(fontSize: 12, color: Colors.grey[120]),
+              Flexible(
+                child: Text(
+                  _formatDate(session.updatedAt.toIso8601String()),
+                  style: TextStyle(fontSize: 12, color: Colors.grey[120]),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),

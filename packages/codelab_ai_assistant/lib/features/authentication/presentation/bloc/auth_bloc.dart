@@ -38,9 +38,8 @@ class AuthState with _$AuthState {
   const factory AuthState.checking() = AuthChecking;
 
   /// Пользователь авторизован
-  const factory AuthState.authenticated({
-    required AuthToken token,
-  }) = Authenticated;
+  const factory AuthState.authenticated({required AuthToken token}) =
+      Authenticated;
 
   /// Пользователь не авторизован
   const factory AuthState.unauthenticated() = Unauthenticated;
@@ -49,9 +48,7 @@ class AuthState with _$AuthState {
   const factory AuthState.authenticating() = Authenticating;
 
   /// Ошибка авторизации
-  const factory AuthState.error({
-    required String message,
-  }) = AuthError;
+  const factory AuthState.error({required String message}) = AuthError;
 }
 
 /// BLoC для управления авторизацией
@@ -64,9 +61,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required AuthRepository authRepository,
     required Logger logger,
     Stream<void>? tokenExpiredStream,
-  })  : _authRepository = authRepository,
-        _logger = logger,
-        super(const AuthState.initial()) {
+  }) : _authRepository = authRepository,
+       _logger = logger,
+       super(const AuthState.initial()) {
     on<CheckAuthStatus>(_onCheckAuthStatus);
     on<Login>(_onLogin);
     on<Logout>(_onLogout);
@@ -83,6 +80,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   @override
   Future<void> close() {
+    _logger.d('[AuthBloc] 🔒 Closing bloc');
     _tokenExpiredSubscription?.cancel();
     return super.close();
   }
@@ -92,7 +90,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     CheckAuthStatus event,
     Emitter<AuthState> emit,
   ) async {
-    _logger.d('[AuthBloc] Checking auth status...');
+    _logger.d('[AuthBloc] 🔍 Checking auth status...');
     emit(const AuthState.checking());
 
     try {
@@ -104,38 +102,37 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
         result.fold(
           (failure) {
-            _logger.w('[AuthBloc] Failed to get stored token: ${failure.message}');
+            _logger.w(
+              '[AuthBloc] ⚠️ Failed to get stored token: ${failure.message}',
+            );
             emit(const AuthState.unauthenticated());
           },
           (tokenOption) {
             tokenOption.fold(
               () {
-                _logger.d('[AuthBloc] No token found');
+                _logger.d('[AuthBloc] 🔓 No token found');
                 emit(const AuthState.unauthenticated());
               },
               (token) {
-                _logger.i('[AuthBloc] User is authenticated');
+                _logger.i('[AuthBloc] ✅ User is authenticated');
                 emit(AuthState.authenticated(token: token));
               },
             );
           },
         );
       } else {
-        _logger.d('[AuthBloc] User is not authenticated');
+        _logger.d('[AuthBloc] 🔓 User is not authenticated');
         emit(const AuthState.unauthenticated());
       }
     } catch (e) {
-      _logger.e('[AuthBloc] Error checking auth status: $e');
+      _logger.e('[AuthBloc] ❌ Error checking auth status: $e');
       emit(const AuthState.unauthenticated());
     }
   }
 
   /// Авторизоваться
-  Future<void> _onLogin(
-    Login event,
-    Emitter<AuthState> emit,
-  ) async {
-    _logger.i('[AuthBloc] Logging in user: ${event.username}');
+  Future<void> _onLogin(Login event, Emitter<AuthState> emit) async {
+    _logger.i('[AuthBloc] 🔐 Logging in user: ${event.username}');
     emit(const AuthState.authenticating());
 
     final params = PasswordGrantParams.withDefaults(
@@ -147,39 +144,39 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
     result.fold(
       (failure) {
-        _logger.e('[AuthBloc] Login failed: ${failure.message}');
+        _logger.e('[AuthBloc] ❌ Login failed: ${failure.message}');
         emit(AuthState.error(message: failure.message));
         // Возвращаемся в unauthenticated после ошибки
         Future.delayed(const Duration(seconds: 3), () {
           if (!isClosed) {
+            _logger.d(
+              '[AuthBloc] 🔄 Returning to unauthenticated state after error',
+            );
             emit(const AuthState.unauthenticated());
           }
         });
       },
       (token) {
-        _logger.i('[AuthBloc] Login successful');
+        _logger.i('[AuthBloc] ✅ Login successful');
         emit(AuthState.authenticated(token: token));
       },
     );
   }
 
   /// Выйти из системы
-  Future<void> _onLogout(
-    Logout event,
-    Emitter<AuthState> emit,
-  ) async {
-    _logger.i('[AuthBloc] Logging out...');
+  Future<void> _onLogout(Logout event, Emitter<AuthState> emit) async {
+    _logger.i('[AuthBloc] 🚪 Logging out...');
 
     final result = await _authRepository.clearToken();
 
     result.fold(
       (failure) {
-        _logger.e('[AuthBloc] Logout failed: ${failure.message}');
+        _logger.e('[AuthBloc] ⚠️ Logout failed: ${failure.message}');
         // Все равно переходим в unauthenticated
         emit(const AuthState.unauthenticated());
       },
       (_) {
-        _logger.i('[AuthBloc] Logout successful');
+        _logger.i('[AuthBloc] ✅ Logout successful');
         emit(const AuthState.unauthenticated());
       },
     );
@@ -190,20 +187,22 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     RefreshTokenEvent event,
     Emitter<AuthState> emit,
   ) async {
-    _logger.d('[AuthBloc] Refreshing token...');
+    _logger.d('[AuthBloc] 🔄 Refreshing token...');
 
     // Получаем текущий токен
     final tokenResult = await _authRepository.getStoredToken();
 
     await tokenResult.fold(
       (failure) async {
-        _logger.e('[AuthBloc] Failed to get token for refresh: ${failure.message}');
+        _logger.e(
+          '[AuthBloc] ❌ Failed to get token for refresh: ${failure.message}',
+        );
         emit(const AuthState.unauthenticated());
       },
       (tokenOption) async {
         await tokenOption.fold(
           () async {
-            _logger.w('[AuthBloc] No token to refresh');
+            _logger.w('[AuthBloc] ⚠️ No token to refresh');
             emit(const AuthState.unauthenticated());
           },
           (token) async {
@@ -215,11 +214,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
             result.fold(
               (failure) {
-                _logger.e('[AuthBloc] Token refresh failed: ${failure.message}');
+                _logger.e(
+                  '[AuthBloc] ❌ Token refresh failed: ${failure.message}',
+                );
                 emit(const AuthState.unauthenticated());
               },
               (newToken) {
-                _logger.i('[AuthBloc] Token refreshed successfully');
+                _logger.i('[AuthBloc] ✅ Token refreshed successfully');
                 emit(AuthState.authenticated(token: newToken));
               },
             );

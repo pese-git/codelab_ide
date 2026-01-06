@@ -4,6 +4,16 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/auth_bloc.dart';
 
 /// Форма авторизации
+///
+/// @deprecated Используйте [LoginPage] вместо этого.
+/// Этот виджет будет удален в версии 2.0.0.
+///
+/// Новая версия использует:
+/// - Централизованную тему (AppColors, AppTypography, AppSpacing)
+/// - Переиспользуемые компоненты (TextInputField, PasswordInputField, PrimaryButton)
+/// - Расширения контекста (context.showError)
+/// - На 36% меньше кода (188→120 строк)
+@Deprecated('Use LoginPage from ../pages/login_page.dart instead. Will be removed in v2.0.0')
 class LoginForm extends StatefulWidget {
   const LoginForm({super.key});
 

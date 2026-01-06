@@ -6,6 +6,16 @@ import '../bloc/agent_chat_bloc.dart';
 import '../../domain/entities/message.dart';
 
 /// Виджет чата с AI агентом
+///
+/// @deprecated Используйте [ChatPage] вместо этого.
+/// Этот виджет будет удален в версии 2.0.0.
+///
+/// Новая версия использует:
+/// - Централизованную тему (AppColors, AppTypography, AppSpacing)
+/// - Переиспользуемые компоненты (MessageBubble, ChatInputBar, ChatHeader, EmptyState)
+/// - Композицию вместо монолита
+/// - На 47% меньше кода (417→220 строк)
+@Deprecated('Use ChatPage from ../pages/chat_page.dart instead. Will be removed in v2.0.0')
 class ChatView extends StatefulWidget {
   final AgentChatBloc bloc;
   final VoidCallback onBackToSessions;
@@ -355,9 +365,8 @@ class _ChatViewState extends State<ChatView> {
 
   Color _getMessageColor(Message message) {
     return message.content.when(
-      text: (text, isFinal) => message.isUser
-          ? Colors.blue.withOpacity(0.1)
-          : Colors.grey[20],
+      text: (text, isFinal) =>
+          message.isUser ? Colors.blue.withOpacity(0.1) : Colors.grey[20],
       toolCall: (_, __, ___) => Colors.orange.withOpacity(0.1),
       toolResult: (_, __, ___, ____) => Colors.green.withOpacity(0.1),
       agentSwitch: (_, __, ___) => Colors.purple.withOpacity(0.1),
@@ -367,9 +376,8 @@ class _ChatViewState extends State<ChatView> {
 
   Color _getBorderColor(Message message) {
     return message.content.when(
-      text: (text, isFinal) => message.isUser
-          ? Colors.blue.withOpacity(0.3)
-          : Colors.grey[60],
+      text: (text, isFinal) =>
+          message.isUser ? Colors.blue.withOpacity(0.3) : Colors.grey[60],
       toolCall: (_, __, ___) => Colors.orange.withOpacity(0.3),
       toolResult: (_, __, ___, ____) => Colors.green.withOpacity(0.3),
       agentSwitch: (_, __, ___) => Colors.purple.withOpacity(0.3),
@@ -387,19 +395,13 @@ class _ChatViewState extends State<ChatView> {
         if (error != null) {
           return error.fold(
             () => result != null
-                ? result.fold(
-                    () => 'No result',
-                    (r) => '```json\n$r\n```',
-                  )
+                ? result.fold(() => 'No result', (r) => '```json\n$r\n```')
                 : 'No result',
             (e) => '**Error:** $e',
           );
         }
         if (result != null) {
-          return result.fold(
-            () => 'No result',
-            (r) => '```json\n$r\n```',
-          );
+          return result.fold(() => 'No result', (r) => '```json\n$r\n```');
         }
         return 'No result';
       },

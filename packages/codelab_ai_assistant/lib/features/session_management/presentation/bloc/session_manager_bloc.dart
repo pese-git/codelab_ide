@@ -78,17 +78,18 @@ class SessionManagerBloc
     LoadSessions event,
     Emitter<SessionManagerState> emit,
   ) async {
+    _logger.d('[SessionManagerBloc] 📋 Loading sessions...');
     emit(const SessionManagerState.loading());
 
     final result = await _listSessions();
 
     result.fold(
       (failure) {
-        _logger.e('Failed to load sessions: ${failure.message}');
+        _logger.e('[SessionManagerBloc] ❌ Failed to load sessions: ${failure.message}');
         emit(SessionManagerState.error(failure.message));
       },
       (sessions) {
-        _logger.i('Loaded ${sessions.length} sessions');
+        _logger.i('[SessionManagerBloc] ✅ Loaded ${sessions.length} sessions');
         emit(SessionManagerState.loaded(
           sessions: sessions,
           currentSessionId: null,
@@ -102,19 +103,24 @@ class SessionManagerBloc
     CreateSession event,
     Emitter<SessionManagerState> emit,
   ) async {
+    _logger.d('[SessionManagerBloc] ➕ Creating new session...');
     emit(const SessionManagerState.loading());
 
     final result = await _createSession(CreateSessionParams.defaults());
 
     result.fold(
       (failure) {
-        _logger.e('Failed to create session: ${failure.message}');
+        _logger.e('[SessionManagerBloc] ❌ Failed to create session: ${failure.message}');
         emit(SessionManagerState.error(failure.message));
       },
       (session) {
-        _logger.i('Created session: ${session.id}');
+        _logger.i('[SessionManagerBloc] ✅ Created session: ${session.id}');
+        // ✅ Эмитим событийное состояние для listener
         emit(SessionManagerState.newSessionCreated(session.id));
-        // Перезагружаем список сессий после создания
+        
+        // ✅ Сразу перезагружаем список, чтобы вернуться в состояние loaded
+        // Это предотвращает застревание UI в состоянии newSessionCreated при resize
+        _logger.d('[SessionManagerBloc] 🔄 Reloading sessions after creation');
         add(const SessionManagerEvent.loadSessions());
       },
     );
@@ -124,6 +130,7 @@ class SessionManagerBloc
     SelectSession event,
     Emitter<SessionManagerState> emit,
   ) async {
+    _logger.d('[SessionManagerBloc] 🔍 Selecting session: ${event.sessionId}');
     emit(const SessionManagerState.loading());
 
     final result = await _loadSession(
@@ -132,12 +139,18 @@ class SessionManagerBloc
 
     result.fold(
       (failure) {
-        _logger.e('Failed to load session: ${failure.message}');
+        _logger.e('[SessionManagerBloc] ❌ Failed to load session: ${failure.message}');
         emit(SessionManagerState.error(failure.message));
       },
       (session) {
-        _logger.i('Selected session: ${session.id}');
+        _logger.i('[SessionManagerBloc] ✅ Selected session: ${session.id}');
+        // ✅ Эмитим событийное состояние для listener
         emit(SessionManagerState.sessionSwitched(session.id, session));
+        
+        // ✅ Сразу перезагружаем список, чтобы вернуться в состояние loaded
+        // Это предотвращает застревание UI в состоянии sessionSwitched при resize
+        _logger.d('[SessionManagerBloc] 🔄 Reloading sessions after selection');
+        add(const SessionManagerEvent.loadSessions());
       },
     );
   }
@@ -146,6 +159,7 @@ class SessionManagerBloc
     DeleteSession event,
     Emitter<SessionManagerState> emit,
   ) async {
+    _logger.d('[SessionManagerBloc] 🗑️ Deleting session: ${event.sessionId}');
     emit(const SessionManagerState.loading());
 
     final result = await _deleteSession(
@@ -154,12 +168,13 @@ class SessionManagerBloc
 
     result.fold(
       (failure) {
-        _logger.e('Failed to delete session: ${failure.message}');
+        _logger.e('[SessionManagerBloc] ❌ Failed to delete session: ${failure.message}');
         emit(SessionManagerState.error(failure.message));
       },
       (_) {
-        _logger.i('Deleted session: ${event.sessionId}');
+        _logger.i('[SessionManagerBloc] ✅ Deleted session: ${event.sessionId}');
         // Перезагружаем список после удаления
+        _logger.d('[SessionManagerBloc] 🔄 Reloading sessions after deletion');
         add(const SessionManagerEvent.loadSessions());
       },
     );
@@ -169,17 +184,18 @@ class SessionManagerBloc
     RefreshSessions event,
     Emitter<SessionManagerState> emit,
   ) async {
+    _logger.d('[SessionManagerBloc] 🔄 Refreshing sessions...');
     emit(const SessionManagerState.loading());
 
     final result = await _listSessions();
 
     result.fold(
       (failure) {
-        _logger.e('Failed to refresh sessions: ${failure.message}');
+        _logger.e('[SessionManagerBloc] ❌ Failed to refresh sessions: ${failure.message}');
         emit(SessionManagerState.error(failure.message));
       },
       (sessions) {
-        _logger.i('Refreshed ${sessions.length} sessions');
+        _logger.i('[SessionManagerBloc] ✅ Refreshed ${sessions.length} sessions');
         emit(SessionManagerState.loaded(
           sessions: sessions,
           currentSessionId: null,

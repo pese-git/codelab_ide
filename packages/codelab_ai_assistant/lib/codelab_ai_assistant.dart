@@ -12,6 +12,8 @@ export 'core/error/failures.dart';
 export 'core/error/exceptions.dart';
 export 'core/usecases/usecase.dart';
 export 'core/utils/type_defs.dart';
+export 'core/bloc/app_bloc_observer.dart';
+export 'core/bloc/bloc_setup.dart';
 
 // ============================================================================
 // Session Management Feature
