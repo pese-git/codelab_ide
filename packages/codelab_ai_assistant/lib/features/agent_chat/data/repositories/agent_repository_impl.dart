@@ -179,7 +179,7 @@ class AgentRepositoryImpl implements AgentRepository {
   WSMessage _chatMessageToWSMessage(ChatMessage chatMsg) {
     // Обрабатываем tool calls
     if (chatMsg.toolCalls != null && chatMsg.toolCalls!.isNotEmpty) {
-      final toolCall = chatMsg.toolCalls!.first as Map<String, dynamic>;
+      final toolCall = chatMsg.toolCalls!.first; // ✅ Убран unnecessary cast
       final function = toolCall['function'] as Map<String, dynamic>?;
       
       // arguments может быть String (JSON) или Map
