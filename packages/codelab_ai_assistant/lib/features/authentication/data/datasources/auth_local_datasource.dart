@@ -1,5 +1,7 @@
 // Local data source для хранения токенов
+import 'dart:async';
 import 'dart:convert';
+import 'package:cherrypick/cherrypick.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/auth_token_model.dart';
 
@@ -16,15 +18,40 @@ abstract class AuthLocalDataSource {
 
   /// Проверить наличие токена
   Future<bool> hasToken();
+
+  /// Stream для уведомлений об истечении токена
+  Stream<void> get tokenExpiredStream;
+
+  /// Уведомить об истечении токена
+  void notifyTokenExpired();
+
+  /// Освободить ресурсы
+  void dispose();
 }
 
 /// Реализация локального источника данных авторизации
-class AuthLocalDataSourceImpl implements AuthLocalDataSource {
+class AuthLocalDataSourceImpl implements AuthLocalDataSource, Disposable {
   static const String _tokenKey = 'auth_token';
 
   final SharedPreferences _prefs;
+  final _tokenExpiredController = StreamController<void>.broadcast();
 
   AuthLocalDataSourceImpl(this._prefs);
+
+  @override
+  Stream<void> get tokenExpiredStream => _tokenExpiredController.stream;
+
+  @override
+  void notifyTokenExpired() {
+    if (!_tokenExpiredController.isClosed) {
+      _tokenExpiredController.add(null);
+    }
+  }
+
+  @override
+  void dispose() {
+    _tokenExpiredController.close();
+  }
 
   @override
   Future<void> saveToken(AuthTokenModel token) async {
@@ -52,6 +79,8 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   @override
   Future<void> clearToken() async {
     await _prefs.remove(_tokenKey);
+    // Уведомляем об истечении токена при его удалении
+    notifyTokenExpired();
   }
 
   @override

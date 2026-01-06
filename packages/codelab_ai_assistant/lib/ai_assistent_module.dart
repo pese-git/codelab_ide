@@ -108,25 +108,41 @@ class AiAssistantModule extends Module {
         )
         .singleton();
 
-    // AuthInterceptor (если используется OAuth)
-    if (useOAuth && sharedPreferences != null) {
-      bind<AuthInterceptor>().toProvide(() {
+    // ========================================================================
+    // Authentication Feature - Data Sources (создаем ДО AuthInterceptor)
+    // ========================================================================
+
+    if (sharedPreferences != null) {
+      // Data Sources (с автоматической очисткой ресурсов)
+      bind<AuthLocalDataSource>()
+          .toProvide(
+            () => AuthLocalDataSourceImpl(
+              currentScope.resolve<SharedPreferences>(),
+            ),
+          )
+          .singleton(); // Автоматически вызовет dispose() при уничтожении scope
+
+      bind<AuthRemoteDataSource>().toProvide(() {
+        // Создаем отдельный Dio для auth запросов (без interceptor'ов)
         final authDio = Dio(
           BaseOptions(
             connectTimeout: const Duration(seconds: 30),
             receiveTimeout: const Duration(seconds: 30),
           ),
         );
-
-        final authLocalDataSource = AuthLocalDataSourceImpl(sharedPreferences!);
-        final authRemoteDataSource = AuthRemoteDataSourceImpl(
+        return AuthRemoteDataSourceImpl(
           dio: authDio,
           authServiceUrl: authServiceUrl,
         );
+      }).singleton();
+    }
 
+    // AuthInterceptor (если используется OAuth) - использует те же data sources
+    if (useOAuth && sharedPreferences != null) {
+      bind<AuthInterceptor>().toProvide(() {
         return AuthInterceptor(
-          localDataSource: authLocalDataSource,
-          remoteDataSource: authRemoteDataSource,
+          localDataSource: currentScope.resolve<AuthLocalDataSource>(),
+          remoteDataSource: currentScope.resolve<AuthRemoteDataSource>(),
           logger: currentScope.resolve<Logger>(),
         );
       }).singleton();
@@ -177,34 +193,11 @@ class AiAssistantModule extends Module {
         .singleton();
 
     // ========================================================================
-    // Authentication Feature
+    // Authentication Feature - Repository
     // ========================================================================
 
     if (sharedPreferences != null) {
-      // Data Sources
-      bind<AuthLocalDataSource>()
-          .toProvide(
-            () => AuthLocalDataSourceImpl(
-              currentScope.resolve<SharedPreferences>(),
-            ),
-          )
-          .singleton();
-
-      bind<AuthRemoteDataSource>().toProvide(() {
-        // Создаем отдельный Dio для auth запросов (без interceptor'ов)
-        final authDio = Dio(
-          BaseOptions(
-            connectTimeout: const Duration(seconds: 30),
-            receiveTimeout: const Duration(seconds: 30),
-          ),
-        );
-        return AuthRemoteDataSourceImpl(
-          dio: authDio,
-          authServiceUrl: authServiceUrl,
-        );
-      }).singleton();
-
-      // Repository
+      // Repository (использует data sources, созданные выше)
       bind<AuthRepository>()
           .toProvide(
             () => AuthRepositoryImpl(
@@ -390,7 +383,7 @@ class AiAssistantModule extends Module {
           authRepository: currentScope.resolve<AuthRepository>(),
           logger: currentScope.resolve<Logger>(),
           tokenExpiredStream: useOAuth
-              ? currentScope.resolve<AuthInterceptor>().tokenExpiredStream
+              ? currentScope.resolve<AuthLocalDataSource>().tokenExpiredStream
               : null,
         );
         return authBloc;

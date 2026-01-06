@@ -17,10 +17,6 @@ class AuthInterceptor extends Interceptor {
   final String _clientId;
   Dio? _dio; // Ссылка на Dio instance для повторных запросов
 
-  // Stream для уведомлений об истечении токена
-  final _tokenExpiredController = StreamController<void>.broadcast();
-  Stream<void> get tokenExpiredStream => _tokenExpiredController.stream;
-
   // Флаг для предотвращения циклических обновлений
   bool _isRefreshing = false;
   // Очередь запросов, ожидающих обновления токена
@@ -39,11 +35,6 @@ class AuthInterceptor extends Interceptor {
   /// Установить ссылку на Dio instance
   void setDio(Dio dio) {
     _dio = dio;
-  }
-
-  /// Закрыть stream при уничтожении interceptor
-  void dispose() {
-    _tokenExpiredController.close();
   }
 
   @override
@@ -200,11 +191,8 @@ class AuthInterceptor extends Interceptor {
     } catch (e) {
       _logger.e('[AuthInterceptor] Token refresh failed: $e');
       // При ошибке обновления удаляем старый токен
+      // clearToken() автоматически уведомит об истечении токена через stream
       await _localDataSource.clearToken();
-      // Уведомляем о том, что токен истек через stream
-      if (!_tokenExpiredController.isClosed) {
-        _tokenExpiredController.add(null);
-      }
       return null;
     } finally {
       _isRefreshing = false;
