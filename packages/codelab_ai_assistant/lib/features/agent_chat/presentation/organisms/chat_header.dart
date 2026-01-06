@@ -10,12 +10,14 @@ class ChatHeader extends StatelessWidget {
   final VoidCallback onBack;
   final uikit.AgentType currentAgent;
   final void Function(uikit.AgentType) onAgentSelected;
+  final VoidCallback? onLogout;
 
   const ChatHeader({
     super.key,
     required this.onBack,
     required this.currentAgent,
     required this.onAgentSelected,
+    this.onLogout,
   });
 
   @override
@@ -54,6 +56,15 @@ class ChatHeader extends StatelessWidget {
             currentAgent: currentAgent,
             onAgentSelected: onAgentSelected,
           ),
+          const Spacer(),
+          if (onLogout != null)
+            IconButton(
+              icon: Icon(
+                FluentIcons.sign_out,
+                size: AppSpacing.iconMd,
+              ),
+              onPressed: onLogout,
+            ),
         ],
       ),
     );

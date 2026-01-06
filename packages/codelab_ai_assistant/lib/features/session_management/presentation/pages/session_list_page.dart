@@ -23,6 +23,7 @@ class SessionListPage extends StatefulWidget {
   final SessionManagerBloc sessionManagerBloc;
   final void Function(Session session) onSessionSelected;
   final void Function(String sessionId) onNewSession;
+  final VoidCallback? onLogout;
 
   // ✅ Добавляем logger для отладки
   static final _logger = Logger();
@@ -32,6 +33,7 @@ class SessionListPage extends StatefulWidget {
     required this.sessionManagerBloc,
     required this.onSessionSelected,
     required this.onNewSession,
+    this.onLogout,
   });
 
   @override
@@ -155,6 +157,13 @@ class _SessionListPageState extends State<SessionListPage> {
               widget.sessionManagerBloc.add(const SessionManagerEvent.loadSessions());
             },
           ),
+          if (widget.onLogout != null) ...[
+            AppSpacing.gapHorizontalSm,
+            IconButton(
+              icon: const Icon(FluentIcons.sign_out),
+              onPressed: widget.onLogout,
+            ),
+          ],
         ],
       ),
     );

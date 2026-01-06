@@ -20,11 +20,13 @@ import '../organisms/chat_header.dart';
 class ChatPage extends StatefulWidget {
   final AgentChatBloc bloc;
   final VoidCallback onBackToSessions;
+  final VoidCallback? onLogout;
 
   const ChatPage({
     super.key,
     required this.bloc,
     required this.onBackToSessions,
+    this.onLogout,
   });
 
   @override
@@ -66,6 +68,7 @@ class _ChatPageState extends State<ChatPage> {
                   ),
                 );
               },
+              onLogout: widget.onLogout,
             ),
 
             // Messages

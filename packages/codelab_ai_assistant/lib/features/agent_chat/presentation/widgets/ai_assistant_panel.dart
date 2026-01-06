@@ -80,58 +80,94 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
   }
 
   Widget _buildContent() {
-    // Если SessionManagerBloc не доступен, показываем только чат
-    if (_sessionManagerBloc == null) {
-      return ChatPage(
-        bloc: widget.bloc,
-        onBackToSessions: () {
-          // Нет списка сессий, ничего не делаем
-        },
-      );
-    }
+    return Builder(
+      builder: (context) {
+        // Получаем AuthBloc через context
+        AuthBloc? authBloc;
+        try {
+          authBloc = context.read<AuthBloc>();
+        } catch (e) {
+          // AuthBloc не доступен в контексте
+        }
 
-    // Навигация между списком сессий и чатом
-    // ✅ Используем новые страницы вместо старых виджетов
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 200),
-      child: _showChat
-          ? ChatPage(
-              key: const ValueKey('chat'),
-              bloc: widget.bloc,
-              onBackToSessions: () {
-                setState(() {
-                  _showChat = false;
-                });
-                // Перезагрузить список сессий
-                _sessionManagerBloc?.add(
-                  const SessionManagerEvent.loadSessions(),
-                );
-              },
-            )
-          : SessionListPage(
-              key: const ValueKey('sessions'),
-              sessionManagerBloc: _sessionManagerBloc!,
-              onSessionSelected: (session) {
-                // ✅ Сначала переключаемся на чат, чтобы избежать показа loader
-                setState(() {
-                  _showChat = true;
-                });
-                // Затем отключаемся от предыдущей сессии и подключаемся к новой
-                // История загрузится автоматически при подключении
-                widget.bloc.add(const AgentChatEvent.disconnect());
-                widget.bloc.add(AgentChatEvent.connect(session.id));
-                widget.bloc.add(AgentChatEvent.loadHistory(session.id));
-              },
-              onNewSession: (sessionId) {
-                // ✅ Сначала переключаемся на чат, чтобы избежать показа loader
-                setState(() {
-                  _showChat = true;
-                });
-                // Затем отключаемся от предыдущей сессии и подключаемся к новой
-                widget.bloc.add(const AgentChatEvent.disconnect());
-                widget.bloc.add(AgentChatEvent.connect(sessionId));
-              },
-            ),
+        // Если SessionManagerBloc не доступен, показываем только чат
+        if (_sessionManagerBloc == null) {
+          return ChatPage(
+            bloc: widget.bloc,
+            onBackToSessions: () {
+              // Нет списка сессий, ничего не делаем
+            },
+            onLogout: authBloc != null
+                ? () {
+                    // Отключаемся от WebSocket перед logout
+                    widget.bloc.add(const AgentChatEvent.disconnect());
+                    // Вызываем logout в AuthBloc
+                    authBloc?.add(const AuthEvent.logout());
+                  }
+                : null,
+          );
+        }
+
+        // Навигация между списком сессий и чатом
+        // ✅ Используем новые страницы вместо старых виджетов
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          child: _showChat
+              ? ChatPage(
+                  key: const ValueKey('chat'),
+                  bloc: widget.bloc,
+                  onBackToSessions: () {
+                    setState(() {
+                      _showChat = false;
+                    });
+                    // Перезагрузить список сессий
+                    _sessionManagerBloc?.add(
+                      const SessionManagerEvent.loadSessions(),
+                    );
+                  },
+                  onLogout: authBloc != null
+                      ? () {
+                          // Отключаемся от WebSocket перед logout
+                          widget.bloc.add(const AgentChatEvent.disconnect());
+                          // Вызываем logout в AuthBloc
+                          authBloc?.add(const AuthEvent.logout());
+                        }
+                      : null,
+                )
+              : SessionListPage(
+                  key: const ValueKey('sessions'),
+                  sessionManagerBloc: _sessionManagerBloc!,
+                  onSessionSelected: (session) {
+                    // ✅ Сначала переключаемся на чат, чтобы избежать показа loader
+                    setState(() {
+                      _showChat = true;
+                    });
+                    // Затем отключаемся от предыдущей сессии и подключаемся к новой
+                    // История загрузится автоматически при подключении
+                    widget.bloc.add(const AgentChatEvent.disconnect());
+                    widget.bloc.add(AgentChatEvent.connect(session.id));
+                    widget.bloc.add(AgentChatEvent.loadHistory(session.id));
+                  },
+                  onNewSession: (sessionId) {
+                    // ✅ Сначала переключаемся на чат, чтобы избежать показа loader
+                    setState(() {
+                      _showChat = true;
+                    });
+                    // Затем отключаемся от предыдущей сессии и подключаемся к новой
+                    widget.bloc.add(const AgentChatEvent.disconnect());
+                    widget.bloc.add(AgentChatEvent.connect(sessionId));
+                  },
+                  onLogout: authBloc != null
+                      ? () {
+                          // Отключаемся от WebSocket перед logout
+                          widget.bloc.add(const AgentChatEvent.disconnect());
+                          // Вызываем logout в AuthBloc
+                          authBloc?.add(const AuthEvent.logout());
+                        }
+                      : null,
+                ),
+        );
+      },
     );
   }
 }

@@ -54,7 +54,7 @@ abstract class AgentRepository {
   FutureEither<Unit> connect(String sessionId);
   
   /// Отключается от WebSocket
-  /// 
+  ///
   /// Возвращает [Right] с Unit при успехе или [Left] с ошибкой
   FutureEither<Unit> disconnect();
   
