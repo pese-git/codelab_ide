@@ -147,21 +147,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
     final result = await _authRepository.loginWithPassword(params);
 
-    await result.fold(
-      (failure) async {
+    result.fold(
+      (failure) {
         _logger.e('[AuthBloc] ❌ Login failed: ${failure.message}');
+        // Остаемся в состоянии ошибки до явного действия пользователя
+        // (повторная попытка входа или другое событие)
+        // Это предотвращает race condition с автоматическим переходом
         emit(AuthState.error(message: failure.message));
-        // Возвращаемся в unauthenticated после ошибки
-        // Используем await для корректной обработки в event handler
-        await Future.delayed(const Duration(seconds: 3));
-        if (!isClosed) {
-          _logger.d(
-            '[AuthBloc] 🔄 Returning to unauthenticated state after error',
-          );
-          emit(const AuthState.unauthenticated());
-        }
       },
-      (token) async {
+      (token) {
         _logger.i('[AuthBloc] ✅ Login successful');
         emit(AuthState.authenticated(token: token));
       },
