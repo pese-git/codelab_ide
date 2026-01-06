@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:cherrypick/cherrypick.dart';
-import 'package:code_forge/code_forge.dart';
 import 'package:codelab_ai_assistant/codelab_ai_assistant.dart';
 import 'package:codelab_core/codelab_core.dart';
 import 'package:codelab_ide/codelab_app.dart';
@@ -29,9 +28,11 @@ void main() async {
     AppDiModule(),
     EngineDiModule(),
     AiAssistantModule(
-      gatewayBaseUrl: 'http://localhost:8000/api/v1',
+      gatewayBaseUrl: 'http://localhost:80/api/v1',
+      authServiceUrl: 'http://localhost:80', // OAuth эндпоинт: /oauth/token
       internalApiKey: 'my-super-secret-key',
       sharedPreferences: sharedPreferences,
+      useOAuth: true, // Включаем OAuth авторизацию
     ),
   ]);
   // Настройка CodelabLogger вместо initLogger

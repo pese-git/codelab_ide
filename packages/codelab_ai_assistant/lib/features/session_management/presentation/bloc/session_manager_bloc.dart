@@ -1,4 +1,5 @@
 // BLoC для управления сессиями (Presentation слой)
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:logger/logger.dart';
@@ -10,6 +11,28 @@ import '../../domain/usecases/list_sessions.dart';
 import '../../domain/usecases/delete_session.dart';
 
 part 'session_manager_bloc.freezed.dart';
+
+/// Side effects для событий (не состояния)
+/// Используется для одноразовых событий типа навигации, уведомлений
+sealed class SessionManagerSideEffect {
+  const SessionManagerSideEffect();
+}
+
+class SessionSwitchedEffect extends SessionManagerSideEffect {
+  final String sessionId;
+  final Session session;
+  
+  const SessionSwitchedEffect({
+    required this.sessionId,
+    required this.session,
+  });
+}
+
+class NewSessionCreatedEffect extends SessionManagerSideEffect {
+  final String sessionId;
+  
+  const NewSessionCreatedEffect({required this.sessionId});
+}
 
 /// События для SessionManagerBloc
 @freezed
@@ -47,6 +70,7 @@ sealed class SessionManagerState with _$SessionManagerState {
 /// - Не содержит бизнес-логики (она в Use Cases)
 /// - Работает только с domain entities
 /// - Обрабатывает Either<Failure, T> из use cases
+/// - Использует отдельный Stream для side effects (события)
 class SessionManagerBloc
     extends Bloc<SessionManagerEvent, SessionManagerState> {
   final CreateSessionUseCase _createSession;
@@ -54,6 +78,10 @@ class SessionManagerBloc
   final ListSessionsUseCase _listSessions;
   final DeleteSessionUseCase _deleteSession;
   final Logger _logger;
+  
+  // ✅ Отдельный Stream для side effects (событий)
+  final _sideEffectsController = StreamController<SessionManagerSideEffect>.broadcast();
+  Stream<SessionManagerSideEffect> get sideEffects => _sideEffectsController.stream;
 
   SessionManagerBloc({
     required CreateSessionUseCase createSession,
@@ -73,22 +101,29 @@ class SessionManagerBloc
     on<DeleteSession>(_onDeleteSession);
     on<RefreshSessions>(_onRefreshSessions);
   }
+  
+  @override
+  Future<void> close() {
+    _sideEffectsController.close();
+    return super.close();
+  }
 
   Future<void> _onLoadSessions(
     LoadSessions event,
     Emitter<SessionManagerState> emit,
   ) async {
+    _logger.d('[SessionManagerBloc] 📋 Loading sessions...');
     emit(const SessionManagerState.loading());
 
     final result = await _listSessions();
 
     result.fold(
       (failure) {
-        _logger.e('Failed to load sessions: ${failure.message}');
+        _logger.e('[SessionManagerBloc] ❌ Failed to load sessions: ${failure.message}');
         emit(SessionManagerState.error(failure.message));
       },
       (sessions) {
-        _logger.i('Loaded ${sessions.length} sessions');
+        _logger.i('[SessionManagerBloc] ✅ Loaded ${sessions.length} sessions');
         emit(SessionManagerState.loaded(
           sessions: sessions,
           currentSessionId: null,
@@ -102,19 +137,27 @@ class SessionManagerBloc
     CreateSession event,
     Emitter<SessionManagerState> emit,
   ) async {
+    _logger.d('[SessionManagerBloc] ➕ Creating new session...');
     emit(const SessionManagerState.loading());
 
     final result = await _createSession(CreateSessionParams.defaults());
 
     result.fold(
       (failure) {
-        _logger.e('Failed to create session: ${failure.message}');
+        _logger.e('[SessionManagerBloc] ❌ Failed to create session: ${failure.message}');
         emit(SessionManagerState.error(failure.message));
       },
       (session) {
-        _logger.i('Created session: ${session.id}');
-        emit(SessionManagerState.newSessionCreated(session.id));
-        // Перезагружаем список сессий после создания
+        _logger.i('[SessionManagerBloc] ✅ Created session: ${session.id}');
+        
+        // ✅ Эмитим side effect для listener (навигация, уведомления)
+        _sideEffectsController.add(
+          NewSessionCreatedEffect(sessionId: session.id),
+        );
+        
+        // ✅ Сразу перезагружаем список, чтобы вернуться в состояние loaded
+        // Больше не используем событийные состояния
+        _logger.d('[SessionManagerBloc] 🔄 Reloading sessions after creation');
         add(const SessionManagerEvent.loadSessions());
       },
     );
@@ -124,6 +167,7 @@ class SessionManagerBloc
     SelectSession event,
     Emitter<SessionManagerState> emit,
   ) async {
+    _logger.d('[SessionManagerBloc] 🔍 Selecting session: ${event.sessionId}');
     emit(const SessionManagerState.loading());
 
     final result = await _loadSession(
@@ -132,12 +176,21 @@ class SessionManagerBloc
 
     result.fold(
       (failure) {
-        _logger.e('Failed to load session: ${failure.message}');
+        _logger.e('[SessionManagerBloc] ❌ Failed to load session: ${failure.message}');
         emit(SessionManagerState.error(failure.message));
       },
       (session) {
-        _logger.i('Selected session: ${session.id}');
-        emit(SessionManagerState.sessionSwitched(session.id, session));
+        _logger.i('[SessionManagerBloc] ✅ Selected session: ${session.id}');
+        
+        // ✅ Эмитим side effect для listener (навигация, уведомления)
+        _sideEffectsController.add(
+          SessionSwitchedEffect(sessionId: session.id, session: session),
+        );
+        
+        // ✅ Сразу перезагружаем список, чтобы вернуться в состояние loaded
+        // Больше не используем событийные состояния
+        _logger.d('[SessionManagerBloc] 🔄 Reloading sessions after selection');
+        add(const SessionManagerEvent.loadSessions());
       },
     );
   }
@@ -146,6 +199,7 @@ class SessionManagerBloc
     DeleteSession event,
     Emitter<SessionManagerState> emit,
   ) async {
+    _logger.d('[SessionManagerBloc] 🗑️ Deleting session: ${event.sessionId}');
     emit(const SessionManagerState.loading());
 
     final result = await _deleteSession(
@@ -154,12 +208,13 @@ class SessionManagerBloc
 
     result.fold(
       (failure) {
-        _logger.e('Failed to delete session: ${failure.message}');
+        _logger.e('[SessionManagerBloc] ❌ Failed to delete session: ${failure.message}');
         emit(SessionManagerState.error(failure.message));
       },
       (_) {
-        _logger.i('Deleted session: ${event.sessionId}');
+        _logger.i('[SessionManagerBloc] ✅ Deleted session: ${event.sessionId}');
         // Перезагружаем список после удаления
+        _logger.d('[SessionManagerBloc] 🔄 Reloading sessions after deletion');
         add(const SessionManagerEvent.loadSessions());
       },
     );
@@ -169,17 +224,18 @@ class SessionManagerBloc
     RefreshSessions event,
     Emitter<SessionManagerState> emit,
   ) async {
+    _logger.d('[SessionManagerBloc] 🔄 Refreshing sessions...');
     emit(const SessionManagerState.loading());
 
     final result = await _listSessions();
 
     result.fold(
       (failure) {
-        _logger.e('Failed to refresh sessions: ${failure.message}');
+        _logger.e('[SessionManagerBloc] ❌ Failed to refresh sessions: ${failure.message}');
         emit(SessionManagerState.error(failure.message));
       },
       (sessions) {
-        _logger.i('Refreshed ${sessions.length} sessions');
+        _logger.i('[SessionManagerBloc] ✅ Refreshed ${sessions.length} sessions');
         emit(SessionManagerState.loaded(
           sessions: sessions,
           currentSessionId: null,

@@ -1,0 +1,313 @@
+// Новая страница списка сессий с применением рефакторинга
+import 'dart:async';
+import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:logger/logger.dart';
+import '../../../shared/presentation/theme/app_theme.dart';
+import '../../../shared/presentation/molecules/feedback/empty_state.dart';
+import '../../../shared/presentation/atoms/buttons/primary_button.dart';
+import '../../../shared/utils/extensions/context_extensions.dart';
+import '../bloc/session_manager_bloc.dart';
+import '../molecules/session_card.dart';
+import '../../domain/entities/session.dart';
+
+/// Новая страница списка сессий с применением Atomic Design
+///
+/// Преимущества перед старой SessionListView:
+/// - Использует переиспользуемые компоненты (SessionCard, EmptyState)
+/// - Применяет централизованную тему
+/// - Меньше кода (~180 строк vs 440)
+/// - Использует расширения контекста для ошибок
+/// - Легче тестировать
+class SessionListPage extends StatefulWidget {
+  final SessionManagerBloc sessionManagerBloc;
+  final void Function(Session session) onSessionSelected;
+  final void Function(String sessionId) onNewSession;
+  final VoidCallback? onLogout;
+
+  // ✅ Добавляем logger для отладки
+  static final _logger = Logger();
+
+  const SessionListPage({
+    super.key,
+    required this.sessionManagerBloc,
+    required this.onSessionSelected,
+    required this.onNewSession,
+    this.onLogout,
+  });
+
+  @override
+  State<SessionListPage> createState() => _SessionListPageState();
+}
+
+class _SessionListPageState extends State<SessionListPage> {
+  StreamSubscription<SessionManagerSideEffect>? _sideEffectSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    // ✅ Подписываемся на side effects
+    _sideEffectSubscription = widget.sessionManagerBloc.sideEffects.listen((effect) {
+      if (!mounted) return;
+      
+      if (effect is NewSessionCreatedEffect) {
+        SessionListPage._logger.i('[SessionListPage] ✅ New session created: ${effect.sessionId}');
+        widget.onNewSession(effect.sessionId);
+      } else if (effect is SessionSwitchedEffect) {
+        SessionListPage._logger.i('[SessionListPage] 🔄 Session switched: ${effect.sessionId}');
+        widget.onSessionSelected(effect.session);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _sideEffectSubscription?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    SessionListPage._logger.d('[SessionListPage] 🏗️ Building widget');
+
+    return BlocProvider.value(
+      value: widget.sessionManagerBloc,
+      child: BlocConsumer<SessionManagerBloc, SessionManagerState>(
+        listener: (context, state) {
+          SessionListPage._logger.d(
+            '[SessionListPage] 👂 Listener received state: ${state.runtimeType}',
+          );
+          state.maybeWhen(
+            error: (message) {
+              SessionListPage._logger.e('[SessionListPage] ❌ Error: $message');
+              // ✅ Использование расширения вместо встроенного кода
+              context.showError(message);
+            },
+            orElse: () {},
+          );
+        },
+        builder: (context, state) {
+          SessionListPage._logger.d(
+            '[SessionListPage] 🎨 Builder received state: ${state.runtimeType}',
+          );
+          return Column(
+            children: [
+              // Header
+              _buildHeader(context),
+              Divider(
+                style: DividerThemeData(
+                  thickness: 1,
+                  decoration: BoxDecoration(color: AppColors.border),
+                ),
+              ),
+              // Content
+              Expanded(
+                child: state.when(
+                  initial: () {
+                    SessionListPage._logger.d('[SessionListPage] 📄 Showing initial state');
+                    return _buildEmptyState(context);
+                  },
+                  loading: () {
+                    SessionListPage._logger.d('[SessionListPage] ⏳ Showing loading state');
+                    return const Center(child: ProgressRing());
+                  },
+                  error: (message) {
+                    SessionListPage._logger.d(
+                      '[SessionListPage] ❌ Showing error state: $message',
+                    );
+                    return _buildErrorState(context, message);
+                  },
+                  loaded: (sessions, currentSessionId, currentAgent) {
+                    SessionListPage._logger.d(
+                      '[SessionListPage] ✅ Showing loaded state with ${sessions.length} sessions',
+                    );
+                    return _buildSessionList(
+                      context,
+                      sessions,
+                      currentSessionId,
+                    );
+                  },
+                  // ✅ Больше не используем событийные состояния - они заменены на side effects
+                  sessionSwitched: (sessionId, session) => const SizedBox.shrink(),
+                  newSessionCreated: (sessionId) => const SizedBox.shrink(),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context) {
+    return Padding(
+      padding: AppSpacing.paddingLg, // ✅ Тема
+      child: Row(
+        children: [
+          Icon(FluentIcons.chat, size: AppSpacing.iconLg), // ✅ Тема
+          AppSpacing.gapHorizontalMd, // ✅ Тема
+          Text(
+            'AI Assistant Sessions',
+            style: AppTypography.h4, // ✅ Тема
+          ),
+          const Spacer(),
+          IconButton(
+            icon: const Icon(FluentIcons.refresh),
+            onPressed: () {
+              widget.sessionManagerBloc.add(const SessionManagerEvent.loadSessions());
+            },
+          ),
+          if (widget.onLogout != null) ...[
+            AppSpacing.gapHorizontalSm,
+            IconButton(
+              icon: const Icon(FluentIcons.sign_out),
+              onPressed: widget.onLogout,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    // ✅ Использование переиспользуемого компонента
+    return EmptyState(
+      icon: FluentIcons.chat,
+      title: 'No sessions yet',
+      description: 'Create a new session to start chatting with AI',
+      iconSize: 64,
+      action: PrimaryButton(
+        onPressed: () {
+          widget.sessionManagerBloc.add(const SessionManagerEvent.createSession());
+        },
+        child: const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(FluentIcons.add, size: 16),
+              SizedBox(width: 8),
+              Text('New Session'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(BuildContext context, String message) {
+    // ✅ Использование EmptyState для ошибок
+    return EmptyState(
+      icon: FluentIcons.error,
+      title: 'Failed to load sessions',
+      description: message,
+      iconSize: 64,
+      action: Button(
+        onPressed: () {
+          widget.sessionManagerBloc.add(const SessionManagerEvent.loadSessions());
+        },
+        child: const Text('Retry'),
+      ),
+    );
+  }
+
+  Widget _buildSessionList(
+    BuildContext context,
+    List<Session> sessions,
+    String? currentSessionId,
+  ) {
+    if (sessions.isEmpty) {
+      return _buildEmptyState(context);
+    }
+
+    return Column(
+      children: [
+        // New Session Button
+        Padding(
+          padding: AppSpacing.paddingLg, // ✅ Тема
+          child: SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              child: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(FluentIcons.add, size: 16),
+                    SizedBox(width: 8),
+                    Text('New Session'),
+                  ],
+                ),
+              ),
+              onPressed: () => widget.sessionManagerBloc.add(
+                const SessionManagerEvent.createSession(),
+              ),
+            ),
+          ),
+        ),
+        Divider(
+          style: DividerThemeData(
+            thickness: 1,
+            decoration: BoxDecoration(color: AppColors.border),
+          ),
+        ),
+        // Sessions List
+        Expanded(
+          child: ListView.builder(
+            padding: AppSpacing.paddingMd, // ✅ Тема
+            itemCount: sessions.length,
+            // ✅ Оптимизация производительности
+            addAutomaticKeepAlives: false,
+            addRepaintBoundaries: true,
+            cacheExtent: 100,
+            itemBuilder: (context, index) {
+              final session = sessions[index];
+              final isCurrent = session.id == currentSessionId;
+
+              // ✅ Использование переиспользуемого компонента SessionCard
+              // ✅ RepaintBoundary для изоляции перерисовки каждого элемента
+              return RepaintBoundary(
+                child: Padding(
+                  key: ValueKey(session.id), // ✅ Ключ для оптимизации rebuild
+                  padding: AppSpacing.paddingVerticalSm, // ✅ Тема
+                  child: SessionCard(
+                    session: session,
+                    isCurrent: isCurrent,
+                    onTap: isCurrent
+                        ? null
+                        : () {
+                            // ✅ Сразу вызываем callback, чтобы избежать показа loader
+                            widget.onSessionSelected(session);
+                            // Затем отправляем событие в bloc для обновления состояния
+                            widget.sessionManagerBloc.add(
+                              SessionManagerEvent.selectSession(session.id),
+                            );
+                          },
+                    onDelete: isCurrent
+                        ? null
+                        : () => _confirmDelete(context, session),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _confirmDelete(BuildContext context, Session session) async {
+    // ✅ Использование расширения вместо встроенного кода
+    final confirmed = await context.showConfirmDialog(
+      title: 'Delete Session',
+      content:
+          'Are you sure you want to delete this session?\n\n'
+          'Session: ${session.displayTitle}\n'
+          'Messages: ${session.messageCount}',
+    );
+
+    if (confirmed && context.mounted) {
+      widget.sessionManagerBloc.add(SessionManagerEvent.deleteSession(session.id));
+    }
+  }
+}

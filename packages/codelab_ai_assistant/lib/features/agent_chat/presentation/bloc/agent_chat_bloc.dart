@@ -250,6 +250,8 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     SendMessageEvent event,
     Emitter<AgentChatState> emit,
   ) async {
+    _logger.d('[AgentChatBloc] 📤 Sending message: "${event.text.substring(0, event.text.length > 50 ? 50 : event.text.length)}..."');
+    
     // Добавляем сообщение пользователя в историю
     final userMessage = Message(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -259,6 +261,7 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
       metadata: none(),
     );
 
+    _logger.d('[AgentChatBloc] 📝 Adding user message to state, total messages: ${state.messages.length + 1}');
     emit(
       state.copyWith(
         messages: [...state.messages, userMessage],
@@ -274,11 +277,11 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
 
     result.fold(
       (failure) {
-        _logger.e('Failed to send message: ${failure.message}');
+        _logger.e('[AgentChatBloc] ❌ Failed to send message: ${failure.message}');
         emit(state.copyWith(isLoading: false, error: some(failure.message)));
       },
       (_) {
-        _logger.i('Message sent successfully');
+        _logger.i('[AgentChatBloc] ✅ Message sent successfully');
         emit(state.copyWith(isLoading: false));
       },
     );
@@ -288,7 +291,7 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     MessageReceivedEvent event,
     Emitter<AgentChatState> emit,
   ) async {
-    _logger.d('Message received: ${event.message.role}');
+    _logger.d('[AgentChatBloc] 📨 Message received: ${event.message.role}, content type: ${event.message.content.runtimeType}');
 
     // Обновляем текущего агента если это agent_switched
     String newAgent = state.currentAgent;
@@ -389,6 +392,7 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     SwitchAgentEvent event,
     Emitter<AgentChatState> emit,
   ) async {
+    _logger.d('[AgentChatBloc] 🔄 Switching agent to: ${event.agentType}');
     emit(state.copyWith(isLoading: true, error: none()));
 
     final result = await _switchAgent(
@@ -415,6 +419,7 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     LoadHistoryEvent event,
     Emitter<AgentChatState> emit,
   ) async {
+    _logger.d('[AgentChatBloc] 📜 Loading history for session: ${event.sessionId}');
     emit(state.copyWith(isLoading: true, error: none()));
 
     final result = await _loadHistory(
@@ -439,6 +444,7 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     ConnectEvent event,
     Emitter<AgentChatState> emit,
   ) async {
+    _logger.d('[AgentChatBloc] 🔌 Connecting to session: ${event.sessionId}');
     emit(state.copyWith(isLoading: true, error: none()));
 
     // Подключаемся к WebSocket через use case
@@ -485,12 +491,19 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     DisconnectEvent event,
     Emitter<AgentChatState> emit,
   ) async {
+    _logger.d('[AgentChatBloc] 🔌 Disconnecting from chat');
     await _messageSubscription?.cancel();
     _messageSubscription = null;
 
-    emit(state.copyWith(isConnected: false, messages: const []));
+    emit(state.copyWith(
+      isConnected: false,
+      messages: const [],
+      isLoading: false,
+      error: none(),
+      pendingApproval: none(),
+    ));
 
-    _logger.i('Disconnected from chat');
+    _logger.i('[AgentChatBloc] ✅ Disconnected from chat');
   }
 
   Future<void> _onError(ErrorEvent event, Emitter<AgentChatState> emit) async {
@@ -502,7 +515,7 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     ApprovalRequestedEvent event,
     Emitter<AgentChatState> emit,
   ) async {
-    _logger.i('Tool approval requested: ${event.request.toolCall.toolName}');
+    _logger.i('[AgentChatBloc] 🔔 Tool approval requested: ${event.request.toolCall.toolName}');
     emit(state.copyWith(pendingApproval: some(event.request)));
   }
 
@@ -511,9 +524,9 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     Emitter<AgentChatState> emit,
   ) async {
     state.pendingApproval.fold(
-      () => _logger.w('No pending approval to approve'),
+      () => _logger.w('[AgentChatBloc] ⚠️ No pending approval to approve'),
       (request) {
-        _logger.i('Tool call approved: ${request.toolCall.toolName}');
+        _logger.i('[AgentChatBloc] ✅ Tool call approved: ${request.toolCall.toolName}');
         request.completer.complete(const ApprovalDecision.approved());
         emit(state.copyWith(pendingApproval: none()));
       },
@@ -524,11 +537,11 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     RejectToolCallEvent event,
     Emitter<AgentChatState> emit,
   ) async {
-    state.pendingApproval.fold(() => _logger.w('No pending approval to reject'), (
+    state.pendingApproval.fold(() => _logger.w('[AgentChatBloc] ⚠️ No pending approval to reject'), (
       request,
     ) {
       _logger.i(
-        'Tool call rejected: ${request.toolCall.toolName}, reason: ${event.reason}',
+        '[AgentChatBloc] ❌ Tool call rejected: ${request.toolCall.toolName}, reason: ${event.reason}',
       );
       request.completer.complete(
         ApprovalDecision.rejected(reason: some(event.reason)),
@@ -542,9 +555,9 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     Emitter<AgentChatState> emit,
   ) async {
     state.pendingApproval.fold(
-      () => _logger.w('No pending approval to cancel'),
+      () => _logger.w('[AgentChatBloc] ⚠️ No pending approval to cancel'),
       (request) {
-        _logger.i('Tool call cancelled: ${request.toolCall.toolName}');
+        _logger.i('[AgentChatBloc] 🚫 Tool call cancelled: ${request.toolCall.toolName}');
         request.completer.complete(const ApprovalDecision.cancelled());
         emit(state.copyWith(pendingApproval: none()));
       },
@@ -553,6 +566,7 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
 
   @override
   Future<void> close() async {
+    _logger.d('[AgentChatBloc] 🔒 Closing bloc');
     await _messageSubscription?.cancel();
     await _approvalSubscription?.cancel();
     return super.close();

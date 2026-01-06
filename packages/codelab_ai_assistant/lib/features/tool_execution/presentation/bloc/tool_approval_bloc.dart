@@ -57,6 +57,8 @@ class ToolApprovalBloc extends Bloc<ToolApprovalEvent, ToolApprovalState> {
     RequestApprovalEvent event,
     Emitter<ToolApprovalState> emit,
   ) async {
+    _logger.d('[ToolApprovalBloc] 🔔 Requesting approval for tool: ${event.toolCall.toolName}');
+    
     final request = ToolApprovalRequest(
       requestId: DateTime.now().millisecondsSinceEpoch.toString(),
       toolCall: event.toolCall,
@@ -67,14 +69,14 @@ class ToolApprovalBloc extends Bloc<ToolApprovalEvent, ToolApprovalState> {
     
     emit(ToolApprovalState.requesting(request: request));
     
-    _logger.i('Requesting approval for tool: ${event.toolCall.toolName}');
+    _logger.i('[ToolApprovalBloc] 📋 Approval request created with ID: ${request.requestId}');
   }
   
   Future<void> _onApprove(
     ApproveEvent event,
     Emitter<ToolApprovalState> emit,
   ) async {
-    _logger.i('Tool execution approved');
+    _logger.i('[ToolApprovalBloc] ✅ Tool execution approved');
     emit(const ToolApprovalState.approved());
   }
   
@@ -82,7 +84,7 @@ class ToolApprovalBloc extends Bloc<ToolApprovalEvent, ToolApprovalState> {
     RejectEvent event,
     Emitter<ToolApprovalState> emit,
   ) async {
-    _logger.w('Tool execution rejected: ${event.reason}');
+    _logger.w('[ToolApprovalBloc] ❌ Tool execution rejected: ${event.reason}');
     emit(ToolApprovalState.rejected(event.reason));
   }
   
@@ -90,7 +92,7 @@ class ToolApprovalBloc extends Bloc<ToolApprovalEvent, ToolApprovalState> {
     ModifyEvent event,
     Emitter<ToolApprovalState> emit,
   ) async {
-    _logger.i('Tool arguments modified');
+    _logger.i('[ToolApprovalBloc] ✏️ Tool arguments modified: ${event.modifiedArguments.keys.join(", ")}');
     emit(ToolApprovalState.modified(event.modifiedArguments));
   }
   
@@ -98,7 +100,7 @@ class ToolApprovalBloc extends Bloc<ToolApprovalEvent, ToolApprovalState> {
     CancelEvent event,
     Emitter<ToolApprovalState> emit,
   ) async {
-    _logger.i('Tool approval cancelled');
+    _logger.i('[ToolApprovalBloc] 🚫 Tool approval cancelled');
     emit(const ToolApprovalState.cancelled());
   }
 }

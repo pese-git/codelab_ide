@@ -179,13 +179,13 @@ class AgentRepositoryImpl implements AgentRepository {
   WSMessage _chatMessageToWSMessage(ChatMessage chatMsg) {
     // Обрабатываем tool calls
     if (chatMsg.toolCalls != null && chatMsg.toolCalls!.isNotEmpty) {
-      final toolCall = chatMsg.toolCalls!.first as Map<String, dynamic>;
+      final toolCall = chatMsg.toolCalls!.first; // ✅ Убран unnecessary cast
       final function = toolCall['function'] as Map<String, dynamic>?;
-      
+
       // arguments может быть String (JSON) или Map
       dynamic rawArguments = function?['arguments'];
       Map<String, dynamic> arguments = {};
-      
+
       if (rawArguments is String) {
         // Если это JSON string, парсим его
         try {
@@ -193,7 +193,9 @@ class AgentRepositoryImpl implements AgentRepository {
           if (parsed is Map) {
             arguments = Map<String, dynamic>.from(parsed);
           } else {
-            print('[AgentRepository] WARNING: Parsed arguments is not a Map, got ${parsed.runtimeType}');
+            print(
+              '[AgentRepository] WARNING: Parsed arguments is not a Map, got ${parsed.runtimeType}',
+            );
             // Сохраняем исходную строку для отладки
             arguments = {'_raw': rawArguments, '_parse_error': 'Not a Map'};
           }
@@ -202,18 +204,20 @@ class AgentRepositoryImpl implements AgentRepository {
           print('[AgentRepository] Stack trace: $stackTrace');
           print('[AgentRepository] Raw arguments: $rawArguments');
           // Сохраняем ошибку и исходные данные
-          arguments = {
-            '_raw': rawArguments,
-            '_parse_error': e.toString(),
-          };
+          arguments = {'_raw': rawArguments, '_parse_error': e.toString()};
         }
       } else if (rawArguments is Map) {
         arguments = Map<String, dynamic>.from(rawArguments);
       } else if (rawArguments != null) {
-        print('[AgentRepository] WARNING: Unexpected arguments type: ${rawArguments.runtimeType}');
-        arguments = {'_raw': rawArguments.toString(), '_parse_error': 'Unexpected type'};
+        print(
+          '[AgentRepository] WARNING: Unexpected arguments type: ${rawArguments.runtimeType}',
+        );
+        arguments = {
+          '_raw': rawArguments.toString(),
+          '_parse_error': 'Unexpected type',
+        };
       }
-      
+
       return WSMessage.toolCall(
         callId: toolCall['id'] as String? ?? '',
         toolName: function?['name'] as String? ?? '',
@@ -238,7 +242,7 @@ class AgentRepositoryImpl implements AgentRepository {
           result = {'content': chatMsg.content};
         }
       }
-      
+
       return WSMessage.toolResult(
         callId: chatMsg.toolCallId!,
         toolName: chatMsg.name,

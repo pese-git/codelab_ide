@@ -12,6 +12,8 @@ export 'core/error/failures.dart';
 export 'core/error/exceptions.dart';
 export 'core/usecases/usecase.dart';
 export 'core/utils/type_defs.dart';
+export 'core/bloc/app_bloc_observer.dart';
+export 'core/bloc/bloc_setup.dart';
 
 // ============================================================================
 // Session Management Feature
@@ -62,14 +64,35 @@ export 'features/agent_chat/domain/usecases/load_history.dart';
 // Presentation
 export 'features/agent_chat/presentation/bloc/agent_chat_bloc.dart';
 export 'features/agent_chat/presentation/widgets/ai_assistant_panel.dart';
-export 'features/agent_chat/presentation/widgets/chat_view.dart';
+export 'features/agent_chat/presentation/pages/chat_page.dart';
 
 // ============================================================================
-// Session Management Widgets
+// Session Management Presentation
 // ============================================================================
 
-export 'features/session_management/presentation/widgets/session_list_view.dart';
-export 'features/session_management/presentation/widgets/session_manager_widget.dart';
+export 'features/session_management/presentation/pages/session_list_page.dart';
+export 'features/session_management/presentation/molecules/session_card.dart';
+
+// ============================================================================
+// Authentication Presentation
+// ============================================================================
+
+export 'features/authentication/presentation/bloc/auth_bloc.dart';
+export 'features/authentication/presentation/pages/login_page.dart';
+export 'features/authentication/presentation/widgets/auth_wrapper.dart';
+
+// ============================================================================
+// Shared Presentation Components
+// ============================================================================
+
+export 'features/shared/presentation/theme/app_theme.dart';
+export 'features/shared/presentation/atoms/buttons/primary_button.dart';
+export 'features/shared/presentation/molecules/feedback/empty_state.dart';
+export 'features/shared/presentation/molecules/cards/base_card.dart';
+export 'features/shared/utils/extensions/context_extensions.dart';
+export 'features/shared/utils/extensions/agent_type_extensions.dart';
+export 'features/shared/utils/formatters/date_formatter.dart';
+export 'features/shared/utils/formatters/agent_formatter.dart';
 
 // ============================================================================
 // Tool Execution Widgets

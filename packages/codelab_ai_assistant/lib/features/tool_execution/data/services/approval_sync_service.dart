@@ -1,9 +1,9 @@
 // Сервис синхронизации запросов на подтверждение с сервером
+import 'package:dio/dio.dart';
 import 'package:logger/logger.dart';
 import '../../../agent_chat/data/datasources/gateway_api.dart';
 import '../../domain/entities/tool_approval.dart';
 import '../../domain/entities/tool_call.dart';
-import '../models/pending_approvals_response.dart';
 
 /// Сервис для синхронизации запросов на подтверждение с сервером
 ///
@@ -52,14 +52,29 @@ class ApprovalSyncService {
           requestedAt: DateTime.parse(approvalData.createdAt),
         );
       }).toList();
-    } catch (e, stackTrace) {
+    } on DioException catch (e, stackTrace) {
+      // 404 - это нормальная ситуация для новых сессий или сессий без pending approvals
+      if (e.response?.statusCode == 404) {
+        _logger.d('No pending approvals found for session: $sessionId (404)');
+        return [];
+      }
+      
+      // Для других ошибок логируем как ошибку
       _logger.e(
-        'Failed to fetch pending approvals: $e',
+        'Failed to fetch pending approvals: ${e.message}',
         error: e,
         stackTrace: stackTrace,
       );
       // Возвращаем пустой список вместо выброса исключения
       // чтобы не блокировать подключение к сессии
+      return [];
+    } catch (e, stackTrace) {
+      // Обработка других типов ошибок
+      _logger.e(
+        'Unexpected error fetching pending approvals: $e',
+        error: e,
+        stackTrace: stackTrace,
+      );
       return [];
     }
   }
