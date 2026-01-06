@@ -230,29 +230,37 @@ class SessionListPage extends StatelessWidget {
           child: ListView.builder(
             padding: AppSpacing.paddingMd, // ✅ Тема
             itemCount: sessions.length,
+            // ✅ Оптимизация производительности
+            addAutomaticKeepAlives: false,
+            addRepaintBoundaries: true,
+            cacheExtent: 100,
             itemBuilder: (context, index) {
               final session = sessions[index];
               final isCurrent = session.id == currentSessionId;
 
               // ✅ Использование переиспользуемого компонента SessionCard
-              return Padding(
-                padding: AppSpacing.paddingVerticalSm, // ✅ Тема
-                child: SessionCard(
-                  session: session,
-                  isCurrent: isCurrent,
-                  onTap: isCurrent
-                      ? null
-                      : () {
-                          // ✅ Сразу вызываем callback, чтобы избежать показа loader
-                          onSessionSelected(session);
-                          // Затем отправляем событие в bloc для обновления состояния
-                          sessionManagerBloc.add(
-                            SessionManagerEvent.selectSession(session.id),
-                          );
-                        },
-                  onDelete: isCurrent
-                      ? null
-                      : () => _confirmDelete(context, session),
+              // ✅ RepaintBoundary для изоляции перерисовки каждого элемента
+              return RepaintBoundary(
+                child: Padding(
+                  key: ValueKey(session.id), // ✅ Ключ для оптимизации rebuild
+                  padding: AppSpacing.paddingVerticalSm, // ✅ Тема
+                  child: SessionCard(
+                    session: session,
+                    isCurrent: isCurrent,
+                    onTap: isCurrent
+                        ? null
+                        : () {
+                            // ✅ Сразу вызываем callback, чтобы избежать показа loader
+                            onSessionSelected(session);
+                            // Затем отправляем событие в bloc для обновления состояния
+                            sessionManagerBloc.add(
+                              SessionManagerEvent.selectSession(session.id),
+                            );
+                          },
+                    onDelete: isCurrent
+                        ? null
+                        : () => _confirmDelete(context, session),
+                  ),
                 ),
               );
             },

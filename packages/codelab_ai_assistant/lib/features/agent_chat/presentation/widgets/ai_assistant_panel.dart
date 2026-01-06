@@ -7,9 +7,7 @@ import '../bloc/agent_chat_bloc.dart';
 import '../../../authentication/presentation/bloc/auth_bloc.dart';
 import '../../../authentication/presentation/widgets/auth_wrapper.dart';
 import '../../../session_management/presentation/bloc/session_manager_bloc.dart';
-import '../../../session_management/presentation/widgets/session_list_view.dart';
 import '../../../session_management/presentation/pages/session_list_page.dart';
-import 'chat_view.dart';
 import '../pages/chat_page.dart';
 
 /// Главная панель AI Assistant с навигацией между списком сессий и чатом
@@ -84,7 +82,7 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
   Widget _buildContent() {
     // Если SessionManagerBloc не доступен, показываем только чат
     if (_sessionManagerBloc == null) {
-      return ChatView(
+      return ChatPage(
         bloc: widget.bloc,
         onBackToSessions: () {
           // Нет списка сессий, ничего не делаем
