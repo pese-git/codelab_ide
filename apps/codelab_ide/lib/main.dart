@@ -24,11 +24,14 @@ void main() async {
   // Инициализировать SharedPreferences для сохранения сессий
   final sharedPreferences = await SharedPreferences.getInstance();
 
+  // Загрузить сохраненный baseUrl из SharedPreferences
+  final savedBaseUrl = sharedPreferences.getString('server_base_url');
+
   CherryPick.openRootScope().installModules([
     AppDiModule(),
     EngineDiModule(),
     AiAssistantModule(
-      baseUrl: 'https://codelab.openidealab.com',
+      baseUrl: savedBaseUrl ?? 'https://codelab.openidealab.com',
       //baseUrl: 'http://localhost:80',
       sharedPreferences: sharedPreferences,
     ),

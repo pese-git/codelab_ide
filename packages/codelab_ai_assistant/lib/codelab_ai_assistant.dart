@@ -74,6 +74,12 @@ export 'features/session_management/presentation/pages/session_list_page.dart';
 export 'features/session_management/presentation/molecules/session_card.dart';
 
 // ============================================================================
+// Server Settings Feature
+// ============================================================================
+
+export 'features/server_settings/server_settings.dart';
+
+// ============================================================================
 // Authentication Presentation
 // ============================================================================
 

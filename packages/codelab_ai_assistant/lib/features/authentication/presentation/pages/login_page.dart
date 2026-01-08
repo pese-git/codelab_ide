@@ -18,7 +18,13 @@ import '../bloc/auth_bloc.dart';
 /// - Консистентный дизайн
 /// - Исправлен бесконечный loader при resize
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  /// Callback, вызываемый при нажатии на кнопку "Настройки сервера"
+  final VoidCallback? onServerSettingsRequested;
+
+  const LoginPage({
+    super.key,
+    this.onServerSettingsRequested,
+  });
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -39,21 +45,24 @@ class _LoginPageState extends State<LoginPage> {
   void _handleLogin() {
     if (_formKey.currentState?.validate() ?? false) {
       context.read<AuthBloc>().add(
-            AuthEvent.login(
-              username: _usernameController.text.trim(),
-              password: _passwordController.text,
-            ),
-          );
+        AuthEvent.login(
+          username: _usernameController.text.trim(),
+          password: _passwordController.text,
+        ),
+      );
     }
+  }
+
+  void _openServerSettings() {
+    // Вызываем callback, если он предоставлен
+    widget.onServerSettingsRequested?.call();
   }
 
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<AuthBloc, AuthState>(
       listener: (context, state) {
-        state.whenOrNull(
-          error: (message) => context.showError(message),
-        );
+        state.whenOrNull(error: (message) => context.showError(message));
       },
       builder: (context, state) {
         final isLoading = state.maybeWhen(
@@ -114,6 +123,22 @@ class _LoginPageState extends State<LoginPage> {
                     isLoading: isLoading,
                     child: const Text('Войти'),
                   ),
+                  
+                  // Server settings button (показывается только если callback предоставлен)
+                  if (widget.onServerSettingsRequested != null) ...[
+                    AppSpacing.gapVerticalMd,
+                    Center(
+                      child: HyperlinkButton(
+                        onPressed: isLoading ? null : _openServerSettings,
+                        child: Text(
+                          'Настройки сервера',
+                          style: AppTypography.bodySmall.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

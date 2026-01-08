@@ -12,11 +12,13 @@ import '../pages/login_page.dart';
 class AuthWrapper extends StatefulWidget {
   final Widget child;
   final VoidCallback? onAuthenticated;
+  final VoidCallback? onServerSettingsRequested;
 
   const AuthWrapper({
     super.key,
     required this.child,
     this.onAuthenticated,
+    this.onServerSettingsRequested,
   });
 
   @override
@@ -90,19 +92,25 @@ class _AuthWrapperState extends State<AuthWrapper> {
           // Пользователь не авторизован - показываем новую страницу авторизации
           unauthenticated: () {
             _logger.d('[AuthWrapper] 🔐 Showing unauthenticated state with LoginPage');
-            return const LoginPage();
+            return LoginPage(
+              onServerSettingsRequested: widget.onServerSettingsRequested,
+            );
           },
 
           // Процесс авторизации - показываем новую страницу с индикатором загрузки
           authenticating: () {
             _logger.d('[AuthWrapper] 🔄 Showing authenticating state with LoginPage');
-            return const LoginPage();
+            return LoginPage(
+              onServerSettingsRequested: widget.onServerSettingsRequested,
+            );
           },
 
           // Ошибка авторизации - показываем новую страницу с ошибкой
           error: (message) {
             _logger.e('[AuthWrapper] ❌ Showing error state with LoginPage: $message');
-            return const LoginPage();
+            return LoginPage(
+              onServerSettingsRequested: widget.onServerSettingsRequested,
+            );
           },
         );
       },
