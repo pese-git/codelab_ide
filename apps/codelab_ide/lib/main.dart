@@ -28,11 +28,9 @@ void main() async {
     AppDiModule(),
     EngineDiModule(),
     AiAssistantModule(
-      gatewayBaseUrl: 'http://localhost:80/api/v1',
-      authServiceUrl: 'http://localhost:80', // OAuth эндпоинт: /oauth/token
-      internalApiKey: 'my-super-secret-key',
+      baseUrl: 'https://codelab.openidealab.com',
+      //baseUrl: 'http://localhost:80',
       sharedPreferences: sharedPreferences,
-      useOAuth: true, // Включаем OAuth авторизацию
     ),
   ]);
   // Настройка CodelabLogger вместо initLogger

@@ -13,6 +13,7 @@ import 'features/agent_chat/data/datasources/gateway_api.dart';
 // Authentication
 import 'features/authentication/data/datasources/auth_remote_datasource.dart';
 import 'features/authentication/data/datasources/auth_local_datasource.dart';
+import 'features/authentication/data/datasources/auth_memory_datasource.dart';
 import 'features/authentication/data/repositories/auth_repository_impl.dart';
 import 'features/authentication/domain/repositories/auth_repository.dart';
 import 'features/authentication/data/services/auth_interceptor.dart';
@@ -66,22 +67,32 @@ import 'features/tool_execution/data/services/tool_approval_service_impl.dart';
 /// 4. Use Cases
 /// 5. BLoCs (в будущем)
 class AiAssistantModule extends Module {
-  final String gatewayBaseUrl;
-  final String authServiceUrl;
-  final String internalApiKey;
+  final String baseUrl;
   final SharedPreferences? sharedPreferences;
-  final bool useOAuth;
 
   AiAssistantModule({
-    this.gatewayBaseUrl = 'http://localhost:8000',
-    this.authServiceUrl = 'http://localhost', // OAuth эндпоинт: /oauth/token
-    this.internalApiKey = 'change-me-internal-key',
+    this.baseUrl = 'http://localhost',
     this.sharedPreferences,
-    this.useOAuth = false,
   });
 
   @override
   void builder(Scope currentScope) {
+    // ========================================================================
+    // Configuration - URL endpoints
+    // ========================================================================
+
+    // Gateway API URL (базовый URL + /api/v1)
+    bind<String>()
+        .withName('gatewayBaseUrl')
+        .toProvide(() => '$baseUrl/api/v1')
+        .singleton();
+
+    // Auth Service URL (базовый URL, OAuth эндпоинт: /oauth/token)
+    bind<String>()
+        .withName('authServiceUrl')
+        .toProvide(() => baseUrl)
+        .singleton();
+
     // ========================================================================
     // External Dependencies
     // ========================================================================
@@ -112,41 +123,40 @@ class AiAssistantModule extends Module {
     // Authentication Feature - Data Sources (создаем ДО AuthInterceptor)
     // ========================================================================
 
-    if (sharedPreferences != null) {
-      // Data Sources (с автоматической очисткой ресурсов)
-      bind<AuthLocalDataSource>()
-          .toProvide(
-            () => AuthLocalDataSourceImpl(
-              currentScope.resolve<SharedPreferences>(),
-            ),
-          )
-          .singleton(); // Автоматически вызовет dispose() при уничтожении scope
+    // AuthLocalDataSource - используем SharedPreferences если доступен, иначе память
+    bind<AuthLocalDataSource>()
+        .toProvide(
+          () => sharedPreferences != null
+              ? AuthLocalDataSourceImpl(
+                  currentScope.resolve<SharedPreferences>(),
+                )
+              : AuthMemoryDataSourceImpl(),
+        )
+        .singleton(); // Автоматически вызовет dispose() при уничтожении scope
 
-      bind<AuthRemoteDataSource>().toProvide(() {
-        // Создаем отдельный Dio для auth запросов (без interceptor'ов)
-        final authDio = Dio(
-          BaseOptions(
-            connectTimeout: const Duration(seconds: 30),
-            receiveTimeout: const Duration(seconds: 30),
-          ),
-        );
-        return AuthRemoteDataSourceImpl(
-          dio: authDio,
-          authServiceUrl: authServiceUrl,
-        );
-      }).singleton();
-    }
+    // AuthRemoteDataSource - всегда создаем
+    bind<AuthRemoteDataSource>().toProvide(() {
+      // Создаем отдельный Dio для auth запросов (без interceptor'ов)
+      final authDio = Dio(
+        BaseOptions(
+          connectTimeout: const Duration(seconds: 30),
+          receiveTimeout: const Duration(seconds: 30),
+        ),
+      );
+      return AuthRemoteDataSourceImpl(
+        dio: authDio,
+        authServiceUrl: currentScope.resolve<String>(named: 'authServiceUrl'),
+      );
+    }).singleton();
 
-    // AuthInterceptor (если используется OAuth) - использует те же data sources
-    if (useOAuth && sharedPreferences != null) {
-      bind<AuthInterceptor>().toProvide(() {
-        return AuthInterceptor(
-          localDataSource: currentScope.resolve<AuthLocalDataSource>(),
-          remoteDataSource: currentScope.resolve<AuthRemoteDataSource>(),
-          logger: currentScope.resolve<Logger>(),
-        );
-      }).singleton();
-    }
+    // AuthInterceptor - всегда включен для JWT авторизации
+    bind<AuthInterceptor>().toProvide(() {
+      return AuthInterceptor(
+        localDataSource: currentScope.resolve<AuthLocalDataSource>(),
+        remoteDataSource: currentScope.resolve<AuthRemoteDataSource>(),
+        logger: currentScope.resolve<Logger>(),
+      );
+    }).singleton();
 
     // Dio HTTP client
     bind<Dio>().toProvide(() {
@@ -157,22 +167,10 @@ class AiAssistantModule extends Module {
         ),
       );
 
-      // Если используется OAuth, добавляем AuthInterceptor
-      if (useOAuth && sharedPreferences != null) {
-        final authInterceptor = currentScope.resolve<AuthInterceptor>();
-        authInterceptor.setDio(dio); // Устанавливаем ссылку на Dio
-        dio.interceptors.add(authInterceptor);
-      } else {
-        // Fallback на Internal auth interceptor
-        dio.interceptors.add(
-          InterceptorsWrapper(
-            onRequest: (options, handler) {
-              options.headers['X-Internal-Auth'] = internalApiKey;
-              return handler.next(options);
-            },
-          ),
-        );
-      }
+      // Добавляем AuthInterceptor для JWT авторизации (всегда включен)
+      final authInterceptor = currentScope.resolve<AuthInterceptor>();
+      authInterceptor.setDio(dio); // Устанавливаем ссылку на Dio
+      dio.interceptors.add(authInterceptor);
 
       return dio;
     }).singleton();
@@ -187,7 +185,7 @@ class AiAssistantModule extends Module {
         .toProvide(
           () => GatewayApi(
             dio: currentScope.resolve<Dio>(),
-            baseUrl: gatewayBaseUrl,
+            baseUrl: currentScope.resolve<String>(named: 'gatewayBaseUrl'),
           ),
         )
         .singleton();
@@ -196,17 +194,15 @@ class AiAssistantModule extends Module {
     // Authentication Feature - Repository
     // ========================================================================
 
-    if (sharedPreferences != null) {
-      // Repository (использует data sources, созданные выше)
-      bind<AuthRepository>()
-          .toProvide(
-            () => AuthRepositoryImpl(
-              remoteDataSource: currentScope.resolve<AuthRemoteDataSource>(),
-              localDataSource: currentScope.resolve<AuthLocalDataSource>(),
-            ),
-          )
-          .singleton();
-    }
+    // Repository (использует data sources, созданные выше)
+    bind<AuthRepository>()
+        .toProvide(
+          () => AuthRepositoryImpl(
+            remoteDataSource: currentScope.resolve<AuthRemoteDataSource>(),
+            localDataSource: currentScope.resolve<AuthLocalDataSource>(),
+          ),
+        )
+        .singleton();
 
     // ========================================================================
     // Session Management Feature
@@ -217,7 +213,7 @@ class AiAssistantModule extends Module {
         .toProvide(
           () => SessionRemoteDataSourceImpl(
             dio: currentScope.resolve<Dio>(),
-            baseUrl: gatewayBaseUrl,
+            baseUrl: currentScope.resolve<String>(named: 'gatewayBaseUrl'),
           ),
         )
         .singleton();
@@ -332,7 +328,9 @@ class AiAssistantModule extends Module {
     bind<AgentRemoteDataSource>()
         .toProvide(
           () => AgentRemoteDataSourceImpl(
-            gatewayUrl: gatewayBaseUrl.replaceFirst('http', 'ws'),
+            gatewayUrl: currentScope
+                .resolve<String>(named: 'gatewayBaseUrl')
+                .replaceFirst('http', 'ws'),
           ),
         )
         .singleton();
@@ -376,19 +374,17 @@ class AiAssistantModule extends Module {
     // Presentation Layer (BLoCs)
     // ========================================================================
 
-    // AuthBloc
-    if (sharedPreferences != null) {
-      bind<AuthBloc>().toProvide(() {
-        final authBloc = AuthBloc(
-          authRepository: currentScope.resolve<AuthRepository>(),
-          logger: currentScope.resolve<Logger>(),
-          tokenExpiredStream: useOAuth
-              ? currentScope.resolve<AuthLocalDataSource>().tokenExpiredStream
-              : null,
-        );
-        return authBloc;
-      });
-    }
+    // AuthBloc - всегда создается для JWT авторизации
+    bind<AuthBloc>().toProvide(() {
+      final authBloc = AuthBloc(
+        authRepository: currentScope.resolve<AuthRepository>(),
+        logger: currentScope.resolve<Logger>(),
+        tokenExpiredStream: currentScope
+            .resolve<AuthLocalDataSource>()
+            .tokenExpiredStream,
+      );
+      return authBloc;
+    });
 
     // SessionManagerBloc
     if (sharedPreferences != null) {
