@@ -28,4 +28,10 @@ abstract class ServerSettingsRepository {
   /// Проверяет доступность сервера по указанному URL
   /// Возвращает Either с Failure или bool (true если сервер доступен)
   Future<Either<Failure, bool>> testConnection(String baseUrl);
+
+  /// Очистить настройки сервера
+  ///
+  /// Удаляет сохраненные настройки из локального хранилища
+  /// Возвращает Either с Failure или Unit при успехе
+  Future<Either<Failure, Unit>> clearSettings();
 }

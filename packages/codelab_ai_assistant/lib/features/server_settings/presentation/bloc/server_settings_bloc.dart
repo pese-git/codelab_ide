@@ -7,6 +7,7 @@ import '../../domain/entities/server_settings.dart';
 import '../../domain/usecases/load_settings.dart';
 import '../../domain/usecases/save_settings.dart';
 import '../../domain/usecases/test_connection.dart';
+import '../../domain/usecases/clear_settings.dart';
 
 part 'server_settings_bloc.freezed.dart';
 
@@ -72,16 +73,19 @@ class ServerSettingsBloc
   final LoadSettingsUseCase _loadSettings;
   final SaveSettingsUseCase _saveSettings;
   final TestConnectionUseCase _testConnection;
+  final ClearSettingsUseCase _clearSettings;
   final Logger _logger;
 
   ServerSettingsBloc({
     required LoadSettingsUseCase loadSettings,
     required SaveSettingsUseCase saveSettings,
     required TestConnectionUseCase testConnection,
+    required ClearSettingsUseCase clearSettings,
     required Logger logger,
   }) : _loadSettings = loadSettings,
        _saveSettings = saveSettings,
        _testConnection = testConnection,
+       _clearSettings = clearSettings,
        _logger = logger,
        super(const ServerSettingsState.initial()) {
     on<LoadSettings>(_onLoadSettings);
@@ -222,6 +226,18 @@ class ServerSettingsBloc
     Emitter<ServerSettingsState> emit,
   ) async {
     _logger.d('[ServerSettingsBloc] 🗑️ Clearing settings...');
-    emit(const ServerSettingsState.notConfigured());
+    
+    final result = await _clearSettings();
+    
+    result.fold(
+      (failure) {
+        _logger.e('[ServerSettingsBloc] ❌ Failed to clear settings: ${failure.message}');
+        emit(ServerSettingsState.error(message: failure.message));
+      },
+      (_) {
+        _logger.i('[ServerSettingsBloc] ✅ Settings cleared successfully');
+        emit(const ServerSettingsState.notConfigured());
+      },
+    );
   }
 }

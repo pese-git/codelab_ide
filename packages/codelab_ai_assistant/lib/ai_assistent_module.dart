@@ -123,62 +123,6 @@ class AiAssistantModule extends Module {
         .singleton();
 
     // ========================================================================
-    // Server Settings Feature
-    // ========================================================================
-
-    // Data sources
-    bind<ServerSettingsLocalDataSource>().toProvide(
-      () => ServerSettingsLocalDataSourceImpl(
-        currentScope.resolve<SharedPreferences>(),
-      ),
-    ).singleton();
-
-    bind<ServerSettingsRemoteDataSource>().toProvide(
-      () => ServerSettingsRemoteDataSourceImpl(
-        dio: currentScope.resolve<Dio>(),
-        logger: currentScope.resolve<Logger>(),
-      ),
-    ).singleton();
-
-    // Repository
-    bind<ServerSettingsRepository>().toProvide(
-      () => ServerSettingsRepositoryImpl(
-        localDataSource: currentScope.resolve<ServerSettingsLocalDataSource>(),
-        remoteDataSource: currentScope.resolve<ServerSettingsRemoteDataSource>(),
-        logger: currentScope.resolve<Logger>(),
-      ),
-    ).singleton();
-
-    // Use cases
-    bind<LoadSettingsUseCase>().toProvide(
-      () => LoadSettingsUseCase(
-        currentScope.resolve<ServerSettingsRepository>(),
-      ),
-    ).singleton();
-
-    bind<SaveSettingsUseCase>().toProvide(
-      () => SaveSettingsUseCase(
-        currentScope.resolve<ServerSettingsRepository>(),
-      ),
-    ).singleton();
-
-    bind<TestConnectionUseCase>().toProvide(
-      () => TestConnectionUseCase(
-        currentScope.resolve<ServerSettingsRepository>(),
-      ),
-    ).singleton();
-
-    // BLoC
-    bind<ServerSettingsBloc>().toProvide(
-      () => ServerSettingsBloc(
-        loadSettings: currentScope.resolve<LoadSettingsUseCase>(),
-        saveSettings: currentScope.resolve<SaveSettingsUseCase>(),
-        testConnection: currentScope.resolve<TestConnectionUseCase>(),
-        logger: currentScope.resolve<Logger>(),
-      ),
-    );
-
-    // ========================================================================
     // Authentication Feature - Data Sources (создаем ДО AuthInterceptor)
     // ========================================================================
 
@@ -248,6 +192,69 @@ class AiAssistantModule extends Module {
           ),
         )
         .singleton();
+
+    // ========================================================================
+    // Server Settings Feature
+    // ========================================================================
+
+    // Data sources
+    bind<ServerSettingsLocalDataSource>().toProvide(
+      () => ServerSettingsLocalDataSourceImpl(
+        currentScope.resolve<SharedPreferences>(),
+      ),
+    ).singleton();
+
+    bind<ServerSettingsRemoteDataSource>().toProvide(
+      () => ServerSettingsRemoteDataSourceImpl(
+        dio: currentScope.resolve<Dio>(),
+        logger: currentScope.resolve<Logger>(),
+      ),
+    ).singleton();
+
+    // Repository
+    bind<ServerSettingsRepository>().toProvide(
+      () => ServerSettingsRepositoryImpl(
+        localDataSource: currentScope.resolve<ServerSettingsLocalDataSource>(),
+        remoteDataSource: currentScope.resolve<ServerSettingsRemoteDataSource>(),
+        logger: currentScope.resolve<Logger>(),
+      ),
+    ).singleton();
+
+    // Use cases
+    bind<LoadSettingsUseCase>().toProvide(
+      () => LoadSettingsUseCase(
+        currentScope.resolve<ServerSettingsRepository>(),
+      ),
+    ).singleton();
+
+    bind<SaveSettingsUseCase>().toProvide(
+      () => SaveSettingsUseCase(
+        currentScope.resolve<ServerSettingsRepository>(),
+      ),
+    ).singleton();
+
+    bind<TestConnectionUseCase>().toProvide(
+      () => TestConnectionUseCase(
+        currentScope.resolve<ServerSettingsRepository>(),
+      ),
+    ).singleton();
+
+    bind<ClearSettingsUseCase>().toProvide(
+      () => ClearSettingsUseCase(
+        currentScope.resolve<ServerSettingsRepository>(),
+      ),
+    ).singleton();
+
+    // BLoC
+    bind<ServerSettingsBloc>().toProvide(
+      () => ServerSettingsBloc(
+        loadSettings: currentScope.resolve<LoadSettingsUseCase>(),
+        saveSettings: currentScope.resolve<SaveSettingsUseCase>(),
+        testConnection: currentScope.resolve<TestConnectionUseCase>(),
+        clearSettings: currentScope.resolve<ClearSettingsUseCase>(),
+        logger: currentScope.resolve<Logger>(),
+      ),
+    );
 
     // ========================================================================
     // Authentication Feature - Repository

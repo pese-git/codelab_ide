@@ -35,12 +35,6 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
     _initSessionManager();
   }
 
-  @override
-  void dispose() {
-    _serverSettingsBloc.close();
-    super.dispose();
-  }
-
   void _initSessionManager() {
     try {
       // Получить SessionManagerBloc из DI

@@ -103,4 +103,19 @@ class ServerSettingsRepositoryImpl implements ServerSettingsRepository {
       return left(Failure.network('Connection test failed: $e'));
     }
   }
+
+  @override
+  Future<Either<Failure, Unit>> clearSettings() async {
+    try {
+      _logger.d('[ServerSettingsRepository] Clearing settings...');
+      
+      await _localDataSource.clearBaseUrl();
+      
+      _logger.i('[ServerSettingsRepository] ✅ Settings cleared successfully');
+      return right(unit);
+    } catch (e) {
+      _logger.e('[ServerSettingsRepository] ❌ Failed to clear settings: $e');
+      return left(Failure.cache('Failed to clear settings: $e'));
+    }
+  }
 }

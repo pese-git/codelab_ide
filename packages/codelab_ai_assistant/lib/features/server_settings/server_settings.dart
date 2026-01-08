@@ -7,6 +7,7 @@ export 'domain/repositories/server_settings_repository.dart';
 export 'domain/usecases/load_settings.dart';
 export 'domain/usecases/save_settings.dart';
 export 'domain/usecases/test_connection.dart';
+export 'domain/usecases/clear_settings.dart';
 
 // Data Layer
 export 'data/models/server_settings_model.dart';
