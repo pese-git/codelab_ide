@@ -18,7 +18,9 @@ class ServerSettingsPage extends StatefulWidget {
 }
 
 class _ServerSettingsPageState extends State<ServerSettingsPage> {
-  final _urlController = TextEditingController();
+  final _urlController = TextEditingController(
+    text: 'https://codelab.openidealab.com',
+  );
   final _formKey = GlobalKey<FormState>();
 
   @override
@@ -89,7 +91,7 @@ class _ServerSettingsPageState extends State<ServerSettingsPage> {
                   TextInputField(
                     controller: _urlController,
                     label: 'Base URL сервера',
-                    placeholder: 'http://localhost:8000',
+                    placeholder: 'https://codelab.openidealab.com',
                     enabled: !isLoading,
                     autofocus: true,
                     validator: _validateUrl,
