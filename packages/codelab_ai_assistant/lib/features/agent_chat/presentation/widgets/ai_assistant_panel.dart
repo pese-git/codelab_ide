@@ -8,6 +8,7 @@ import '../../../authentication/presentation/bloc/auth_bloc.dart';
 import '../../../authentication/presentation/widgets/auth_wrapper.dart';
 import '../../../session_management/presentation/bloc/session_manager_bloc.dart';
 import '../../../session_management/presentation/pages/session_list_page.dart';
+import '../../../server_settings/server_settings.dart';
 import '../pages/chat_page.dart';
 
 /// Главная панель AI Assistant с навигацией между списком сессий и чатом
@@ -25,10 +26,12 @@ class AiAssistantPanel extends StatefulWidget {
 class _AiAssistantPanelState extends State<AiAssistantPanel> {
   bool _showChat = false;
   SessionManagerBloc? _sessionManagerBloc;
+  late final ServerSettingsBloc _serverSettingsBloc;
 
   @override
   void initState() {
     super.initState();
+    _serverSettingsBloc = CherryPick.openRootScope().resolve<ServerSettingsBloc>();
     _initSessionManager();
   }
 
@@ -59,23 +62,38 @@ class _AiAssistantPanelState extends State<AiAssistantPanel> {
 
   @override
   Widget build(BuildContext context) {
-    // Оборачиваем в AuthWrapper для проверки авторизации
+    // Оборачиваем в BlocProvider для ServerSettingsBloc -> ServerSettingsWrapper -> AuthWrapper
+    // для правильного порядка инициализации
     try {
       final authBloc = CherryPick.openRootScope().resolve<AuthBloc>();
 
-      return BlocProvider<AuthBloc>.value(
-        value: authBloc,
-        child: AuthWrapper(
-          onAuthenticated: () {
-            // После успешной авторизации перезагружаем список сессий
-            _sessionManagerBloc?.add(const SessionManagerEvent.loadSessions());
-          },
-          child: _buildContent(),
+      return MultiBlocProvider(
+        providers: [
+          BlocProvider<ServerSettingsBloc>.value(value: _serverSettingsBloc),
+          BlocProvider<AuthBloc>.value(value: authBloc),
+        ],
+        child: ServerSettingsWrapper(
+          child: AuthWrapper(
+            onAuthenticated: () {
+              // После успешной авторизации перезагружаем список сессий
+              _sessionManagerBloc?.add(const SessionManagerEvent.loadSessions());
+            },
+            onServerSettingsRequested: () {
+              // При нажатии на "Настройки сервера" отправляем событие clearSettings
+              _serverSettingsBloc.add(const ServerSettingsEvent.clearSettings());
+            },
+            child: _buildContent(),
+          ),
         ),
       );
     } catch (e) {
-      // AuthBloc не зарегистрирован (OAuth отключен), показываем контент напрямую
-      return _buildContent();
+      // AuthBloc не зарегистрирован (OAuth отключен), показываем контент с ServerSettingsWrapper
+      return BlocProvider<ServerSettingsBloc>.value(
+        value: _serverSettingsBloc,
+        child: ServerSettingsWrapper(
+          child: _buildContent(),
+        ),
+      );
     }
   }
 
