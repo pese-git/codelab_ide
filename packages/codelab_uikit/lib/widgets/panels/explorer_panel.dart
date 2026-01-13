@@ -1,4 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
 
 import '../../models/file_node.dart';
 
@@ -90,9 +92,37 @@ class ExplorerPanelState extends State<ExplorerPanel> {
 
     return TreeView(
       items: [_fileNodeToTreeViewItem(_fileTree!)],
-      selectionMode: TreeViewSelectionMode.single,
+      selectionMode: .single,
       scrollPrimary: true,
       shrinkWrap: false,
+      gesturesBuilder: (item) {
+        final gestures = <Type, GestureRecognizerFactory>{};
+
+        gestures[TapGestureRecognizer] =
+            GestureRecognizerFactoryWithHandlers<TapGestureRecognizer>(
+              () => TapGestureRecognizer(debugOwner: this),
+              (TapGestureRecognizer instance) {
+                instance.onSecondaryTap = () {
+                  _showDialog(context, item);
+                };
+              },
+            );
+
+        return gestures;
+      },
+    );
+  }
+
+  void _showDialog(BuildContext context, TreeViewItem item) {
+    showAdaptiveDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) {
+        return AlertDialog.adaptive(
+          title: Text('Был нажат элемент списка правой кнопкой!'),
+          content: Text('Что нужно сделать c ${item.value} ?'),
+        );
+      },
     );
   }
 }
