@@ -56,9 +56,9 @@ class AgentSelector extends StatelessWidget {
 
   Widget _buildAgentOption(
     BuildContext context,
-    AgentType agent,
-    {required bool isSelected}
-  ) {
+    AgentType agent, {
+    required bool isSelected,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: ListTile(
@@ -70,20 +70,14 @@ class AgentSelector extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
           ),
           child: Center(
-            child: Text(
-              agent.icon,
-              style: const TextStyle(fontSize: 20),
-            ),
+            child: Text(agent.icon, style: const TextStyle(fontSize: 20)),
           ),
         ),
         title: Text(
           agent.displayName,
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
-        subtitle: Text(
-          agent.description,
-          style: const TextStyle(fontSize: 11),
-        ),
+        subtitle: Text(agent.description, style: const TextStyle(fontSize: 11)),
         onPressed: () {
           onAgentSelected(agent);
           Navigator.of(context).pop();
