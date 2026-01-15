@@ -94,6 +94,37 @@ sealed class WSMessage with _$WSMessage {
     String? feedback,
   }) = WSHITLDecision;
 
+  const factory WSMessage.planNotification({
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'plan_id') required String planId,
+    required String content,
+    required Map<String, dynamic> metadata,
+  }) = WSPlanNotification;
+
+  const factory WSMessage.planUpdate({
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'plan_id') required String planId,
+    required List<Map<String, dynamic>> steps,
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'current_step') String? currentStep,
+  }) = WSPlanUpdate;
+
+  const factory WSMessage.planProgress({
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'plan_id') required String planId,
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'step_id') required String stepId,
+    String? result,
+    required String status,
+  }) = WSPlanProgress;
+
+  const factory WSMessage.planApproval({
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'plan_id') required String planId,
+    required String decision, // "approve", "reject"
+    String? feedback,
+  }) = WSPlanApproval;
+
   factory WSMessage.fromJson(Map<String, dynamic> json) =>
       _$WSMessageFromJson(json);
 }

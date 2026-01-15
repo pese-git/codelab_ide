@@ -61,6 +61,30 @@ abstract class MessageModel with _$MessageModel {
     /// Причина переключения
     String? reason,
 
+    /// ID плана (для plan_notification, plan_update, plan_progress)
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'plan_id') String? planId,
+
+    /// Шаги плана (для plan_notification, plan_update)
+    List<Map<String, dynamic>>? steps,
+
+    /// Текущий шаг плана (для plan_update)
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'current_step') String? currentStep,
+
+    /// ID шага (для plan_progress)
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'step_id') String? stepId,
+
+    /// Статус шага (для plan_progress)
+    String? status,
+
+    /// Решение (для plan_approval)
+    String? decision,
+
+    /// Обратная связь (для plan_approval)
+    String? feedback,
+
     /// Метаданные
     Map<String, dynamic>? metadata,
   }) = _MessageModel;
@@ -105,6 +129,15 @@ abstract class MessageModel with _$MessageModel {
       meta['requires_approval'] = requiresApproval!;
     }
     
+    // Для сообщений планирования добавляем специфичные поля
+    if (type == 'plan_notification' || type == 'plan_update' || type == 'plan_progress') {
+      if (planId != null) meta['plan_id'] = planId!;
+      if (steps != null) meta['steps'] = steps!;
+      if (currentStep != null) meta['current_step'] = currentStep!;
+      if (stepId != null) meta['step_id'] = stepId!;
+      if (status != null) meta['status'] = status!;
+    }
+    
     return meta.isEmpty ? none() : some(meta);
   }
 
@@ -119,6 +152,9 @@ abstract class MessageModel with _$MessageModel {
       case 'tool_result':
         return MessageRole.tool;
       case 'error':
+      case 'plan_notification':
+      case 'plan_update':
+      case 'plan_progress':
         return MessageRole.system;
       default:
         return role == 'user' ? MessageRole.user : MessageRole.assistant;
@@ -177,8 +213,33 @@ abstract class MessageModel with _$MessageModel {
           message: content ?? error ?? 'Unknown error',
         );
 
+      case 'plan_notification':
+      case 'plan_update':
+      case 'plan_progress':
+        // Для сообщений планирования возвращаем текстовое представление
+        // В будущем можно создать отдельные типы MessageContent
+        return MessageContent.text(
+          text: _formatPlanMessage(),
+          isFinal: true,
+        );
+
       default:
         return MessageContent.text(text: content ?? '', isFinal: true);
+    }
+  }
+
+  /// Форматирует сообщение планирования для отображения
+  String _formatPlanMessage() {
+    switch (type) {
+      case 'plan_notification':
+        return '📋 План: ${content ?? ""}';
+      case 'plan_update':
+        final stepCount = steps?.length ?? 0;
+        return '🔄 Обновление плана: $stepCount шагов';
+      case 'plan_progress':
+        return '⚙️ Прогресс: шаг $stepId - $status';
+      default:
+        return content ?? '';
     }
   }
 

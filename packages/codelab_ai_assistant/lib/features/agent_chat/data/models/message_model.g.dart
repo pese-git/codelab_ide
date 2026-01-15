@@ -22,6 +22,15 @@ _MessageModel _$MessageModelFromJson(Map<String, dynamic> json) =>
       fromAgent: json['from_agent'] as String?,
       toAgent: json['to_agent'] as String?,
       reason: json['reason'] as String?,
+      planId: json['plan_id'] as String?,
+      steps: (json['steps'] as List<dynamic>?)
+          ?.map((e) => e as Map<String, dynamic>)
+          .toList(),
+      currentStep: json['current_step'] as String?,
+      stepId: json['step_id'] as String?,
+      status: json['status'] as String?,
+      decision: json['decision'] as String?,
+      feedback: json['feedback'] as String?,
       metadata: json['metadata'] as Map<String, dynamic>?,
     );
 
@@ -41,5 +50,12 @@ Map<String, dynamic> _$MessageModelToJson(_MessageModel instance) =>
       'from_agent': instance.fromAgent,
       'to_agent': instance.toAgent,
       'reason': instance.reason,
+      'plan_id': instance.planId,
+      'steps': instance.steps,
+      'current_step': instance.currentStep,
+      'step_id': instance.stepId,
+      'status': instance.status,
+      'decision': instance.decision,
+      'feedback': instance.feedback,
       'metadata': instance.metadata,
     };
