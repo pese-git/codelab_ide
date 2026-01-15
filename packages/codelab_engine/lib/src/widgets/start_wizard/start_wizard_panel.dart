@@ -34,7 +34,10 @@ class StartWizardPanel extends StatelessWidget {
         },
         listener: (context, state) async {
           if (state is ProjectOpenedState) {
-            onAction.call('');
+            // Проверяем, что проект действительно открыт (path не пустой)
+            if (state.project.path.isNotEmpty) {
+              onAction.call('project_opened');
+            }
           }
           // Обработка ошибок
           if (state is SelectProjectErrorState) {
