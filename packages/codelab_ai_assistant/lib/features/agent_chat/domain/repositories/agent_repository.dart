@@ -3,6 +3,7 @@ import 'package:fpdart/fpdart.dart';
 import '../../../../core/utils/type_defs.dart';
 import '../entities/message.dart';
 import '../entities/agent.dart';
+import '../entities/execution_plan.dart';
 
 /// Интерфейс репозитория для работы с AI агентами и сообщениями
 /// 
@@ -60,4 +61,54 @@ abstract class AgentRepository {
   
   /// Проверяет, подключен ли WebSocket
   bool get isConnected;
+  
+  // ===== Методы для работы с планами =====
+  
+  /// Подтверждает план выполнения
+  ///
+  /// Отправляет plan_approval с decision="approve" на сервер.
+  /// После подтверждения начинается выполнение подзадач.
+  ///
+  /// Args:
+  ///   planId: ID плана для подтверждения
+  ///   feedback: Опциональная обратная связь от пользователя
+  ///
+  /// Returns:
+  ///   [Right] с Unit при успехе или [Left] с ошибкой
+  FutureEither<Unit> approvePlan({
+    required String planId,
+    Option<String> feedback = const None(),
+  });
+  
+  /// Отклоняет план выполнения
+  ///
+  /// Отправляет plan_approval с decision="reject" на сервер.
+  /// После отклонения Orchestrator может предложить альтернативный подход.
+  ///
+  /// Args:
+  ///   planId: ID плана для отклонения
+  ///   reason: Причина отклонения
+  ///
+  /// Returns:
+  ///   [Right] с Unit при успехе или [Left] с ошибкой
+  FutureEither<Unit> rejectPlan({
+    required String planId,
+    required String reason,
+  });
+  
+  /// Получает активный план выполнения (если есть)
+  ///
+  /// Returns:
+  ///   [Right] с Option<ExecutionPlan> - Some если план активен, None если нет
+  ///   [Left] с ошибкой при проблемах получения
+  FutureEither<Option<ExecutionPlan>> getActivePlan();
+  
+  /// Подписывается на обновления плана
+  ///
+  /// Возвращает поток обновлений плана (plan_update, plan_progress).
+  /// Клиент может использовать этот поток для отслеживания прогресса.
+  ///
+  /// Returns:
+  ///   Stream с Either - каждое обновление может быть успешным или ошибкой
+  StreamEither<ExecutionPlan> watchPlanUpdates();
 }

@@ -6,8 +6,10 @@ import '../../../shared/presentation/molecules/feedback/empty_state.dart';
 import '../../../shared/utils/extensions/agent_type_extensions.dart';
 import '../bloc/agent_chat_bloc.dart';
 import '../molecules/message_bubble.dart';
+import '../molecules/plan_progress_indicator.dart';
 import '../organisms/chat_input_bar.dart';
 import '../organisms/chat_header.dart';
+import '../organisms/plan_overview_widget.dart';
 
 /// Новая страница чата с применением Atomic Design
 /// 
@@ -53,6 +55,8 @@ class _ChatPageState extends State<ChatPage> {
         final pendingApproval = state.pendingApproval.toNullable();
         final messages = state.messages;
         final currentAgentStr = state.currentAgent;
+        final activePlan = state.activePlan.toNullable();
+        final isPlanPending = state.isPlanPendingConfirmation;
 
         return Column(
           children: [
@@ -70,6 +74,36 @@ class _ChatPageState extends State<ChatPage> {
               },
               onLogout: widget.onLogout,
             ),
+
+            // Plan UI - показываем если есть активный план
+            if (activePlan != null) ...[
+              Padding(
+                padding: AppSpacing.paddingLg,
+                child: isPlanPending
+                    ? PlanOverviewWidget(
+                        plan: activePlan,
+                        onApprove: () {
+                          widget.bloc.add(
+                            AgentChatEvent.approvePlan(activePlan.planId),
+                          );
+                        },
+                        onReject: (reason) {
+                          widget.bloc.add(
+                            AgentChatEvent.rejectPlan(
+                              activePlan.planId,
+                              reason,
+                            ),
+                          );
+                        },
+                      )
+                    : !activePlan.isComplete
+                        ? PlanProgressIndicator(
+                            plan: activePlan,
+                            onTap: () => _showPlanDetails(context, activePlan),
+                          )
+                        : const SizedBox.shrink(),
+              ),
+            ],
 
             // Messages
             Expanded(
@@ -223,6 +257,29 @@ class _ChatPageState extends State<ChatPage> {
         );
       }
     });
+  }
+
+  void _showPlanDetails(BuildContext context, dynamic plan) {
+    showDialog(
+      context: context,
+      builder: (context) => ContentDialog(
+        constraints: const BoxConstraints(maxWidth: 700, maxHeight: 800),
+        title: const Text('Детали плана выполнения'),
+        content: SingleChildScrollView(
+          child: PlanOverviewWidget(
+            plan: plan,
+            onApprove: null, // Не показываем кнопки в диалоге
+            onReject: null,
+          ),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Закрыть'),
+          ),
+        ],
+      ),
+    );
   }
   // ✅ Удален _stringToUikitAgentType - теперь используется extension
 }

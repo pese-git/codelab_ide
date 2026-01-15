@@ -1,11 +1,13 @@
 // Реализация AgentRepository (Data слой)
 import 'package:dio/dio.dart';
 import 'package:fpdart/fpdart.dart';
+import 'dart:async';
 import 'dart:convert';
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/error/failures.dart';
 import '../../domain/entities/message.dart';
 import '../../domain/entities/agent.dart';
+import '../../domain/entities/execution_plan.dart';
 import '../../domain/repositories/agent_repository.dart';
 import '../datasources/agent_remote_datasource.dart';
 import '../models/message_model.dart';
@@ -21,6 +23,11 @@ import '../../../session_management/data/models/session_models.dart';
 class AgentRepositoryImpl implements AgentRepository {
   final AgentRemoteDataSource _remoteDataSource;
   final GatewayApi _gatewayApi;
+
+  // Поля для управления планами
+  Option<ExecutionPlan> _activePlan = none();
+  final _planUpdatesController = StreamController<Either<Failure, ExecutionPlan>>.broadcast();
+  StreamSubscription<Either<Failure, Message>>? _messageSubscription;
 
   AgentRepositoryImpl({
     required AgentRemoteDataSource remoteDataSource,
@@ -75,9 +82,13 @@ class AgentRepositoryImpl implements AgentRepository {
   @override
   Stream<Either<Failure, Message>> receiveMessages() {
     try {
-      return _remoteDataSource
+      final stream = _remoteDataSource
           .receiveMessages()
-          .map((model) => right<Failure, Message>(model.toEntity()))
+          .map((model) {
+            // Обрабатываем сообщения планирования
+            _handlePlanningMessage(model);
+            return right<Failure, Message>(model.toEntity());
+          })
           .handleError((error) {
             if (error is WebSocketException) {
               return left<Failure, Message>(Failure.network(error.message));
@@ -89,6 +100,8 @@ class AgentRepositoryImpl implements AgentRepository {
               Failure.unknown('Stream error: $error'),
             );
           });
+      
+      return stream;
     } catch (e) {
       return Stream.value(
         left(Failure.unknown('Failed to receive messages: $e')),
@@ -383,4 +396,235 @@ class AgentRepositoryImpl implements AgentRepository {
 
   @override
   bool get isConnected => _remoteDataSource.isConnected;
+
+  // ============================================================================
+  // Методы планирования
+  // ============================================================================
+
+  @override
+  Future<Either<Failure, Unit>> approvePlan({
+    required String planId,
+    Option<String> feedback = const None(),
+  }) async {
+    try {
+      final model = MessageModel(
+        type: 'plan_approval',
+        planId: planId,
+        decision: 'approve',
+        feedback: feedback.toNullable(),
+      );
+
+      await _remoteDataSource.sendMessage(model);
+
+      // Обновить локальное состояние
+      _activePlan = _activePlan.map((plan) => plan.approve());
+
+      return right(unit);
+    } on WebSocketException catch (e) {
+      return left(Failure.network(e.message));
+    } catch (e) {
+      return left(Failure.server('Failed to approve plan: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Unit>> rejectPlan({
+    required String planId,
+    required String reason,
+  }) async {
+    try {
+      final model = MessageModel(
+        type: 'plan_approval',
+        planId: planId,
+        decision: 'reject',
+        feedback: reason,
+      );
+
+      await _remoteDataSource.sendMessage(model);
+
+      // Очистить активный план
+      _activePlan = none();
+
+      return right(unit);
+    } on WebSocketException catch (e) {
+      return left(Failure.network(e.message));
+    } catch (e) {
+      return left(Failure.server('Failed to reject plan: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, Option<ExecutionPlan>>> getActivePlan() async {
+    return right(_activePlan);
+  }
+
+  @override
+  Stream<Either<Failure, ExecutionPlan>> watchPlanUpdates() {
+    return _planUpdatesController.stream;
+  }
+
+  // ============================================================================
+  // Обработчики сообщений планирования
+  // ============================================================================
+
+  /// Обрабатывает сообщения планирования из WebSocket
+  void _handlePlanningMessage(MessageModel model) {
+    try {
+      switch (model.type) {
+        case 'plan_notification':
+          _handlePlanNotification(model);
+          break;
+        case 'plan_update':
+          _handlePlanUpdate(model);
+          break;
+        case 'plan_progress':
+          _handlePlanProgress(model);
+          break;
+      }
+    } catch (e) {
+      print('[AgentRepository] Error handling planning message: $e');
+    }
+  }
+
+  /// Обрабатывает уведомление о новом плане
+  void _handlePlanNotification(MessageModel model) {
+    try {
+      final planId = model.planId;
+      final metadata = model.metadata;
+
+      if (planId == null || metadata == null) {
+        print('[AgentRepository] Invalid plan_notification: missing planId or metadata');
+        return;
+      }
+
+      // Извлекаем subtasks из metadata
+      final subtasksData = metadata['subtasks'] as List<dynamic>?;
+      if (subtasksData == null) {
+        print('[AgentRepository] Invalid plan_notification: missing subtasks');
+        return;
+      }
+
+      final subtasks = subtasksData.map((st) {
+        final stMap = st as Map<String, dynamic>;
+        return Subtask.pending(
+          id: stMap['id'] as String,
+          description: stMap['description'] as String,
+          agent: stMap['agent'] as String,
+          estimatedTime: stMap['estimated_time'] != null
+              ? some(stMap['estimated_time'] as String)
+              : none(),
+          dependencies: (stMap['dependencies'] as List<dynamic>?)
+                  ?.map((d) => d as String)
+                  .toList() ??
+              [],
+        );
+      }).toList();
+
+      final plan = ExecutionPlan.create(
+        planId: planId,
+        sessionId: _remoteDataSource.currentSessionId ?? '',
+        originalTask: metadata['original_task'] as String? ?? model.content ?? '',
+        subtasks: subtasks,
+      );
+
+      _activePlan = some(plan);
+      _planUpdatesController.add(right(plan));
+
+      print('[AgentRepository] Plan received: ${plan.planId} with ${plan.subtasks.length} subtasks');
+    } catch (e, stackTrace) {
+      print('[AgentRepository] Error parsing plan_notification: $e');
+      print('[AgentRepository] Stack trace: $stackTrace');
+      _planUpdatesController.add(
+        left(Failure.server('Failed to parse plan: $e')),
+      );
+    }
+  }
+
+  /// Обрабатывает обновление плана
+  void _handlePlanUpdate(MessageModel model) {
+    try {
+      final planId = model.planId;
+      if (planId == null) return;
+
+      _activePlan.fold(
+        () => print('[AgentRepository] Received plan_update but no active plan'),
+        (plan) {
+          if (plan.planId != planId) {
+            print('[AgentRepository] Plan ID mismatch: expected ${plan.planId}, got $planId');
+            return;
+          }
+
+          // Обновление плана (например, изменение списка подзадач)
+          // Пока просто логируем
+          print('[AgentRepository] Plan update received for: $planId');
+        },
+      );
+    } catch (e) {
+      print('[AgentRepository] Error handling plan_update: $e');
+    }
+  }
+
+  /// Обрабатывает прогресс выполнения подзадачи
+  void _handlePlanProgress(MessageModel model) {
+    try {
+      final planId = model.planId;
+      final stepId = model.stepId;
+      final statusStr = model.status;
+
+      if (planId == null || stepId == null || statusStr == null) {
+        print('[AgentRepository] Invalid plan_progress: missing required fields');
+        return;
+      }
+
+      _activePlan.fold(
+        () => print('[AgentRepository] Received plan_progress but no active plan'),
+        (plan) {
+          if (plan.planId != planId) {
+            print('[AgentRepository] Plan ID mismatch in progress update');
+            return;
+          }
+
+          ExecutionPlan updatedPlan;
+
+          switch (statusStr) {
+            case 'in_progress':
+              updatedPlan = plan.markSubtaskInProgress(stepId);
+              print('[AgentRepository] Subtask $stepId started');
+              break;
+            case 'completed':
+              updatedPlan = plan.markSubtaskCompleted(stepId);
+              print('[AgentRepository] Subtask $stepId completed');
+              break;
+            case 'failed':
+              final error = model.error ?? model.content ?? 'Unknown error';
+              updatedPlan = plan.markSubtaskFailed(stepId, error);
+              print('[AgentRepository] Subtask $stepId failed: $error');
+              break;
+            case 'skipped':
+              updatedPlan = plan.markSubtaskSkipped(stepId);
+              print('[AgentRepository] Subtask $stepId skipped');
+              break;
+            default:
+              print('[AgentRepository] Unknown status: $statusStr');
+              updatedPlan = plan;
+          }
+
+          _activePlan = some(updatedPlan);
+          _planUpdatesController.add(right(updatedPlan));
+        },
+      );
+    } catch (e, stackTrace) {
+      print('[AgentRepository] Error handling plan_progress: $e');
+      print('[AgentRepository] Stack trace: $stackTrace');
+      _planUpdatesController.add(
+        left(Failure.server('Failed to update plan progress: $e')),
+      );
+    }
+  }
+
+  /// Очищает ресурсы при закрытии
+  void dispose() {
+    _messageSubscription?.cancel();
+    _planUpdatesController.close();
+  }
 }
