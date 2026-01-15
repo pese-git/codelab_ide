@@ -105,9 +105,10 @@ class StartWizardBloc extends Bloc<StartWizardEvent, StartWizardState> {
           result.match(
             (error) => emit(StartWizardState.error(error.toString())),
             (project) {
-              _projectManagerService.setCurrentProject(project);
-              // Инициализируем LSP для проекта
+              // Устанавливаем проект только если он валидный (path не пустой)
               if (project.path.isNotEmpty) {
+                _projectManagerService.setCurrentProject(project);
+                // Инициализируем LSP для проекта
                 _lspService
                     .initialize(project.path)
                     .then((_) {
