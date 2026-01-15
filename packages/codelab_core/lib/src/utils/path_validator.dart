@@ -15,11 +15,17 @@ class PathValidator {
     '/usr/bin',
     '/usr/sbin',
     '/etc',
-    '/var',
-    '/private',
     'C:\\Windows',
     'C:\\Program Files',
     'C:\\Program Files (x86)',
+  ];
+  
+  /// Системные директории, которые разрешены (исключения)
+  static final List<String> _allowedSystemDirs = [
+    '/var/folders', // Временные директории на macOS
+    '/tmp',
+    '/private/tmp',
+    '/private/var/folders',
   ];
 
   /// Рабочая директория проекта
@@ -74,10 +80,13 @@ class PathValidator {
     }
     
     // Нормализация пути
-    final normalizedPath = p.normalize(cleanPath);
+    final normalizedPath = cleanPath.isEmpty ? '.' : p.normalize(cleanPath);
 
     // Построение полного пути
-    final fullPath = p.join(workspaceRoot, normalizedPath);
+    // Если normalizedPath это '.', используем workspaceRoot напрямую
+    final fullPath = normalizedPath == '.'
+        ? workspaceRoot
+        : p.join(workspaceRoot, normalizedPath);
     final canonicalPath = _getCanonicalPath(fullPath);
 
     // Проверка, что путь находится внутри workspace
@@ -107,32 +116,77 @@ class PathValidator {
   /// Получает канонический путь (разрешает символические ссылки)
   String _getCanonicalPath(String path) {
     try {
+      // Сначала пытаемся разрешить как файл
       final file = File(path);
       if (file.existsSync()) {
         return file.resolveSymbolicLinksSync();
       }
-      // Если файл не существует, проверяем родительскую директорию
-      final dir = Directory(p.dirname(path));
+      
+      // Затем как директорию
+      final dir = Directory(path);
       if (dir.existsSync()) {
-        final resolvedDir = dir.resolveSymbolicLinksSync();
-        return p.join(resolvedDir, p.basename(path));
+        return dir.resolveSymbolicLinksSync();
       }
-      return p.canonicalize(path);
+      
+      // Если не существует, разрешаем родительскую директорию
+      // и добавляем имя файла
+      var parentPath = p.dirname(path);
+      final fileName = p.basename(path);
+      
+      // Рекурсивно ищем существующую родительскую директорию
+      while (parentPath != p.dirname(parentPath)) {
+        final parentDir = Directory(parentPath);
+        if (parentDir.existsSync()) {
+          final resolvedParent = parentDir.resolveSymbolicLinksSync();
+          // Восстанавливаем полный путь
+          final remainingPath = p.relative(path, from: parentPath);
+          return p.normalize(p.join(resolvedParent, remainingPath));
+        }
+        parentPath = p.dirname(parentPath);
+      }
+      
+      // Если ничего не нашли, возвращаем нормализованный путь
+      return p.normalize(path);
     } catch (e) {
       // Если не удается разрешить, используем нормализованный путь
-      return p.canonicalize(path);
+      return p.normalize(path);
     }
   }
 
   /// Проверяет, находится ли путь внутри workspace
   bool _isWithinWorkspace(String canonicalPath) {
-    final workspaceCanonical = p.canonicalize(workspaceRoot);
-    return p.isWithin(workspaceCanonical, canonicalPath) ||
-        canonicalPath == workspaceCanonical;
+    try {
+      // Разрешаем workspace root
+      final workspaceDir = Directory(workspaceRoot);
+      final workspaceCanonical = workspaceDir.existsSync()
+          ? workspaceDir.resolveSymbolicLinksSync()
+          : p.normalize(workspaceRoot);
+      
+      final normalizedCanonical = p.normalize(canonicalPath);
+      final normalizedWorkspace = p.normalize(workspaceCanonical);
+      
+      return p.isWithin(normalizedWorkspace, normalizedCanonical) ||
+          normalizedCanonical == normalizedWorkspace;
+    } catch (e) {
+      // В случае ошибки используем простую нормализацию
+      final normalizedCanonical = p.normalize(canonicalPath);
+      final normalizedWorkspace = p.normalize(workspaceRoot);
+      
+      return p.isWithin(normalizedWorkspace, normalizedCanonical) ||
+          normalizedCanonical == normalizedWorkspace;
+    }
   }
 
   /// Проверяет, является ли путь системной директорией
   bool _isSystemDirectory(String path) {
+    // Сначала проверяем разрешенные директории
+    for (final allowedDir in _allowedSystemDirs) {
+      if (path.startsWith(allowedDir)) {
+        return false;
+      }
+    }
+    
+    // Затем проверяем запрещенные директории
     for (final forbiddenDir in _forbiddenDirs) {
       if (path.startsWith(forbiddenDir)) {
         return true;
