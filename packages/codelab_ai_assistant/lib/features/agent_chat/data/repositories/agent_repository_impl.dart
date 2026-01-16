@@ -408,7 +408,7 @@ class AgentRepositoryImpl implements AgentRepository {
   }) async {
     try {
       final model = MessageModel(
-        type: 'plan_approval',
+        type: 'plan_decision',
         planId: planId,
         decision: 'approve',
         feedback: feedback.toNullable(),
@@ -434,7 +434,7 @@ class AgentRepositoryImpl implements AgentRepository {
   }) async {
     try {
       final model = MessageModel(
-        type: 'plan_approval',
+        type: 'plan_decision',
         planId: planId,
         decision: 'reject',
         feedback: reason,
@@ -489,11 +489,17 @@ class AgentRepositoryImpl implements AgentRepository {
   /// Обрабатывает уведомление о новом плане
   void _handlePlanNotification(MessageModel model) {
     try {
-      final planId = model.planId;
       final metadata = model.metadata;
 
-      if (planId == null || metadata == null) {
-        print('[AgentRepository] Invalid plan_notification: missing planId or metadata');
+      if (metadata == null) {
+        print('[AgentRepository] Invalid plan_notification: missing metadata');
+        return;
+      }
+
+      // Извлекаем plan_id из metadata (backend отправляет его там)
+      final planId = metadata['plan_id'] as String?;
+      if (planId == null) {
+        print('[AgentRepository] Invalid plan_notification: missing plan_id in metadata');
         return;
       }
 

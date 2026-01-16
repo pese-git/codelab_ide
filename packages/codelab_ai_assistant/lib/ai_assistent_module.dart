@@ -54,6 +54,7 @@ import 'features/agent_chat/domain/usecases/connect.dart';
 import 'features/agent_chat/domain/usecases/approve_plan.dart';
 import 'features/agent_chat/domain/usecases/reject_plan.dart';
 import 'features/agent_chat/domain/usecases/get_active_plan.dart';
+import 'features/agent_chat/domain/usecases/watch_plan_updates.dart';
 
 // Presentation
 import 'features/authentication/presentation/bloc/auth_bloc.dart';
@@ -452,6 +453,10 @@ class AiAssistantModule extends Module {
       () => GetActivePlanUseCase(currentScope.resolve<AgentRepository>()),
     );
 
+    bind<WatchPlanUpdatesUseCase>().toProvide(
+      () => WatchPlanUpdatesUseCase(currentScope.resolve<AgentRepository>()),
+    );
+
     // ========================================================================
     // Presentation Layer (BLoCs)
     // ========================================================================
@@ -495,6 +500,7 @@ class AiAssistantModule extends Module {
         approvePlan: currentScope.resolve<ApprovePlanUseCase>(),
         rejectPlan: currentScope.resolve<RejectPlanUseCase>(),
         getActivePlan: currentScope.resolve<GetActivePlanUseCase>(),
+        watchPlanUpdates: currentScope.resolve<WatchPlanUpdatesUseCase>(),
         logger: currentScope.resolve<Logger>(),
       ),
     );

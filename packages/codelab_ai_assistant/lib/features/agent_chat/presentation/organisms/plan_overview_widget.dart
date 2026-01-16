@@ -36,12 +36,13 @@ class PlanOverviewWidget extends StatelessWidget {
           width: 1,
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Заголовок с иконкой
-          Row(
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Заголовок с иконкой
+            Row(
             children: [
               Container(
                 width: 48,
@@ -80,24 +81,24 @@ class PlanOverviewWidget extends StatelessWidget {
                 ),
               ),
             ],
-          ),
+            ),
 
-          AppSpacing.gapVerticalLg,
-
-          // Прогресс-бар (если не ожидает подтверждения)
-          if (!plan.isPendingConfirmation) ...[
-            _buildProgressSection(),
             AppSpacing.gapVerticalLg,
-          ],
 
-          // Информационная панель для ожидающих подтверждения
-          if (plan.isPendingConfirmation) ...[
-            _buildPendingConfirmationBanner(context),
-            AppSpacing.gapVerticalLg,
-          ],
+            // Прогресс-бар (если не ожидает подтверждения)
+            if (!plan.isPendingConfirmation) ...[
+              _buildProgressSection(),
+              AppSpacing.gapVerticalLg,
+            ],
 
-          // Заголовок списка подзадач
-          Row(
+            // Информационная панель для ожидающих подтверждения
+            if (plan.isPendingConfirmation) ...[
+              _buildPendingConfirmationBanner(context),
+              AppSpacing.gapVerticalLg,
+            ],
+
+            // Заголовок списка подзадач
+            Row(
             children: [
               Text(
                 'Подзадачи',
@@ -122,49 +123,50 @@ class PlanOverviewWidget extends StatelessWidget {
                 ),
               ),
             ],
-          ),
+            ),
 
-          AppSpacing.gapVerticalMd,
+            AppSpacing.gapVerticalMd,
 
-          // Список подзадач
-          ...plan.subtasks.asMap().entries.map((entry) {
-            return SubtaskTile(
-              subtask: entry.value,
-              index: entry.key + 1,
-            );
-          }),
+            // Список подзадач
+            ...plan.subtasks.asMap().entries.map((entry) {
+              return SubtaskTile(
+                subtask: entry.value,
+                index: entry.key + 1,
+              );
+            }),
 
-          // Оценка времени
-          plan.estimatedTotalTime.fold(
-            () => const SizedBox.shrink(),
-            (time) => Padding(
-              padding: AppSpacing.paddingVerticalMd,
-              child: Row(
-                children: [
-                  Icon(
-                    FluentIcons.clock,
-                    size: 16,
-                    color: AppColors.textSecondary,
-                  ),
-                  AppSpacing.gapHorizontalXs,
-                  Text(
-                    'Оценка времени: $time',
-                    style: AppTypography.bodySmall.copyWith(
+            // Оценка времени
+            plan.estimatedTotalTime.fold(
+              () => const SizedBox.shrink(),
+              (time) => Padding(
+                padding: AppSpacing.paddingVerticalMd,
+                child: Row(
+                  children: [
+                    Icon(
+                      FluentIcons.clock,
+                      size: 16,
                       color: AppColors.textSecondary,
-                      fontStyle: FontStyle.italic,
                     ),
-                  ),
-                ],
+                    AppSpacing.gapHorizontalXs,
+                    Text(
+                      'Оценка времени: $time',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
 
-          // Кнопки подтверждения
-          if (plan.isPendingConfirmation) ...[
-            AppSpacing.gapVerticalLg,
-            _buildActionButtons(context),
+            // Кнопки подтверждения
+            if (plan.isPendingConfirmation) ...[
+              AppSpacing.gapVerticalLg,
+              _buildActionButtons(context),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

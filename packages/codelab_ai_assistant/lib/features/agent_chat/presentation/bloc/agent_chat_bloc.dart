@@ -18,6 +18,7 @@ import '../../domain/usecases/connect.dart';
 import '../../domain/usecases/approve_plan.dart';
 import '../../domain/usecases/reject_plan.dart';
 import '../../domain/usecases/get_active_plan.dart';
+import '../../domain/usecases/watch_plan_updates.dart';
 import '../../../tool_execution/domain/usecases/execute_tool.dart';
 import '../../../tool_execution/domain/entities/tool_call.dart';
 import '../../../tool_execution/domain/entities/tool_result.dart';
@@ -45,12 +46,18 @@ class AgentChatEvent with _$AgentChatEvent {
   const factory AgentChatEvent.rejectToolCall(String reason) =
       RejectToolCallEvent;
   const factory AgentChatEvent.cancelToolCall() = CancelToolCallEvent;
-  
+
   // События планирования
-  const factory AgentChatEvent.planReceived(ExecutionPlan plan) = PlanReceivedEvent;
-  const factory AgentChatEvent.approvePlan(String planId, {@Default(None()) Option<String> feedback}) = ApprovePlanEvent;
-  const factory AgentChatEvent.rejectPlan(String planId, String reason) = RejectPlanEvent;
-  const factory AgentChatEvent.planProgressUpdated(ExecutionPlan plan) = PlanProgressUpdatedEvent;
+  const factory AgentChatEvent.planReceived(ExecutionPlan plan) =
+      PlanReceivedEvent;
+  const factory AgentChatEvent.approvePlan(
+    String planId, {
+    @Default(None()) Option<String> feedback,
+  }) = ApprovePlanEvent;
+  const factory AgentChatEvent.rejectPlan(String planId, String reason) =
+      RejectPlanEvent;
+  const factory AgentChatEvent.planProgressUpdated(ExecutionPlan plan) =
+      PlanProgressUpdatedEvent;
 }
 
 /// Состояния для AgentChatBloc
@@ -97,6 +104,7 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
   final ApprovePlanUseCase _approvePlan;
   final RejectPlanUseCase _rejectPlan;
   final GetActivePlanUseCase _getActivePlan;
+  final WatchPlanUpdatesUseCase _watchPlanUpdates;
   final Logger _logger;
 
   StreamSubscription<Either<Failure, Message>>? _messageSubscription;
@@ -115,6 +123,7 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     required ApprovePlanUseCase approvePlan,
     required RejectPlanUseCase rejectPlan,
     required GetActivePlanUseCase getActivePlan,
+    required WatchPlanUpdatesUseCase watchPlanUpdates,
     required Logger logger,
   }) : _sendMessage = sendMessage,
        _sendToolResult = sendToolResult,
@@ -127,6 +136,7 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
        _approvePlan = approvePlan,
        _rejectPlan = rejectPlan,
        _getActivePlan = getActivePlan,
+       _watchPlanUpdates = watchPlanUpdates,
        _logger = logger,
        super(AgentChatState.initial()) {
     on<SendMessageEvent>(_onSendMessage);
@@ -154,6 +164,18 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
 
     // Устанавливаем callback для отправки rejection на сервер
     _approvalService.onRejectRestoredTool = _rejectRestoredTool;
+
+    // Подписываемся на обновления планов
+    _initializePlanUpdates();
+  }
+
+  /// Инициализирует подписку на обновления планов
+  void _initializePlanUpdates() {
+    // Получаем repository для подписки на планы
+    // Подписка будет установлена после connect
+    _logger.d(
+      '[AgentChatBloc] Plan updates subscription will be initialized after connect',
+    );
   }
 
   /// Отправить rejection для восстановленного tool на сервер
@@ -278,8 +300,10 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     SendMessageEvent event,
     Emitter<AgentChatState> emit,
   ) async {
-    _logger.d('[AgentChatBloc] 📤 Sending message: "${event.text.substring(0, event.text.length > 50 ? 50 : event.text.length)}..."');
-    
+    _logger.d(
+      '[AgentChatBloc] 📤 Sending message: "${event.text.substring(0, event.text.length > 50 ? 50 : event.text.length)}..."',
+    );
+
     // Добавляем сообщение пользователя в историю
     final userMessage = Message(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -289,7 +313,9 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
       metadata: none(),
     );
 
-    _logger.d('[AgentChatBloc] 📝 Adding user message to state, total messages: ${state.messages.length + 1}');
+    _logger.d(
+      '[AgentChatBloc] 📝 Adding user message to state, total messages: ${state.messages.length + 1}',
+    );
     emit(
       state.copyWith(
         messages: [...state.messages, userMessage],
@@ -305,7 +331,9 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
 
     result.fold(
       (failure) {
-        _logger.e('[AgentChatBloc] ❌ Failed to send message: ${failure.message}');
+        _logger.e(
+          '[AgentChatBloc] ❌ Failed to send message: ${failure.message}',
+        );
         emit(state.copyWith(isLoading: false, error: some(failure.message)));
       },
       (_) {
@@ -319,7 +347,9 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     MessageReceivedEvent event,
     Emitter<AgentChatState> emit,
   ) async {
-    _logger.d('[AgentChatBloc] 📨 Message received: ${event.message.role}, content type: ${event.message.content.runtimeType}');
+    _logger.d(
+      '[AgentChatBloc] 📨 Message received: ${event.message.role}, content type: ${event.message.content.runtimeType}',
+    );
 
     // Обновляем текущего агента если это agent_switched
     String newAgent = state.currentAgent;
@@ -339,7 +369,7 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     );
 
     // Проверяем, есть ли метаданные планирования
-    _handlePlanMetadata(event.message);
+    final isPlanNotification = _handlePlanMetadata(event.message);
 
     emit(
       state.copyWith(
@@ -348,6 +378,22 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
         isLoading: false,
       ),
     );
+
+    // Если получен план, вызываем событие planReceived
+    if (isPlanNotification) {
+      _logger.i('[AgentChatBloc] 📋 Triggering planReceived event');
+      // План уже сохранен в repository, получаем его
+      final planResult = await _getActivePlan(const NoParams());
+      planResult.fold(
+        (failure) => _logger.e(
+          '[AgentChatBloc] Failed to get active plan: ${failure.message}',
+        ),
+        (planOption) => planOption.fold(
+          () => _logger.w('[AgentChatBloc] No active plan found'),
+          (plan) => add(AgentChatEvent.planReceived(plan)),
+        ),
+      );
+    }
 
     // Автоматически выполняем tool calls
     await event.message.content.maybeWhen(
@@ -450,7 +496,9 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     LoadHistoryEvent event,
     Emitter<AgentChatState> emit,
   ) async {
-    _logger.d('[AgentChatBloc] 📜 Loading history for session: ${event.sessionId}');
+    _logger.d(
+      '[AgentChatBloc] 📜 Loading history for session: ${event.sessionId}',
+    );
     emit(state.copyWith(isLoading: true, error: none()));
 
     final result = await _loadHistory(
@@ -513,6 +561,23 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
           // Не блокируем подключение из-за ошибки восстановления
         }
 
+        // Подписываемся на обновления планов
+        _planUpdatesSubscription?.cancel();
+        _planUpdatesSubscription = _watchPlanUpdates(const NoParams()).listen((either) {
+          either.fold(
+            (failure) => _logger.e(
+              '[AgentChatBloc] Plan update error: ${failure.message}',
+            ),
+            (plan) {
+              _logger.i(
+                '[AgentChatBloc] Plan update received: ${plan.planId}',
+              );
+              add(AgentChatEvent.planReceived(plan));
+            },
+          );
+        });
+        _logger.i('[AgentChatBloc] Subscribed to plan updates');
+
         emit(state.copyWith(isConnected: true, isLoading: false));
       },
     );
@@ -526,13 +591,15 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     await _messageSubscription?.cancel();
     _messageSubscription = null;
 
-    emit(state.copyWith(
-      isConnected: false,
-      messages: const [],
-      isLoading: false,
-      error: none(),
-      pendingApproval: none(),
-    ));
+    emit(
+      state.copyWith(
+        isConnected: false,
+        messages: const [],
+        isLoading: false,
+        error: none(),
+        pendingApproval: none(),
+      ),
+    );
 
     _logger.i('[AgentChatBloc] ✅ Disconnected from chat');
   }
@@ -546,7 +613,9 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     ApprovalRequestedEvent event,
     Emitter<AgentChatState> emit,
   ) async {
-    _logger.i('[AgentChatBloc] 🔔 Tool approval requested: ${event.request.toolCall.toolName}');
+    _logger.i(
+      '[AgentChatBloc] 🔔 Tool approval requested: ${event.request.toolCall.toolName}',
+    );
     emit(state.copyWith(pendingApproval: some(event.request)));
   }
 
@@ -557,7 +626,9 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     state.pendingApproval.fold(
       () => _logger.w('[AgentChatBloc] ⚠️ No pending approval to approve'),
       (request) {
-        _logger.i('[AgentChatBloc] ✅ Tool call approved: ${request.toolCall.toolName}');
+        _logger.i(
+          '[AgentChatBloc] ✅ Tool call approved: ${request.toolCall.toolName}',
+        );
         request.completer.complete(const ApprovalDecision.approved());
         emit(state.copyWith(pendingApproval: none()));
       },
@@ -568,17 +639,18 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     RejectToolCallEvent event,
     Emitter<AgentChatState> emit,
   ) async {
-    state.pendingApproval.fold(() => _logger.w('[AgentChatBloc] ⚠️ No pending approval to reject'), (
-      request,
-    ) {
-      _logger.i(
-        '[AgentChatBloc] ❌ Tool call rejected: ${request.toolCall.toolName}, reason: ${event.reason}',
-      );
-      request.completer.complete(
-        ApprovalDecision.rejected(reason: some(event.reason)),
-      );
-      emit(state.copyWith(pendingApproval: none()));
-    });
+    state.pendingApproval.fold(
+      () => _logger.w('[AgentChatBloc] ⚠️ No pending approval to reject'),
+      (request) {
+        _logger.i(
+          '[AgentChatBloc] ❌ Tool call rejected: ${request.toolCall.toolName}, reason: ${event.reason}',
+        );
+        request.completer.complete(
+          ApprovalDecision.rejected(reason: some(event.reason)),
+        );
+        emit(state.copyWith(pendingApproval: none()));
+      },
+    );
   }
 
   Future<void> _onCancelToolCall(
@@ -588,7 +660,9 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     state.pendingApproval.fold(
       () => _logger.w('[AgentChatBloc] ⚠️ No pending approval to cancel'),
       (request) {
-        _logger.i('[AgentChatBloc] 🚫 Tool call cancelled: ${request.toolCall.toolName}');
+        _logger.i(
+          '[AgentChatBloc] 🚫 Tool call cancelled: ${request.toolCall.toolName}',
+        );
         request.completer.complete(const ApprovalDecision.cancelled());
         emit(state.copyWith(pendingApproval: none()));
       },
@@ -596,29 +670,36 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
   }
 
   /// Обрабатывает метаданные планирования из сообщения
-  void _handlePlanMetadata(Message message) {
-    message.metadata?.fold(
-      () => null,
-      (meta) {
-        // Проверяем, есть ли информация о плане
-        if (meta.containsKey('plan_id')) {
-          _logger.i('[AgentChatBloc] 📋 Plan metadata detected in message');
-          // План будет обработан через watchPlanUpdates в repository
-        }
-      },
-    );
+  /// Возвращает true если это plan_notification
+  bool _handlePlanMetadata(Message message) {
+    return message.metadata?.fold(() => false, (meta) {
+          // Проверяем, есть ли информация о плане
+          // Backend отправляет plan_id и subtasks в metadata
+          if (meta.containsKey('plan_id') && meta.containsKey('subtasks')) {
+            _logger.i(
+              '[AgentChatBloc] 📋 Plan notification detected: plan_id=${meta['plan_id']}, subtasks=${(meta['subtasks'] as List?)?.length ?? 0}',
+            );
+            return true;
+          }
+          return false;
+        }) ??
+        false;
   }
 
   Future<void> _onPlanReceived(
     PlanReceivedEvent event,
     Emitter<AgentChatState> emit,
   ) async {
-    _logger.i('[AgentChatBloc] 📋 Plan received: ${event.plan.planId} with ${event.plan.subtasks.length} subtasks');
-    
-    emit(state.copyWith(
-      activePlan: some(event.plan),
-      isPlanPendingConfirmation: event.plan.isPendingConfirmation,
-    ));
+    _logger.i(
+      '[AgentChatBloc] 📋 Plan received: ${event.plan.planId} with ${event.plan.subtasks.length} subtasks',
+    );
+
+    emit(
+      state.copyWith(
+        activePlan: some(event.plan),
+        isPlanPendingConfirmation: event.plan.isPendingConfirmation,
+      ),
+    );
   }
 
   Future<void> _onApprovePlan(
@@ -626,35 +707,36 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     Emitter<AgentChatState> emit,
   ) async {
     _logger.i('[AgentChatBloc] ✅ Approving plan: ${event.planId}');
-    
+
     emit(state.copyWith(isLoading: true));
-    
+
     final result = await _approvePlan(
       ApprovePlanParams(
         planId: event.planId,
         feedback: event.feedback ?? none(),
       ),
     );
-    
+
     result.fold(
       (failure) {
-        _logger.e('[AgentChatBloc] ❌ Failed to approve plan: ${failure.message}');
-        emit(state.copyWith(
-          isLoading: false,
-          error: some(failure.message),
-        ));
+        _logger.e(
+          '[AgentChatBloc] ❌ Failed to approve plan: ${failure.message}',
+        );
+        emit(state.copyWith(isLoading: false, error: some(failure.message)));
       },
       (_) {
         _logger.i('[AgentChatBloc] ✅ Plan approved successfully');
-        
+
         // Обновляем локальное состояние плана
         final updatedPlan = state.activePlan.map((plan) => plan.approve());
-        
-        emit(state.copyWith(
-          isLoading: false,
-          activePlan: updatedPlan,
-          isPlanPendingConfirmation: false,
-        ));
+
+        emit(
+          state.copyWith(
+            isLoading: false,
+            activePlan: updatedPlan,
+            isPlanPendingConfirmation: false,
+          ),
+        );
       },
     );
   }
@@ -663,34 +745,34 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     RejectPlanEvent event,
     Emitter<AgentChatState> emit,
   ) async {
-    _logger.i('[AgentChatBloc] ❌ Rejecting plan: ${event.planId}, reason: ${event.reason}');
-    
-    emit(state.copyWith(isLoading: true));
-    
-    final result = await _rejectPlan(
-      RejectPlanParams(
-        planId: event.planId,
-        reason: event.reason,
-      ),
+    _logger.i(
+      '[AgentChatBloc] ❌ Rejecting plan: ${event.planId}, reason: ${event.reason}',
     );
-    
+
+    emit(state.copyWith(isLoading: true));
+
+    final result = await _rejectPlan(
+      RejectPlanParams(planId: event.planId, reason: event.reason),
+    );
+
     result.fold(
       (failure) {
-        _logger.e('[AgentChatBloc] ❌ Failed to reject plan: ${failure.message}');
-        emit(state.copyWith(
-          isLoading: false,
-          error: some(failure.message),
-        ));
+        _logger.e(
+          '[AgentChatBloc] ❌ Failed to reject plan: ${failure.message}',
+        );
+        emit(state.copyWith(isLoading: false, error: some(failure.message)));
       },
       (_) {
         _logger.i('[AgentChatBloc] ✅ Plan rejected successfully');
-        
+
         // Очищаем план
-        emit(state.copyWith(
-          isLoading: false,
-          activePlan: none(),
-          isPlanPendingConfirmation: false,
-        ));
+        emit(
+          state.copyWith(
+            isLoading: false,
+            activePlan: none(),
+            isPlanPendingConfirmation: false,
+          ),
+        );
       },
     );
   }
@@ -699,12 +781,16 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     PlanProgressUpdatedEvent event,
     Emitter<AgentChatState> emit,
   ) async {
-    _logger.d('[AgentChatBloc] 📊 Plan progress updated: ${event.plan.progress * 100}%');
-    
-    emit(state.copyWith(
-      activePlan: some(event.plan),
-      isPlanPendingConfirmation: event.plan.isPendingConfirmation,
-    ));
+    _logger.d(
+      '[AgentChatBloc] 📊 Plan progress updated: ${event.plan.progress * 100}%',
+    );
+
+    emit(
+      state.copyWith(
+        activePlan: some(event.plan),
+        isPlanPendingConfirmation: event.plan.isPendingConfirmation,
+      ),
+    );
   }
 
   @override

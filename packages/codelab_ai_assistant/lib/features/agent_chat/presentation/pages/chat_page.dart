@@ -75,36 +75,6 @@ class _ChatPageState extends State<ChatPage> {
               onLogout: widget.onLogout,
             ),
 
-            // Plan UI - показываем если есть активный план
-            if (activePlan != null) ...[
-              Padding(
-                padding: AppSpacing.paddingLg,
-                child: isPlanPending
-                    ? PlanOverviewWidget(
-                        plan: activePlan,
-                        onApprove: () {
-                          widget.bloc.add(
-                            AgentChatEvent.approvePlan(activePlan.planId),
-                          );
-                        },
-                        onReject: (reason) {
-                          widget.bloc.add(
-                            AgentChatEvent.rejectPlan(
-                              activePlan.planId,
-                              reason,
-                            ),
-                          );
-                        },
-                      )
-                    : !activePlan.isComplete
-                        ? PlanProgressIndicator(
-                            plan: activePlan,
-                            onTap: () => _showPlanDetails(context, activePlan),
-                          )
-                        : const SizedBox.shrink(),
-              ),
-            ],
-
             // Messages
             Expanded(
               child: messages.isEmpty
@@ -124,12 +94,23 @@ class _ChatPageState extends State<ChatPage> {
                       cacheExtent: 200,
                       itemBuilder: (ctx, idx) => RepaintBoundary(
                         child: MessageBubble(
-                          key: ValueKey(messages[idx].id), // ✅ Ключ для оптимизации
+                          key: ValueKey(messages[idx].id),
                           message: messages[idx],
                         ),
                       ),
                     ),
             ),
+
+            // Plan approval panel (similar to tool approval)
+            if (activePlan != null && isPlanPending) ...[
+              Divider(
+                style: DividerThemeData(
+                  thickness: 1,
+                  decoration: BoxDecoration(color: AppColors.border),
+                ),
+              ),
+              _buildPlanApprovalPanel(context, activePlan),
+            ],
 
             // Tool approval buttons
             if (pendingApproval != null) ...[
@@ -237,6 +218,42 @@ class _ChatPageState extends State<ChatPage> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildPlanApprovalPanel(BuildContext context, dynamic plan) {
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 400),
+      child: SingleChildScrollView(
+        child: Container(
+          padding: AppSpacing.paddingLg,
+          decoration: BoxDecoration(
+            color: AppColors.warning.withOpacity(0.05),
+            border: Border(
+              top: BorderSide(
+                color: AppColors.primary,
+                width: 2,
+              ),
+            ),
+          ),
+          child: PlanOverviewWidget(
+            plan: plan,
+            onApprove: () {
+              widget.bloc.add(
+                AgentChatEvent.approvePlan(plan.planId),
+              );
+            },
+            onReject: (reason) {
+              widget.bloc.add(
+                AgentChatEvent.rejectPlan(
+                  plan.planId,
+                  reason,
+                ),
+              );
+            },
+          ),
+        ),
       ),
     );
   }

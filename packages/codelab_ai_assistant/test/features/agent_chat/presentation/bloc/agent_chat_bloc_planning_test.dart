@@ -13,6 +13,7 @@ import 'package:codelab_ai_assistant/features/agent_chat/domain/usecases/reject_
 import 'package:codelab_ai_assistant/features/agent_chat/domain/usecases/send_message.dart';
 import 'package:codelab_ai_assistant/features/agent_chat/domain/usecases/send_tool_result.dart';
 import 'package:codelab_ai_assistant/features/agent_chat/domain/usecases/switch_agent.dart';
+import 'package:codelab_ai_assistant/features/agent_chat/domain/usecases/watch_plan_updates.dart';
 import 'package:codelab_ai_assistant/features/agent_chat/presentation/bloc/agent_chat_bloc.dart';
 import 'package:codelab_ai_assistant/features/tool_execution/data/services/tool_approval_service_impl.dart';
 import 'package:codelab_ai_assistant/features/tool_execution/domain/usecases/execute_tool.dart';
@@ -33,6 +34,7 @@ class MockToolApprovalService extends Mock implements ToolApprovalServiceImpl {}
 class MockApprovePlanUseCase extends Mock implements ApprovePlanUseCase {}
 class MockRejectPlanUseCase extends Mock implements RejectPlanUseCase {}
 class MockGetActivePlanUseCase extends Mock implements GetActivePlanUseCase {}
+class MockWatchPlanUpdatesUseCase extends Mock implements WatchPlanUpdatesUseCase {}
 class MockLogger extends Mock implements Logger {}
 
 void main() {
@@ -47,6 +49,7 @@ void main() {
   late MockApprovePlanUseCase mockApprovePlan;
   late MockRejectPlanUseCase mockRejectPlan;
   late MockGetActivePlanUseCase mockGetActivePlan;
+  late MockWatchPlanUpdatesUseCase mockWatchPlanUpdates;
   late MockLogger mockLogger;
 
   setUp(() {
@@ -61,6 +64,7 @@ void main() {
     mockApprovePlan = MockApprovePlanUseCase();
     mockRejectPlan = MockRejectPlanUseCase();
     mockGetActivePlan = MockGetActivePlanUseCase();
+    mockWatchPlanUpdates = MockWatchPlanUpdatesUseCase();
     mockLogger = MockLogger();
 
     // Настройка fallback значений для mocktail
@@ -71,6 +75,9 @@ void main() {
 
     // Настройка дефолтных ответов
     when(() => mockApprovalService.approvalRequests).thenAnswer(
+      (_) => const Stream.empty(),
+    );
+    when(() => mockWatchPlanUpdates(any())).thenAnswer(
       (_) => const Stream.empty(),
     );
     when(() => mockLogger.d(any())).thenReturn(null);
@@ -92,6 +99,7 @@ void main() {
       approvePlan: mockApprovePlan,
       rejectPlan: mockRejectPlan,
       getActivePlan: mockGetActivePlan,
+      watchPlanUpdates: mockWatchPlanUpdates,
       logger: mockLogger,
     );
   }

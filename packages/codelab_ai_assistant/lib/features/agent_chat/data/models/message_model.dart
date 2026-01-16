@@ -277,6 +277,15 @@ abstract class MessageModel with _$MessageModel {
         reason: reason?.toNullable(),
       ),
       error: (message) => MessageModel(type: 'error', content: message),
+      plan: (executionPlan) => MessageModel(
+        type: 'plan_notification',
+        content: 'План выполнения: ${executionPlan.originalTask}',
+        planId: executionPlan.planId,
+        metadata: {
+          'plan_id': executionPlan.planId,
+          'total_count': executionPlan.totalCount,
+        },
+      ),
     );
   }
 }

@@ -42,6 +42,15 @@ class MessageMapper {
       ),
       
       error: (errorMessage) => WSMessage.error(content: errorMessage),
+      
+      plan: (executionPlan) => WSMessage.planNotification(
+        planId: executionPlan.planId,
+        content: 'План выполнения: ${executionPlan.originalTask}',
+        metadata: {
+          'plan_id': executionPlan.planId,
+          'total_count': executionPlan.totalCount,
+        },
+      ),
     );
   }
   
