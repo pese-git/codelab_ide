@@ -1,6 +1,7 @@
 // Domain entity для сообщения в чате
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:fpdart/fpdart.dart';
+import 'execution_plan.dart';
 
 part 'message.freezed.dart';
 
@@ -49,6 +50,7 @@ abstract class Message with _$Message {
       toolResult: (_, __, ___, ____) => none(),
       agentSwitch: (_, __, ___) => none(),
       error: (msg) => some(msg),
+      plan: (_) => none(),
     );
   }
 }
@@ -88,6 +90,11 @@ sealed class MessageContent with _$MessageContent {
   const factory MessageContent.error({required String message}) =
       ErrorMessageContent;
 
+  /// План выполнения
+  const factory MessageContent.plan({
+    required ExecutionPlan executionPlan,
+  }) = PlanMessageContent;
+
   const MessageContent._();
 
   /// Проверяет, является ли содержимое текстом
@@ -104,6 +111,9 @@ sealed class MessageContent with _$MessageContent {
 
   /// Проверяет, является ли содержимое ошибкой
   bool get isError => this is ErrorMessageContent;
+
+  /// Проверяет, является ли содержимое планом
+  bool get isPlan => this is PlanMessageContent;
 }
 
 /// Параметры для отправки сообщения

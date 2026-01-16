@@ -133,3 +133,70 @@ Map<String, dynamic> _$WSHITLDecisionToJson(WSHITLDecision instance) =>
       'feedback': instance.feedback,
       'type': instance.$type,
     };
+
+WSPlanNotification _$WSPlanNotificationFromJson(Map<String, dynamic> json) =>
+    WSPlanNotification(
+      planId: json['plan_id'] as String,
+      content: json['content'] as String,
+      metadata: json['metadata'] as Map<String, dynamic>,
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$WSPlanNotificationToJson(WSPlanNotification instance) =>
+    <String, dynamic>{
+      'plan_id': instance.planId,
+      'content': instance.content,
+      'metadata': instance.metadata,
+      'type': instance.$type,
+    };
+
+WSPlanUpdate _$WSPlanUpdateFromJson(Map<String, dynamic> json) => WSPlanUpdate(
+  planId: json['plan_id'] as String,
+  steps: (json['steps'] as List<dynamic>)
+      .map((e) => e as Map<String, dynamic>)
+      .toList(),
+  currentStep: json['current_step'] as String?,
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$WSPlanUpdateToJson(WSPlanUpdate instance) =>
+    <String, dynamic>{
+      'plan_id': instance.planId,
+      'steps': instance.steps,
+      'current_step': instance.currentStep,
+      'type': instance.$type,
+    };
+
+WSPlanProgress _$WSPlanProgressFromJson(Map<String, dynamic> json) =>
+    WSPlanProgress(
+      planId: json['plan_id'] as String,
+      stepId: json['step_id'] as String,
+      result: json['result'] as String?,
+      status: json['status'] as String,
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$WSPlanProgressToJson(WSPlanProgress instance) =>
+    <String, dynamic>{
+      'plan_id': instance.planId,
+      'step_id': instance.stepId,
+      'result': instance.result,
+      'status': instance.status,
+      'type': instance.$type,
+    };
+
+WSPlanApproval _$WSPlanApprovalFromJson(Map<String, dynamic> json) =>
+    WSPlanApproval(
+      planId: json['plan_id'] as String,
+      decision: json['decision'] as String,
+      feedback: json['feedback'] as String?,
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$WSPlanApprovalToJson(WSPlanApproval instance) =>
+    <String, dynamic>{
+      'plan_id': instance.planId,
+      'decision': instance.decision,
+      'feedback': instance.feedback,
+      'type': instance.$type,
+    };

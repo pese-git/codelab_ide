@@ -6,8 +6,10 @@ import '../../../shared/presentation/molecules/feedback/empty_state.dart';
 import '../../../shared/utils/extensions/agent_type_extensions.dart';
 import '../bloc/agent_chat_bloc.dart';
 import '../molecules/message_bubble.dart';
+import '../molecules/plan_progress_indicator.dart';
 import '../organisms/chat_input_bar.dart';
 import '../organisms/chat_header.dart';
+import '../organisms/plan_overview_widget.dart';
 
 /// Новая страница чата с применением Atomic Design
 /// 
@@ -53,6 +55,8 @@ class _ChatPageState extends State<ChatPage> {
         final pendingApproval = state.pendingApproval.toNullable();
         final messages = state.messages;
         final currentAgentStr = state.currentAgent;
+        final activePlan = state.activePlan.toNullable();
+        final isPlanPending = state.isPlanPendingConfirmation;
 
         return Column(
           children: [
@@ -90,12 +94,23 @@ class _ChatPageState extends State<ChatPage> {
                       cacheExtent: 200,
                       itemBuilder: (ctx, idx) => RepaintBoundary(
                         child: MessageBubble(
-                          key: ValueKey(messages[idx].id), // ✅ Ключ для оптимизации
+                          key: ValueKey(messages[idx].id),
                           message: messages[idx],
                         ),
                       ),
                     ),
             ),
+
+            // Plan approval panel (similar to tool approval)
+            if (activePlan != null && isPlanPending) ...[
+              Divider(
+                style: DividerThemeData(
+                  thickness: 1,
+                  decoration: BoxDecoration(color: AppColors.border),
+                ),
+              ),
+              _buildPlanApprovalPanel(context, activePlan),
+            ],
 
             // Tool approval buttons
             if (pendingApproval != null) ...[
@@ -207,6 +222,42 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
+  Widget _buildPlanApprovalPanel(BuildContext context, dynamic plan) {
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 400),
+      child: SingleChildScrollView(
+        child: Container(
+          padding: AppSpacing.paddingLg,
+          decoration: BoxDecoration(
+            color: AppColors.warning.withOpacity(0.05),
+            border: Border(
+              top: BorderSide(
+                color: AppColors.primary,
+                width: 2,
+              ),
+            ),
+          ),
+          child: PlanOverviewWidget(
+            plan: plan,
+            onApprove: () {
+              widget.bloc.add(
+                AgentChatEvent.approvePlan(plan.planId),
+              );
+            },
+            onReject: (reason) {
+              widget.bloc.add(
+                AgentChatEvent.rejectPlan(
+                  plan.planId,
+                  reason,
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
   void _send() {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
@@ -223,6 +274,29 @@ class _ChatPageState extends State<ChatPage> {
         );
       }
     });
+  }
+
+  void _showPlanDetails(BuildContext context, dynamic plan) {
+    showDialog(
+      context: context,
+      builder: (context) => ContentDialog(
+        constraints: const BoxConstraints(maxWidth: 700, maxHeight: 800),
+        title: const Text('Детали плана выполнения'),
+        content: SingleChildScrollView(
+          child: PlanOverviewWidget(
+            plan: plan,
+            onApprove: null, // Не показываем кнопки в диалоге
+            onReject: null,
+          ),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Закрыть'),
+          ),
+        ],
+      ),
+    );
   }
   // ✅ Удален _stringToUikitAgentType - теперь используется extension
 }

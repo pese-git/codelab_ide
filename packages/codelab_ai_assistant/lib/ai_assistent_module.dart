@@ -51,6 +51,10 @@ import 'features/agent_chat/domain/usecases/receive_messages.dart';
 import 'features/agent_chat/domain/usecases/switch_agent.dart';
 import 'features/agent_chat/domain/usecases/load_history.dart';
 import 'features/agent_chat/domain/usecases/connect.dart';
+import 'features/agent_chat/domain/usecases/approve_plan.dart';
+import 'features/agent_chat/domain/usecases/reject_plan.dart';
+import 'features/agent_chat/domain/usecases/get_active_plan.dart';
+import 'features/agent_chat/domain/usecases/watch_plan_updates.dart';
 
 // Presentation
 import 'features/authentication/presentation/bloc/auth_bloc.dart';
@@ -436,6 +440,23 @@ class AiAssistantModule extends Module {
       () => ConnectUseCase(currentScope.resolve<AgentRepository>()),
     );
 
+    // Planning Use Cases
+    bind<ApprovePlanUseCase>().toProvide(
+      () => ApprovePlanUseCase(currentScope.resolve<AgentRepository>()),
+    );
+
+    bind<RejectPlanUseCase>().toProvide(
+      () => RejectPlanUseCase(currentScope.resolve<AgentRepository>()),
+    );
+
+    bind<GetActivePlanUseCase>().toProvide(
+      () => GetActivePlanUseCase(currentScope.resolve<AgentRepository>()),
+    );
+
+    bind<WatchPlanUpdatesUseCase>().toProvide(
+      () => WatchPlanUpdatesUseCase(currentScope.resolve<AgentRepository>()),
+    );
+
     // ========================================================================
     // Presentation Layer (BLoCs)
     // ========================================================================
@@ -476,6 +497,10 @@ class AiAssistantModule extends Module {
         connect: currentScope.resolve<ConnectUseCase>(),
         executeTool: currentScope.resolve<ExecuteToolUseCase>(),
         approvalService: currentScope.resolve<ToolApprovalServiceImpl>(),
+        approvePlan: currentScope.resolve<ApprovePlanUseCase>(),
+        rejectPlan: currentScope.resolve<RejectPlanUseCase>(),
+        getActivePlan: currentScope.resolve<GetActivePlanUseCase>(),
+        watchPlanUpdates: currentScope.resolve<WatchPlanUpdatesUseCase>(),
         logger: currentScope.resolve<Logger>(),
       ),
     );

@@ -76,6 +76,13 @@ abstract class MessageUIModel with _$MessageUIModel {
         label = '❌ Error';
         labelColor = AppColors.error;
       },
+      plan: (executionPlan) {
+        type = MessageUIType.plan;
+        backgroundColor = AppColors.surface;
+        borderColor = AppColors.border;
+        label = '📋 План выполнения';
+        labelColor = AppColors.primary;
+      },
     );
 
     // Форматируем content для отображения
@@ -129,6 +136,7 @@ abstract class MessageUIModel with _$MessageUIModel {
         }
         return '**Error:** $errorMessage';
       },
+      plan: (_) => '', // План отображается через PlanOverviewWidget
     );
   }
 }
@@ -140,4 +148,5 @@ enum MessageUIType {
   toolResult,
   agentSwitch,
   error,
+  plan,
 }

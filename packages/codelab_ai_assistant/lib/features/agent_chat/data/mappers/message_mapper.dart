@@ -42,6 +42,15 @@ class MessageMapper {
       ),
       
       error: (errorMessage) => WSMessage.error(content: errorMessage),
+      
+      plan: (executionPlan) => WSMessage.planNotification(
+        planId: executionPlan.planId,
+        content: 'План выполнения: ${executionPlan.originalTask}',
+        metadata: {
+          'plan_id': executionPlan.planId,
+          'total_count': executionPlan.totalCount,
+        },
+      ),
     );
   }
   
@@ -141,6 +150,66 @@ class MessageMapper {
         ),
         timestamp: timestamp,
         metadata: none(),
+      ),
+      
+      planNotification: (planId, content, metadata) => Message(
+        id: messageId,
+        role: MessageRole.system,
+        content: MessageContent.text(
+          text: '📋 План: $content',
+          isFinal: true,
+        ),
+        timestamp: timestamp,
+        metadata: some({
+          'plan_id': planId,
+          ...metadata,
+        }),
+      ),
+      
+      planUpdate: (planId, steps, currentStep) => Message(
+        id: messageId,
+        role: MessageRole.system,
+        content: MessageContent.text(
+          text: '🔄 Обновление плана: ${steps.length} шагов',
+          isFinal: true,
+        ),
+        timestamp: timestamp,
+        metadata: some({
+          'plan_id': planId,
+          'steps': steps,
+          if (currentStep != null) 'current_step': currentStep,
+        }),
+      ),
+      
+      planProgress: (planId, stepId, result, status) => Message(
+        id: messageId,
+        role: MessageRole.system,
+        content: MessageContent.text(
+          text: '⚙️ Прогресс: шаг $stepId - $status',
+          isFinal: true,
+        ),
+        timestamp: timestamp,
+        metadata: some({
+          'plan_id': planId,
+          'step_id': stepId,
+          'status': status,
+          if (result != null) 'result': result,
+        }),
+      ),
+      
+      planApproval: (planId, decision, feedback) => Message(
+        id: messageId,
+        role: MessageRole.system,
+        content: MessageContent.text(
+          text: 'План $decision',
+          isFinal: true,
+        ),
+        timestamp: timestamp,
+        metadata: some({
+          'plan_id': planId,
+          'decision': decision,
+          if (feedback != null) 'feedback': feedback,
+        }),
       ),
     );
   }

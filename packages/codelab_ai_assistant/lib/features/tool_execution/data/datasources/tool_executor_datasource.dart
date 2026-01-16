@@ -2,6 +2,7 @@
 import '../../../../core/error/exceptions.dart';
 import '../models/tool_call_model.dart';
 import '../models/tool_result_model.dart';
+import '../services/tool_usage_monitor.dart';
 import 'file_system_datasource.dart';
 
 /// Интерфейс для data source выполнения инструментов
@@ -18,6 +19,7 @@ abstract class ToolExecutorDataSource {
 /// Адаптирует существующий ToolExecutor к новой архитектуре
 class ToolExecutorDataSourceImpl implements ToolExecutorDataSource {
   final FileSystemDataSource _fileSystem;
+  final ToolUsageMonitor? _monitor;
   
   // Поддерживаемые инструменты
   static const List<String> _supportedTools = [
@@ -30,9 +32,14 @@ class ToolExecutorDataSourceImpl implements ToolExecutorDataSource {
     'search_in_code',
   ];
   
+  /// Публичный доступ к списку поддерживаемых инструментов для тестирования
+  static List<String> get supportedTools => _supportedTools;
+  
   ToolExecutorDataSourceImpl({
     required FileSystemDataSource fileSystem,
-  }) : _fileSystem = fileSystem;
+    ToolUsageMonitor? monitor,
+  })  : _fileSystem = fileSystem,
+        _monitor = monitor;
   
   @override
   List<String> getSupportedTools() => _supportedTools;
@@ -45,6 +52,17 @@ class ToolExecutorDataSourceImpl implements ToolExecutorDataSource {
       final result = await _executeByToolName(toolCall);
       stopwatch.stop();
       
+      // Записываем успешное выполнение в монитор
+      _monitor?.recordUsage(
+        toolName: toolCall.toolName,
+        durationMs: stopwatch.elapsedMilliseconds,
+        success: true,
+        metadata: {
+          'call_id': toolCall.callId,
+          'arguments_count': toolCall.arguments.length,
+        },
+      );
+      
       return ToolResultModel(
         callId: toolCall.callId,
         toolName: toolCall.toolName,
@@ -54,6 +72,19 @@ class ToolExecutorDataSourceImpl implements ToolExecutorDataSource {
       );
     } on ToolExecutionException catch (e) {
       stopwatch.stop();
+      
+      // Записываем ошибку в монитор
+      _monitor?.recordUsage(
+        toolName: toolCall.toolName,
+        durationMs: stopwatch.elapsedMilliseconds,
+        success: false,
+        errorCode: e.code,
+        errorMessage: e.message,
+        metadata: {
+          'call_id': toolCall.callId,
+          'arguments_count': toolCall.arguments.length,
+        },
+      );
       
       return ToolResultModel(
         callId: toolCall.callId,
@@ -65,6 +96,18 @@ class ToolExecutorDataSourceImpl implements ToolExecutorDataSource {
       );
     } catch (e) {
       stopwatch.stop();
+      
+      // Записываем неожиданную ошибку в монитор
+      _monitor?.recordUsage(
+        toolName: toolCall.toolName,
+        durationMs: stopwatch.elapsedMilliseconds,
+        success: false,
+        errorCode: 'unexpected_error',
+        errorMessage: e.toString(),
+        metadata: {
+          'call_id': toolCall.callId,
+        },
+      );
       
       throw ToolExecutionException(
         code: 'unexpected_error',

@@ -3,6 +3,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:gpt_markdown/gpt_markdown.dart';
 import '../../../shared/presentation/theme/app_theme.dart';
 import '../../domain/entities/message.dart';
+import '../organisms/plan_overview_widget.dart';
 
 /// Bubble для отображения одного сообщения в чате
 /// 
@@ -13,15 +14,25 @@ import '../../domain/entities/message.dart';
 /// - Single Responsibility
 class MessageBubble extends StatelessWidget {
   final Message message;
+  final VoidCallback? onPlanApprove;
+  final ValueChanged<String>? onPlanReject;
 
   const MessageBubble({
     super.key,
     required this.message,
+    this.onPlanApprove,
+    this.onPlanReject,
   });
 
   @override
   Widget build(BuildContext context) {
     final isUser = message.isUser;
+    
+    // Для плана используем специальный layout
+    final isPlan = message.content.isPlan;
+    if (isPlan) {
+      return _buildPlanMessage(context);
+    }
 
     return Padding(
       padding: AppSpacing.paddingVerticalSm,
@@ -59,6 +70,24 @@ class MessageBubble extends StatelessWidget {
             _buildAvatar(isUser),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildPlanMessage(BuildContext context) {
+    return message.content.when(
+      text: (_, __) => const SizedBox.shrink(),
+      toolCall: (_, __, ___) => const SizedBox.shrink(),
+      toolResult: (_, __, ___, ____) => const SizedBox.shrink(),
+      agentSwitch: (_, __, ___) => const SizedBox.shrink(),
+      error: (_) => const SizedBox.shrink(),
+      plan: (executionPlan) => Padding(
+        padding: AppSpacing.paddingVerticalSm,
+        child: PlanOverviewWidget(
+          plan: executionPlan,
+          onApprove: onPlanApprove,
+          onReject: onPlanReject,
+        ),
       ),
     );
   }
@@ -102,6 +131,10 @@ class MessageBubble extends StatelessWidget {
         label = '❌ Error';
         color = AppColors.error;
       },
+      plan: (_) {
+        label = '📋 План выполнения';
+        color = AppColors.primary;
+      },
       orElse: () {},
     );
 
@@ -128,6 +161,7 @@ class MessageBubble extends StatelessWidget {
       toolResult: (_, __, ___, ____) => AppColors.toolResultBackground(0.1),
       agentSwitch: (_, __, ___) => AppColors.agentSwitchBackground(0.1),
       error: (_) => AppColors.errorMessageBackground(0.1),
+      plan: (_) => AppColors.surface,
     );
   }
 
@@ -140,6 +174,7 @@ class MessageBubble extends StatelessWidget {
       toolResult: (_, __, ___, ____) => AppColors.toolResultBorder(0.3),
       agentSwitch: (_, __, ___) => AppColors.agentSwitchBorder(0.3),
       error: (_) => AppColors.errorMessageBorder(0.3),
+      plan: (_) => AppColors.border,
     );
   }
 
@@ -178,6 +213,7 @@ class MessageBubble extends StatelessWidget {
         }
         return '**Error:** $errorMessage';
       },
+      plan: (_) => '', // План отображается через PlanOverviewWidget
     );
   }
 }
