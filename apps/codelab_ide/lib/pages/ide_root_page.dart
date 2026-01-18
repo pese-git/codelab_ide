@@ -117,8 +117,16 @@ class _IdeRootPageState extends State<IdeRootPage> {
                                   key: editorPanelKey,
                                 ),
                                 emptySlot: engine.StartWizardPanel(
-                                  onAction: (_) =>
-                                      setState(() => _projectOpened = true),
+                                  onAction: (action) {
+                                    if (action == 'project_opened') {
+                                      setState(() {
+                                        _projectOpened = true;
+                                        // Автоматически открываем sidebar с файловым деревом
+                                        _sidebarVisible = true;
+                                        _selectedSidebarIndex = 0; // Explorer
+                                      });
+                                    }
+                                  },
                                 ),
                               ),
                             ),

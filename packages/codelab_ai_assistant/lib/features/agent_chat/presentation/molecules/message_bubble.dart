@@ -1,5 +1,6 @@
 // Компонент для отображения одного сообщения
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/material.dart' as material;
 import 'package:gpt_markdown/gpt_markdown.dart';
 import '../../../shared/presentation/theme/app_theme.dart';
 import '../../domain/entities/message.dart';
@@ -49,7 +50,10 @@ class MessageBubble extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (!isUser) _buildMessageHeader(),
-                  GptMarkdown(_getMessageContent()),
+                  material.Material(
+                    color: material.Colors.transparent,
+                    child: GptMarkdown(_getMessageContent()),
+                  ),
                 ],
               ),
             ),
