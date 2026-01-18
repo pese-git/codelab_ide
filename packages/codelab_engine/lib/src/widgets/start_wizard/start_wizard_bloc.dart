@@ -88,7 +88,7 @@ class StartWizardBloc extends Bloc<StartWizardEvent, StartWizardState> {
   ) async {
     emit(const StartWizardState.opening());
 
-    await _fileService
+    final result = await _fileService
         .pickProjectDirectory()
         // Если отказ/ошибка: в error попадёт FileError, в success — путь или null (отмена пользователем)
         .flatMap((projectPath) {
@@ -100,35 +100,33 @@ class StartWizardBloc extends Bloc<StartWizardEvent, StartWizardState> {
           }
           return _projectService.loadProject(projectPath);
         })
-        .run()
-        .then((result) {
-          result.match(
-            (error) => emit(StartWizardState.error(error.toString())),
-            (project) {
-              // Устанавливаем проект только если он валидный (path не пустой)
-              if (project.path.isNotEmpty) {
-                _projectManagerService.setCurrentProject(project);
-                // Инициализируем LSP для проекта
-                _lspService
-                    .initialize(project.path)
-                    .then((_) {
-                      codelabLogger.d(
-                        'LSP initialized for project: ${project.path}',
-                        tag: 'start_wizard_bloc',
-                      );
-                    })
-                    .catchError((error) {
-                      codelabLogger.e(
-                        'Failed to initialize LSP',
-                        tag: 'start_wizard_bloc',
-                        error: error,
-                      );
-                    });
-              }
-              emit(StartWizardState.opened(project));
-            },
-          );
-        });
+        .run();
+
+    await result.match(
+      (error) async => emit(StartWizardState.error(error.toString())),
+      (project) async {
+        // Устанавливаем проект только если он валидный (path не пустой)
+        if (project.path.isNotEmpty) {
+          _projectManagerService.setCurrentProject(project);
+          // Инициализируем LSP для проекта и ждем завершения
+          try {
+            await _lspService.initialize(project.path);
+            codelabLogger.d(
+              'LSP initialized for project: ${project.path}',
+              tag: 'start_wizard_bloc',
+            );
+          } catch (error) {
+            codelabLogger.e(
+              'Failed to initialize LSP',
+              tag: 'start_wizard_bloc',
+              error: error,
+            );
+            // Продолжаем работу даже если LSP не инициализировался
+          }
+        }
+        emit(StartWizardState.opened(project));
+      },
+    );
   }
 
   Future<void> _onLoadRecentProjects(
