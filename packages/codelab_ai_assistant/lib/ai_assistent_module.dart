@@ -1,6 +1,9 @@
 // Dependency Injection контейнер для Clean Architecture
+import 'dart:io';
+
 import 'package:cherrypick/cherrypick.dart';
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 import 'package:logger/logger.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -146,6 +149,34 @@ class AiAssistantModule extends Module {
           receiveTimeout: const Duration(seconds: 30),
         ),
       );
+
+      // Логи
+      authDio.interceptors.add(
+        LogInterceptor(
+          request: true,
+          requestBody: true,
+          responseBody: true,
+          error: true,
+        ),
+      );
+
+      authDio.httpClientAdapter = IOHttpClientAdapter(
+        createHttpClient: () {
+          final client = HttpClient();
+
+          // ---- PROXY ----
+
+          //client.findProxy = (_) => 'DIRECT';
+
+          // ---- SSL (ТОЛЬКО ДЛЯ ДИАГНОСТИКИ) ----
+
+          client.badCertificateCallback =
+              (X509Certificate cert, String host, int port) => true;
+
+          return client;
+        },
+      );
+
       return AuthRemoteDataSourceImpl(
         dio: authDio,
         authServiceUrl: currentScope.resolve<String>(named: 'authServiceUrl'),
@@ -170,11 +201,36 @@ class AiAssistantModule extends Module {
         ),
       );
 
+      // Логи
+      dio.interceptors.add(
+        LogInterceptor(
+          request: true,
+          requestBody: true,
+          responseBody: true,
+          error: true,
+        ),
+      );
+
       // Добавляем AuthInterceptor для JWT авторизации (всегда включен)
       final authInterceptor = currentScope.resolve<AuthInterceptor>();
       authInterceptor.setDio(dio); // Устанавливаем ссылку на Dio
       dio.interceptors.add(authInterceptor);
+      dio.httpClientAdapter = IOHttpClientAdapter(
+        createHttpClient: () {
+          final client = HttpClient();
 
+          // ---- PROXY ----
+
+          //client.findProxy = (_) => 'DIRECT';
+
+          // ---- SSL (ТОЛЬКО ДЛЯ ДИАГНОСТИКИ) ----
+
+          client.badCertificateCallback =
+              (X509Certificate cert, String host, int port) => true;
+
+          return client;
+        },
+      );
       return dio;
     }).singleton();
 
@@ -198,52 +254,68 @@ class AiAssistantModule extends Module {
     // ========================================================================
 
     // Data sources
-    bind<ServerSettingsLocalDataSource>().toProvide(
-      () => ServerSettingsLocalDataSourceImpl(
-        currentScope.resolve<SharedPreferences>(),
-      ),
-    ).singleton();
+    bind<ServerSettingsLocalDataSource>()
+        .toProvide(
+          () => ServerSettingsLocalDataSourceImpl(
+            currentScope.resolve<SharedPreferences>(),
+          ),
+        )
+        .singleton();
 
-    bind<ServerSettingsRemoteDataSource>().toProvide(
-      () => ServerSettingsRemoteDataSourceImpl(
-        dio: currentScope.resolve<Dio>(),
-        logger: currentScope.resolve<Logger>(),
-      ),
-    ).singleton();
+    bind<ServerSettingsRemoteDataSource>()
+        .toProvide(
+          () => ServerSettingsRemoteDataSourceImpl(
+            dio: currentScope.resolve<Dio>(),
+            logger: currentScope.resolve<Logger>(),
+          ),
+        )
+        .singleton();
 
     // Repository
-    bind<ServerSettingsRepository>().toProvide(
-      () => ServerSettingsRepositoryImpl(
-        localDataSource: currentScope.resolve<ServerSettingsLocalDataSource>(),
-        remoteDataSource: currentScope.resolve<ServerSettingsRemoteDataSource>(),
-        logger: currentScope.resolve<Logger>(),
-      ),
-    ).singleton();
+    bind<ServerSettingsRepository>()
+        .toProvide(
+          () => ServerSettingsRepositoryImpl(
+            localDataSource: currentScope
+                .resolve<ServerSettingsLocalDataSource>(),
+            remoteDataSource: currentScope
+                .resolve<ServerSettingsRemoteDataSource>(),
+            logger: currentScope.resolve<Logger>(),
+          ),
+        )
+        .singleton();
 
     // Use cases
-    bind<LoadSettingsUseCase>().toProvide(
-      () => LoadSettingsUseCase(
-        currentScope.resolve<ServerSettingsRepository>(),
-      ),
-    ).singleton();
+    bind<LoadSettingsUseCase>()
+        .toProvide(
+          () => LoadSettingsUseCase(
+            currentScope.resolve<ServerSettingsRepository>(),
+          ),
+        )
+        .singleton();
 
-    bind<SaveSettingsUseCase>().toProvide(
-      () => SaveSettingsUseCase(
-        currentScope.resolve<ServerSettingsRepository>(),
-      ),
-    ).singleton();
+    bind<SaveSettingsUseCase>()
+        .toProvide(
+          () => SaveSettingsUseCase(
+            currentScope.resolve<ServerSettingsRepository>(),
+          ),
+        )
+        .singleton();
 
-    bind<TestConnectionUseCase>().toProvide(
-      () => TestConnectionUseCase(
-        currentScope.resolve<ServerSettingsRepository>(),
-      ),
-    ).singleton();
+    bind<TestConnectionUseCase>()
+        .toProvide(
+          () => TestConnectionUseCase(
+            currentScope.resolve<ServerSettingsRepository>(),
+          ),
+        )
+        .singleton();
 
-    bind<ClearSettingsUseCase>().toProvide(
-      () => ClearSettingsUseCase(
-        currentScope.resolve<ServerSettingsRepository>(),
-      ),
-    ).singleton();
+    bind<ClearSettingsUseCase>()
+        .toProvide(
+          () => ClearSettingsUseCase(
+            currentScope.resolve<ServerSettingsRepository>(),
+          ),
+        )
+        .singleton();
 
     // BLoC
     bind<ServerSettingsBloc>().toProvide(
