@@ -495,6 +495,10 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     await _messageSubscription?.cancel();
     _messageSubscription = null;
 
+    // Очищаем активные completers чтобы при повторном подключении
+    // pending approvals могли быть восстановлены заново
+    _approvalService.clearActiveCompleters();
+
     emit(state.copyWith(
       isConnected: false,
       messages: const [],
