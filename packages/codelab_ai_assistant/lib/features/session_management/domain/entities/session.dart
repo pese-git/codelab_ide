@@ -30,6 +30,9 @@ abstract class Session with _$Session {
 
     /// Опциональное описание сессии
     required Option<String> description,
+
+    /// Флаг активности сессии (true - активна, false - неактивна)
+    @Default(true) bool isActive,
   }) = _Session;
 
   const Session._();

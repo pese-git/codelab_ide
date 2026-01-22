@@ -71,6 +71,7 @@ abstract class SessionModel with _$SessionModel {
       messageCount: messageCount,
       title: title != null ? some(title!) : none(),
       description: description != null ? some(description!) : none(),
+      isActive: isActive ?? true, // Default to true if null
     );
   }
 
@@ -86,6 +87,7 @@ abstract class SessionModel with _$SessionModel {
       messageCount: session.messageCount,
       title: session.title.toNullable(),
       description: session.description.toNullable(),
+      isActive: session.isActive,
     );
   }
 }
