@@ -228,6 +228,23 @@ class ToolApprovalServiceImpl implements ToolApprovalService {
     _logger.d('Cleared rejected tools list');
   }
 
+  /// Очистить активные completers при отключении от сессии
+  ///
+  /// Вызывается при disconnect чтобы при повторном подключении
+  /// pending approvals могли быть восстановлены заново
+  void clearActiveCompleters() {
+    final count = _activeCompleters.length;
+    // Завершаем все активные completers с cancelled
+    for (final entry in _activeCompleters.entries) {
+      if (!entry.value.isCompleted) {
+        _logger.d('Cancelling pending approval: ${entry.key}');
+        entry.value.complete(const ApprovalDecision.cancelled());
+      }
+    }
+    _activeCompleters.clear();
+    _logger.i('Cleared $count active completers');
+  }
+
   /// Закрывает сервис и освобождает ресурсы
   void dispose() {
     // Очищаем все активные completers для предотвращения memory leak
