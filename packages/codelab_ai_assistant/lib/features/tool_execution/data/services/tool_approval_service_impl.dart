@@ -233,6 +233,7 @@ class ToolApprovalServiceImpl implements ToolApprovalService {
   /// Вызывается при disconnect чтобы при повторном подключении
   /// pending approvals могли быть восстановлены заново
   void clearActiveCompleters() {
+    final count = _activeCompleters.length;
     // Завершаем все активные completers с cancelled
     for (final entry in _activeCompleters.entries) {
       if (!entry.value.isCompleted) {
@@ -241,7 +242,7 @@ class ToolApprovalServiceImpl implements ToolApprovalService {
       }
     }
     _activeCompleters.clear();
-    _logger.i('Cleared ${_activeCompleters.length} active completers');
+    _logger.i('Cleared $count active completers');
   }
 
   /// Закрывает сервис и освобождает ресурсы
