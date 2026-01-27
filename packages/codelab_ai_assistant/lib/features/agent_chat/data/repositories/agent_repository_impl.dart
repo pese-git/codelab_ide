@@ -143,7 +143,28 @@ class AgentRepositoryImpl implements AgentRepository {
                 '[AgentRepository] Converting message: role=${chatMsg.role}, content=$contentPreview',
               );
               final wsMsg = _chatMessageToWSMessage(chatMsg);
-              return MessageMapper.fromWSMessage(wsMsg);
+              final message = MessageMapper.fromWSMessage(wsMsg);
+
+              // BUGFIX: Помечаем все сообщения из истории флагом 'source: history'
+              // Это предотвращает автоматическое выполнение tool_calls из истории
+              // при перезапуске сессии (они уже обработаны или будут восстановлены
+              // через restorePendingApprovals() если еще не обработаны)
+              final messageWithSource = message.copyWith(
+                metadata: some({'source': 'history'}),
+              );
+
+              // TRACE: Логируем помеченные tool_calls для отладки
+              message.content.maybeWhen(
+                toolCall: (callId, toolName, _) {
+                  print(
+                    '[AgentRepository] 📜 Marked historical tool_call: '
+                    '$callId ($toolName) with source=history',
+                  );
+                },
+                orElse: () {},
+              );
+
+              return messageWithSource;
             } catch (e, stackTrace) {
               // Пропускаем сообщения, которые не удалось конвертировать
               print('[AgentRepository] Failed to convert message: $e');

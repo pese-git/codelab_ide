@@ -250,8 +250,10 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     SendMessageEvent event,
     Emitter<AgentChatState> emit,
   ) async {
-    _logger.d('[AgentChatBloc] 📤 Sending message: "${event.text.substring(0, event.text.length > 50 ? 50 : event.text.length)}..."');
-    
+    _logger.d(
+      '[AgentChatBloc] 📤 Sending message: "${event.text.substring(0, event.text.length > 50 ? 50 : event.text.length)}..."',
+    );
+
     // Добавляем сообщение пользователя в историю
     final userMessage = Message(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -261,7 +263,9 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
       metadata: none(),
     );
 
-    _logger.d('[AgentChatBloc] 📝 Adding user message to state, total messages: ${state.messages.length + 1}');
+    _logger.d(
+      '[AgentChatBloc] 📝 Adding user message to state, total messages: ${state.messages.length + 1}',
+    );
     emit(
       state.copyWith(
         messages: [...state.messages, userMessage],
@@ -277,7 +281,9 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
 
     result.fold(
       (failure) {
-        _logger.e('[AgentChatBloc] ❌ Failed to send message: ${failure.message}');
+        _logger.e(
+          '[AgentChatBloc] ❌ Failed to send message: ${failure.message}',
+        );
         emit(state.copyWith(isLoading: false, error: some(failure.message)));
       },
       (_) {
@@ -291,7 +297,17 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     MessageReceivedEvent event,
     Emitter<AgentChatState> emit,
   ) async {
-    _logger.d('[AgentChatBloc] 📨 Message received: ${event.message.role}, content type: ${event.message.content.runtimeType}');
+    // TRACE: Детальное логирование для отладки
+    final messageSource = event.message.metadata?.fold(
+      () => 'websocket',
+      (meta) => meta['source'] ?? 'websocket',
+    );
+
+    _logger.d(
+      '[AgentChatBloc] 📨 Message received: ${event.message.role}, '
+      'content type: ${event.message.content.runtimeType}, '
+      'source: $messageSource',
+    );
 
     // Обновляем текущего агента если это agent_switched
     String newAgent = state.currentAgent;
@@ -321,7 +337,24 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     // Автоматически выполняем tool calls
     await event.message.content.maybeWhen(
       toolCall: (callId, toolName, arguments) async {
-        _logger.i('Executing tool: $toolName');
+        // BUGFIX: Проверяем, не является ли это tool_call из истории
+        // Tool_calls из истории НЕ должны выполняться автоматически,
+        // так как они либо уже обработаны, либо будут восстановлены
+        // через restorePendingApprovals() если еще ожидают подтверждения
+        bool isFromHistory = false;
+        event.message.metadata?.fold(() => null, (meta) {
+          isFromHistory = meta['source'] == 'history';
+        });
+
+        if (isFromHistory) {
+          _logger.i(
+            '📜 Skipping tool_call from history: $callId ($toolName). '
+            'Will be restored via restorePendingApprovals() if still pending.',
+          );
+          return; // НЕ выполняем исторические tool_calls
+        }
+
+        _logger.i('▶️ Executing NEW tool from WebSocket: $toolName');
 
         // Получаем флаг requiresApproval из сообщения
         // Проверяем WSMessage для получения фактического значения
@@ -419,7 +452,9 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     LoadHistoryEvent event,
     Emitter<AgentChatState> emit,
   ) async {
-    _logger.d('[AgentChatBloc] 📜 Loading history for session: ${event.sessionId}');
+    _logger.d(
+      '[AgentChatBloc] 📜 Loading history for session: ${event.sessionId}',
+    );
     emit(state.copyWith(isLoading: true, error: none()));
 
     final result = await _loadHistory(
@@ -499,13 +534,15 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     // pending approvals могли быть восстановлены заново
     _approvalService.clearActiveCompleters();
 
-    emit(state.copyWith(
-      isConnected: false,
-      messages: const [],
-      isLoading: false,
-      error: none(),
-      pendingApproval: none(),
-    ));
+    emit(
+      state.copyWith(
+        isConnected: false,
+        messages: const [],
+        isLoading: false,
+        error: none(),
+        pendingApproval: none(),
+      ),
+    );
 
     _logger.i('[AgentChatBloc] ✅ Disconnected from chat');
   }
@@ -519,7 +556,9 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     ApprovalRequestedEvent event,
     Emitter<AgentChatState> emit,
   ) async {
-    _logger.i('[AgentChatBloc] 🔔 Tool approval requested: ${event.request.toolCall.toolName}');
+    _logger.i(
+      '[AgentChatBloc] 🔔 Tool approval requested: ${event.request.toolCall.toolName}',
+    );
     emit(state.copyWith(pendingApproval: some(event.request)));
   }
 
@@ -530,7 +569,9 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     state.pendingApproval.fold(
       () => _logger.w('[AgentChatBloc] ⚠️ No pending approval to approve'),
       (request) {
-        _logger.i('[AgentChatBloc] ✅ Tool call approved: ${request.toolCall.toolName}');
+        _logger.i(
+          '[AgentChatBloc] ✅ Tool call approved: ${request.toolCall.toolName}',
+        );
         request.completer.complete(const ApprovalDecision.approved());
         emit(state.copyWith(pendingApproval: none()));
       },
@@ -541,17 +582,18 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     RejectToolCallEvent event,
     Emitter<AgentChatState> emit,
   ) async {
-    state.pendingApproval.fold(() => _logger.w('[AgentChatBloc] ⚠️ No pending approval to reject'), (
-      request,
-    ) {
-      _logger.i(
-        '[AgentChatBloc] ❌ Tool call rejected: ${request.toolCall.toolName}, reason: ${event.reason}',
-      );
-      request.completer.complete(
-        ApprovalDecision.rejected(reason: some(event.reason)),
-      );
-      emit(state.copyWith(pendingApproval: none()));
-    });
+    state.pendingApproval.fold(
+      () => _logger.w('[AgentChatBloc] ⚠️ No pending approval to reject'),
+      (request) {
+        _logger.i(
+          '[AgentChatBloc] ❌ Tool call rejected: ${request.toolCall.toolName}, reason: ${event.reason}',
+        );
+        request.completer.complete(
+          ApprovalDecision.rejected(reason: some(event.reason)),
+        );
+        emit(state.copyWith(pendingApproval: none()));
+      },
+    );
   }
 
   Future<void> _onCancelToolCall(
@@ -561,7 +603,9 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     state.pendingApproval.fold(
       () => _logger.w('[AgentChatBloc] ⚠️ No pending approval to cancel'),
       (request) {
-        _logger.i('[AgentChatBloc] 🚫 Tool call cancelled: ${request.toolCall.toolName}');
+        _logger.i(
+          '[AgentChatBloc] 🚫 Tool call cancelled: ${request.toolCall.toolName}',
+        );
         request.completer.complete(const ApprovalDecision.cancelled());
         emit(state.copyWith(pendingApproval: none()));
       },
