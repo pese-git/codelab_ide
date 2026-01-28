@@ -149,8 +149,14 @@ class AgentRepositoryImpl implements AgentRepository {
               // Это предотвращает автоматическое выполнение tool_calls из истории
               // при перезапуске сессии (они уже обработаны или будут восстановлены
               // через restorePendingApprovals() если еще не обработаны)
+              // FIX: Сохраняем существующие metadata (например, requires_approval) и добавляем source=history
+              final existingMetadata = message.metadata.fold(
+                () => <String, dynamic>{},
+                (meta) => Map<String, dynamic>.from(meta),
+              );
+
               final messageWithSource = message.copyWith(
-                metadata: some({'source': 'history'}),
+                metadata: some({...existingMetadata, 'source': 'history'}),
               );
 
               // TRACE: Логируем помеченные tool_calls для отладки
