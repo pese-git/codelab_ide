@@ -150,7 +150,7 @@ class AgentRepositoryImpl implements AgentRepository {
               // при перезапуске сессии (они уже обработаны или будут восстановлены
               // через restorePendingApprovals() если еще не обработаны)
               // FIX: Сохраняем существующие metadata (например, requires_approval) и добавляем source=history
-              final existingMetadata = message.metadata.fold(
+              final existingMetadata = (message.metadata ?? none()).fold(
                 () => <String, dynamic>{},
                 (meta) => Map<String, dynamic>.from(meta),
               );
