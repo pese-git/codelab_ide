@@ -94,17 +94,17 @@ abstract class MessageModel with _$MessageModel {
   /// Строит metadata для сообщения, включая requiresApproval для tool_call
   Option<Map<String, dynamic>> _buildMetadata() {
     final meta = <String, dynamic>{};
-    
+
     // Добавляем существующие metadata
     if (metadata != null) {
       meta.addAll(metadata!);
     }
-    
+
     // Для tool_call добавляем requiresApproval
     if (type == 'tool_call' && requiresApproval != null) {
       meta['requires_approval'] = requiresApproval!;
     }
-    
+
     return meta.isEmpty ? none() : some(meta);
   }
 
@@ -152,20 +152,23 @@ abstract class MessageModel with _$MessageModel {
 
       case 'agent_switched':
         // Логируем для отладки
-        print('[MessageModel] agent_switched: from=$fromAgent, to=$toAgent, reason=$reason, metadata=$metadata');
-        
+        print(
+          '[MessageModel] agent_switched: from=$fromAgent, to=$toAgent, reason=$reason, metadata=$metadata',
+        );
+
         // Пытаемся извлечь информацию из metadata если основные поля пустые
         String? effectiveFrom = fromAgent;
         String? effectiveTo = toAgent;
-        
-        if ((effectiveFrom == null || effectiveFrom.isEmpty) && metadata != null) {
+
+        if ((effectiveFrom == null || effectiveFrom.isEmpty) &&
+            metadata != null) {
           effectiveFrom = metadata!['from_agent'] as String?;
         }
-        
+
         if ((effectiveTo == null || effectiveTo.isEmpty) && metadata != null) {
           effectiveTo = metadata!['to_agent'] as String?;
         }
-        
+
         return MessageContent.agentSwitch(
           fromAgent: effectiveFrom ?? 'unknown',
           toAgent: effectiveTo ?? 'unknown',

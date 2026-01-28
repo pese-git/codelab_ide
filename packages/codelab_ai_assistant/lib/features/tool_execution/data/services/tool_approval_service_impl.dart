@@ -234,15 +234,11 @@ class ToolApprovalServiceImpl implements ToolApprovalService {
   /// pending approvals могли быть восстановлены заново
   void clearActiveCompleters() {
     final count = _activeCompleters.length;
-    // Завершаем все активные completers с cancelled
-    for (final entry in _activeCompleters.entries) {
-      if (!entry.value.isCompleted) {
-        _logger.d('Cancelling pending approval: ${entry.key}');
-        entry.value.complete(const ApprovalDecision.cancelled());
-      }
-    }
+    // BUGFIX: Просто очищаем completers БЕЗ завершения
+    // Не отправляем tool_result при disconnect - pending approvals
+    // должны остаться на сервере для восстановления при следующем подключении
     _activeCompleters.clear();
-    _logger.i('Cleared $count active completers');
+    _logger.i('Cleared $count active completers (without sending cancellation)');
   }
 
   /// Закрывает сервис и освобождает ресурсы
