@@ -413,36 +413,24 @@ class AgentRepositoryImpl implements AgentRepository {
     SendPlanDecisionParams params,
   ) async {
     try {
-      // Создаем WSMessage для отправки решения по плану
-      final wsMessage = WSMessage.planDecision(
+      if (!_remoteDataSource.isConnected) {
+        return left(Failure.network('WebSocket not connected'));
+      }
+
+      // Создаем MessageModel с правильной структурой для plan_decision
+      // Теперь MessageModel имеет поля decision и feedback на верхнем уровне
+      final model = MessageModel(
+        type: 'plan_decision',
         approvalRequestId: params.approvalRequestId,
         planId: params.planId,
         decision: params.decision,
         feedback: params.feedback,
       );
-
-      // Конвертируем WSMessage в JSON и отправляем напрямую через WebSocket
-      if (_remoteDataSource.isConnected) {
-        final jsonData = wsMessage.toJson();
-        final jsonString = jsonEncode(jsonData);
-        
-        // Отправляем через низкоуровневый доступ к WebSocket
-        // Используем тот же подход, что и в sendMessage
-        final model = MessageModel(
-          type: 'plan_decision',
-          metadata: {
-            'approval_request_id': params.approvalRequestId,
-            'plan_id': params.planId,
-            'decision': params.decision,
-            if (params.feedback != null) 'feedback': params.feedback,
-          },
-        );
-        
-        await _remoteDataSource.sendMessage(model);
-        return right(unit);
-      } else {
-        return left(Failure.network('WebSocket not connected'));
-      }
+      
+      print('[AgentRepository] Sending plan_decision: ${jsonEncode(model.toJson())}');
+      
+      await _remoteDataSource.sendMessage(model);
+      return right(unit);
     } on WebSocketException catch (e) {
       return left(Failure.network(e.message));
     } catch (e) {

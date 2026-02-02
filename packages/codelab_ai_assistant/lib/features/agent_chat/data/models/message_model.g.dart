@@ -25,6 +25,8 @@ _MessageModel _$MessageModelFromJson(Map<String, dynamic> json) =>
       approvalRequestId: json['approval_request_id'] as String?,
       planId: json['plan_id'] as String?,
       planSummary: json['plan_summary'] as Map<String, dynamic>?,
+      decision: json['decision'] as String?,
+      feedback: json['feedback'] as String?,
       metadata: json['metadata'] as Map<String, dynamic>?,
     );
 
@@ -47,5 +49,7 @@ Map<String, dynamic> _$MessageModelToJson(_MessageModel instance) =>
       'approval_request_id': instance.approvalRequestId,
       'plan_id': instance.planId,
       'plan_summary': instance.planSummary,
+      'decision': instance.decision,
+      'feedback': instance.feedback,
       'metadata': instance.metadata,
     };

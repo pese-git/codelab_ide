@@ -61,17 +61,23 @@ abstract class MessageModel with _$MessageModel {
     /// Причина переключения
     String? reason,
 
-    /// ID запроса на одобрение плана (для plan_approval_required)
+    /// ID запроса на одобрение плана (для plan_approval_required, plan_decision)
     // ignore: invalid_annotation_target
     @JsonKey(name: 'approval_request_id') String? approvalRequestId,
 
-    /// ID плана (для plan_approval_required)
+    /// ID плана (для plan_approval_required, plan_decision)
     // ignore: invalid_annotation_target
     @JsonKey(name: 'plan_id') String? planId,
 
     /// Сводка плана (для plan_approval_required)
     // ignore: invalid_annotation_target
     @JsonKey(name: 'plan_summary') Map<String, dynamic>? planSummary,
+
+    /// Решение пользователя (для plan_decision, hitl_decision)
+    String? decision,
+
+    /// Обратная связь пользователя (для plan_decision, hitl_decision)
+    String? feedback,
 
     /// Метаданные
     Map<String, dynamic>? metadata,

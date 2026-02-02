@@ -110,49 +110,68 @@ class ApprovalApiDataSourceImpl implements ApprovalApiDataSource {
 
   /// Конвертирует ApprovalResponse в MessageModel для WebSocket
   MessageModel _convertResponseToMessage(ApprovalResponse response) {
-    // Тип сообщения зависит от типа approval
-    final messageType = response.type == ApprovalType.tool
-        ? 'tool_result'
-        : 'plan_decision';
-
-    // Базовые метаданные
-    final metadata = <String, dynamic>{
-      'approval_request_id': response.approvalRequestId,
-      'decision': response.decision.toDecisionString(),
-      'responded_at': response.respondedAt.toIso8601String(),
-      'decision_time_ms': response.decisionTimeMs,
-    };
-
-    // Добавляем специфичные данные для каждого типа решения
-    response.decision.when(
-      approved: () {
-        metadata['approved'] = true;
-      },
-      rejected: (feedback) {
-        metadata['approved'] = false;
-        if (feedback != null) {
-          feedback.fold(() => null, (f) => metadata['feedback'] = f);
-        }
-      },
-      modified: (modifiedData, feedback) {
-        metadata['approved'] = true;
-        metadata['modified'] = true;
-        metadata['modified_data'] = modifiedData;
-        if (feedback.isNotEmpty) {
-          metadata['feedback'] = feedback;
-        }
-      },
-      cancelled: () {
-        metadata['approved'] = false;
-        metadata['cancelled'] = true;
-      },
-    );
-
-    return MessageModel(
-      type: messageType,
-      content: _getDecisionContent(response.decision),
-      metadata: metadata,
-    );
+    // Для tool approval отправляем hitl_decision, для plan - plan_decision
+    if (response.type == ApprovalType.tool) {
+      // Для tool approval используем hitl_decision с правильной структурой
+      final decisionString = response.decision.when(
+        approved: () => 'approve',
+        rejected: (_) => 'reject',
+        modified: (_, __) => 'edit',
+        cancelled: () => 'reject',
+      );
+      
+      // Извлекаем modified_arguments если есть
+      Map<String, dynamic>? modifiedArguments;
+      String? feedback;
+      
+      response.decision.maybeWhen(
+        modified: (modifiedData, feedbackText) {
+          modifiedArguments = modifiedData;
+          feedback = feedbackText.isNotEmpty ? feedbackText : null;
+        },
+        rejected: (feedbackOpt) {
+          feedbackOpt?.fold(() => null, (f) => feedback = f);
+        },
+        orElse: () {},
+      );
+      
+      return MessageModel(
+        type: 'hitl_decision',
+        callId: response.approvalRequestId, // ✅ call_id на верхнем уровне
+        decision: decisionString,
+        feedback: feedback,
+        metadata: modifiedArguments != null
+            ? {'modified_arguments': modifiedArguments}
+            : null,
+      );
+    } else {
+      // Для plan approval используем plan_decision
+      final decisionString = response.decision.when(
+        approved: () => 'approve',
+        rejected: (_) => 'reject',
+        modified: (_, __) => 'modify',
+        cancelled: () => 'reject',
+      );
+      
+      String? feedback;
+      response.decision.maybeWhen(
+        rejected: (feedbackOpt) {
+          feedbackOpt?.fold(() => null, (f) => feedback = f);
+        },
+        modified: (_, feedbackText) {
+          feedback = feedbackText.isNotEmpty ? feedbackText : null;
+        },
+        orElse: () {},
+      );
+      
+      return MessageModel(
+        type: 'plan_decision',
+        approvalRequestId: response.approvalRequestId,
+        planId: response.approvalRequestId, // используем approval_request_id как plan_id
+        decision: decisionString,
+        feedback: feedback,
+      );
+    }
   }
 
   /// Получает текстовое содержимое для решения
