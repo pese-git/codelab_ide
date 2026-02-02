@@ -104,10 +104,32 @@ class AgentRemoteDataSourceImpl implements AgentRemoteDataSource {
     return _channel!.stream.map((event) {
       try {
         final json = jsonDecode(event as String) as Map<String, dynamic>;
-        return MessageModel.fromJson(json);
+        final msgType = json['type'];
+        
+        // Логируем plan_approval_required для отладки
+        if (msgType == 'plan_approval_required') {
+          print('[AgentRemoteDataSource] Received plan_approval_required: ${jsonEncode(json)}');
+          print('[AgentRemoteDataSource] Keys: ${json.keys.toList()}');
+          print('[AgentRemoteDataSource] approval_request_id: ${json['approval_request_id']}');
+          print('[AgentRemoteDataSource] plan_id: ${json['plan_id']}');
+          print('[AgentRemoteDataSource] plan_summary: ${json['plan_summary']}');
+        }
+        
+        final model = MessageModel.fromJson(json);
+        
+        if (msgType == 'plan_approval_required') {
+          print('[AgentRemoteDataSource] Successfully parsed plan_approval_required to MessageModel');
+          print('[AgentRemoteDataSource] MessageModel type: ${model.type}');
+          print('[AgentRemoteDataSource] MessageModel metadata: ${model.metadata}');
+        }
+        
+        return model;
       } on FormatException catch (e) {
+        print('[AgentRemoteDataSource] FormatException: $e');
         throw ParseException('Invalid JSON from WebSocket: $e', e);
-      } catch (e) {
+      } catch (e, stackTrace) {
+        print('[AgentRemoteDataSource] Parse error: $e');
+        print('[AgentRemoteDataSource] Stack trace: $stackTrace');
         throw ParseException('Failed to parse message: $e', e);
       }
     }).handleError((error) {

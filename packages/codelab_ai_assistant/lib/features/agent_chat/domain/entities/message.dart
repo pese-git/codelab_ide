@@ -49,6 +49,7 @@ abstract class Message with _$Message {
       toolResult: (_, __, ___, ____) => none(),
       agentSwitch: (_, __, ___) => none(),
       error: (msg) => some(msg),
+      planApprovalRequired: (_, __, ___, content) => content != null ? some(content) : none(),
     );
   }
 }
@@ -87,6 +88,14 @@ sealed class MessageContent with _$MessageContent {
   /// Сообщение об ошибке
   const factory MessageContent.error({required String message}) =
       ErrorMessageContent;
+
+  /// Запрос на одобрение плана
+  const factory MessageContent.planApprovalRequired({
+    required String approvalRequestId,
+    required String planId,
+    required Map<String, dynamic> planSummary,
+    String? content,
+  }) = PlanApprovalRequiredMessageContent;
 
   const MessageContent._();
 
@@ -140,4 +149,22 @@ abstract class LoadHistoryParams with _$LoadHistoryParams {
     /// ID сессии для загрузки истории
     required String sessionId,
   }) = _LoadHistoryParams;
+}
+
+/// Параметры для отправки решения по плану
+@freezed
+abstract class SendPlanDecisionParams with _$SendPlanDecisionParams {
+  const factory SendPlanDecisionParams({
+    /// ID запроса на одобрение
+    required String approvalRequestId,
+    
+    /// ID плана
+    required String planId,
+    
+    /// Решение: 'approve', 'reject', 'modify'
+    required String decision,
+    
+    /// Комментарий/feedback (опционально, обязательно для modify)
+    String? feedback,
+  }) = _SendPlanDecisionParams;
 }

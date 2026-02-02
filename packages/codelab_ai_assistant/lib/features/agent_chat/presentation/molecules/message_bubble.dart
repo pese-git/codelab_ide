@@ -14,15 +14,51 @@ import '../../domain/entities/message.dart';
 /// - Single Responsibility
 class MessageBubble extends StatelessWidget {
   final Message message;
+  final VoidCallback? onPlanTap;
 
   const MessageBubble({
     super.key,
     required this.message,
+    this.onPlanTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final isUser = message.isUser;
+    final isPlanApproval = message.content is PlanApprovalRequiredMessageContent;
+
+    Widget bubbleContent = Container(
+      padding: AppSpacing.paddingMd,
+      decoration: BoxDecoration(
+        color: _getBackgroundColor(),
+        borderRadius: AppSpacing.borderRadiusMd,
+        border: Border.all(
+          color: _getBorderColor(),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (!isUser) _buildMessageHeader(),
+          material.Material(
+            color: material.Colors.transparent,
+            child: GptMarkdown(_getMessageContent()),
+          ),
+        ],
+      ),
+    );
+
+    // Оборачиваем в GestureDetector если это план и есть callback
+    if (isPlanApproval && onPlanTap != null) {
+      bubbleContent = GestureDetector(
+        onTap: onPlanTap,
+        child: MouseRegion(
+          cursor: material.SystemMouseCursors.click,
+          child: bubbleContent,
+        ),
+      );
+    }
 
     return Padding(
       padding: AppSpacing.paddingVerticalSm,
@@ -35,29 +71,7 @@ class MessageBubble extends StatelessWidget {
             _buildAvatar(isUser),
             AppSpacing.gapHorizontalMd,
           ],
-          Flexible(
-            child: Container(
-              padding: AppSpacing.paddingMd,
-              decoration: BoxDecoration(
-                color: _getBackgroundColor(),
-                borderRadius: AppSpacing.borderRadiusMd,
-                border: Border.all(
-                  color: _getBorderColor(),
-                  width: 1,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (!isUser) _buildMessageHeader(),
-                  material.Material(
-                    color: material.Colors.transparent,
-                    child: GptMarkdown(_getMessageContent()),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          Flexible(child: bubbleContent),
           if (isUser) ...[
             AppSpacing.gapHorizontalMd,
             _buildAvatar(isUser),
@@ -106,6 +120,10 @@ class MessageBubble extends StatelessWidget {
         label = '❌ Error';
         color = AppColors.error;
       },
+      planApprovalRequired: (approvalRequestId, planId, planSummary, content) {
+        label = '📋 План требует одобрения';
+        color = AppColors.warning;
+      },
       orElse: () {},
     );
 
@@ -132,6 +150,7 @@ class MessageBubble extends StatelessWidget {
       toolResult: (_, __, ___, ____) => AppColors.toolResultBackground(0.1),
       agentSwitch: (_, __, ___) => AppColors.agentSwitchBackground(0.1),
       error: (_) => AppColors.errorMessageBackground(0.1),
+      planApprovalRequired: (_, __, ___, ____) => AppColors.warning.withOpacity(0.1),
     );
   }
 
@@ -144,6 +163,7 @@ class MessageBubble extends StatelessWidget {
       toolResult: (_, __, ___, ____) => AppColors.toolResultBorder(0.3),
       agentSwitch: (_, __, ___) => AppColors.agentSwitchBorder(0.3),
       error: (_) => AppColors.errorMessageBorder(0.3),
+      planApprovalRequired: (_, __, ___, ____) => AppColors.warning.withOpacity(0.3),
     );
   }
 
@@ -181,6 +201,17 @@ class MessageBubble extends StatelessWidget {
           return '**Error:** Unknown error occurred. Please check the logs for details.';
         }
         return '**Error:** $errorMessage';
+      },
+      planApprovalRequired: (approvalRequestId, planId, planSummary, content) {
+        final goal = planSummary['goal'] as String? ?? 'No goal';
+        final subtasksCount = planSummary['subtasks_count'] as int? ?? 0;
+        final estimatedTime = planSummary['total_estimated_time'] as String? ?? 'Unknown';
+        
+        return '**План выполнения задачи**\n\n'
+            '**Цель:** $goal\n\n'
+            '**Подзадач:** $subtasksCount\n'
+            '**Время:** $estimatedTime\n\n'
+            '_Нажмите для просмотра деталей и одобрения_';
       },
     );
   }

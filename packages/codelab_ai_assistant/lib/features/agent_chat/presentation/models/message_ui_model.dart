@@ -76,6 +76,13 @@ abstract class MessageUIModel with _$MessageUIModel {
         label = '❌ Error';
         labelColor = AppColors.error;
       },
+      planApprovalRequired: (approvalRequestId, planId, planSummary, content) {
+        type = MessageUIType.planApproval;
+        backgroundColor = AppColors.warning.withOpacity(0.1);
+        borderColor = AppColors.warning.withOpacity(0.3);
+        label = '📋 План требует одобрения';
+        labelColor = AppColors.warning;
+      },
     );
 
     // Форматируем content для отображения
@@ -129,6 +136,17 @@ abstract class MessageUIModel with _$MessageUIModel {
         }
         return '**Error:** $errorMessage';
       },
+      planApprovalRequired: (approvalRequestId, planId, planSummary, content) {
+        final goal = planSummary['goal'] as String? ?? 'No goal';
+        final subtasksCount = planSummary['subtasks_count'] as int? ?? 0;
+        final estimatedTime = planSummary['total_estimated_time'] as String? ?? 'Unknown';
+        
+        return '**План выполнения задачи**\n\n'
+            '**Цель:** $goal\n\n'
+            '**Подзадач:** $subtasksCount\n'
+            '**Время:** $estimatedTime\n\n'
+            '_Нажмите для просмотра деталей и одобрения_';
+      },
     );
   }
 }
@@ -140,4 +158,5 @@ enum MessageUIType {
   toolResult,
   agentSwitch,
   error,
+  planApproval,
 }

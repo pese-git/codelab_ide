@@ -61,6 +61,18 @@ abstract class MessageModel with _$MessageModel {
     /// Причина переключения
     String? reason,
 
+    /// ID запроса на одобрение плана (для plan_approval_required)
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'approval_request_id') String? approvalRequestId,
+
+    /// ID плана (для plan_approval_required)
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'plan_id') String? planId,
+
+    /// Сводка плана (для plan_approval_required)
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'plan_summary') Map<String, dynamic>? planSummary,
+
     /// Метаданные
     Map<String, dynamic>? metadata,
   }) = _MessageModel;
@@ -119,6 +131,7 @@ abstract class MessageModel with _$MessageModel {
       case 'tool_result':
         return MessageRole.tool;
       case 'error':
+      case 'plan_approval_required':
         return MessageRole.system;
       default:
         return role == 'user' ? MessageRole.user : MessageRole.assistant;
@@ -180,6 +193,24 @@ abstract class MessageModel with _$MessageModel {
           message: content ?? error ?? 'Unknown error',
         );
 
+      case 'plan_approval_required':
+        // Извлекаем данные из полей верхнего уровня
+        final approvalReqId = approvalRequestId ?? '';
+        final pId = planId ?? '';
+        final pSummary = planSummary ?? {};
+        
+        print('[MessageModel] Parsing plan_approval_required:');
+        print('[MessageModel]   approvalRequestId: $approvalReqId');
+        print('[MessageModel]   planId: $pId');
+        print('[MessageModel]   planSummary keys: ${pSummary.keys.toList()}');
+        
+        return MessageContent.planApprovalRequired(
+          approvalRequestId: approvalReqId,
+          planId: pId,
+          planSummary: pSummary,
+          content: content,
+        );
+
       default:
         return MessageContent.text(text: content ?? '', isFinal: true);
     }
@@ -219,6 +250,15 @@ abstract class MessageModel with _$MessageModel {
         reason: reason?.toNullable(),
       ),
       error: (message) => MessageModel(type: 'error', content: message),
+      planApprovalRequired: (approvalRequestId, planId, planSummary, content) => MessageModel(
+        type: 'plan_approval_required',
+        content: content,
+        metadata: {
+          'approval_request_id': approvalRequestId,
+          'plan_id': planId,
+          'plan_summary': planSummary,
+        },
+      ),
     );
   }
 }

@@ -44,6 +44,13 @@ import 'features/tool_execution/domain/usecases/request_approval.dart';
 import 'features/tool_execution/domain/usecases/validate_safety.dart';
 import 'features/tool_execution/data/services/approval_sync_service.dart';
 
+// Unified Approval System
+import 'features/approval/domain/services/approval_service.dart';
+import 'features/approval/data/services/unified_approval_service_impl.dart';
+import 'features/approval/data/services/tool_approval_service_adapter.dart';
+import 'features/approval/data/datasources/approval_api_datasource.dart';
+import 'features/approval/data/datasources/approval_api_datasource_impl.dart';
+
 // Agent Chat
 import 'features/agent_chat/data/datasources/agent_remote_datasource.dart';
 import 'features/agent_chat/data/repositories/agent_repository_impl.dart';
@@ -54,6 +61,7 @@ import 'features/agent_chat/domain/usecases/receive_messages.dart';
 import 'features/agent_chat/domain/usecases/switch_agent.dart';
 import 'features/agent_chat/domain/usecases/load_history.dart';
 import 'features/agent_chat/domain/usecases/connect.dart';
+import 'features/agent_chat/domain/usecases/send_plan_decision.dart';
 
 // Presentation
 import 'features/authentication/presentation/bloc/auth_bloc.dart';
@@ -398,6 +406,31 @@ class AiAssistantModule extends Module {
     }
 
     // ========================================================================
+    // Unified Approval System
+    // ========================================================================
+
+    // ApprovalApiDataSource - unified data source for all approval types
+    bind<ApprovalApiDataSource>()
+        .toProvide(
+          () => ApprovalApiDataSourceImpl(
+            gatewayApi: currentScope.resolve<GatewayApi>(),
+            remoteDataSource: currentScope.resolve<AgentRemoteDataSource>(),
+            logger: currentScope.resolve<Logger>(),
+          ),
+        )
+        .singleton();
+
+    // UnifiedApprovalService - domain service for all approval types
+    bind<ApprovalService>()
+        .toProvide(
+          () => UnifiedApprovalServiceImpl(
+            apiDataSource: currentScope.resolve<ApprovalApiDataSource>(),
+            logger: currentScope.resolve<Logger>(),
+          ),
+        )
+        .singleton();
+
+    // ========================================================================
     // Tool Execution Feature
     // ========================================================================
 
@@ -410,7 +443,7 @@ class AiAssistantModule extends Module {
       ),
     );
 
-    // ApprovalSyncService for restoring pending approvals
+    // ApprovalSyncService for restoring pending approvals (deprecated, kept for compatibility)
     bind<ApprovalSyncService>()
         .toProvide(
           () => ApprovalSyncService(
@@ -420,19 +453,21 @@ class AiAssistantModule extends Module {
         )
         .singleton();
 
-    // ToolApprovalService implementation
-    bind<ToolApprovalServiceImpl>()
+    // ToolApprovalServiceAdapter - wraps UnifiedApprovalService for backward compatibility
+    // Реализует интерфейс ToolApprovalService с полным API для AgentChatBloc
+    bind<ToolApprovalServiceAdapter>()
         .toProvide(
-          () => ToolApprovalServiceImpl(
-            syncService: currentScope.resolve<ApprovalSyncService>(),
+          () => ToolApprovalServiceAdapter(
+            unifiedService: currentScope.resolve<ApprovalService>(),
             logger: currentScope.resolve<Logger>(),
           ),
         )
         .singleton();
 
-    // ToolApprovalService interface for repository
+    // ToolApprovalService interface - используется ToolRepository и AgentChatBloc
+    // Адаптер реализует полный интерфейс ToolApprovalService включая все методы
     bind<ToolApprovalService>()
-        .toProvide(() => currentScope.resolve<ToolApprovalServiceImpl>())
+        .toProvide(() => currentScope.resolve<ToolApprovalServiceAdapter>())
         .singleton();
 
     // Repository
@@ -508,6 +543,10 @@ class AiAssistantModule extends Module {
       () => ConnectUseCase(currentScope.resolve<AgentRepository>()),
     );
 
+    bind<SendPlanDecisionUseCase>().toProvide(
+      () => SendPlanDecisionUseCase(currentScope.resolve<AgentRepository>()),
+    );
+
     // ========================================================================
     // Presentation Layer (BLoCs)
     // ========================================================================
@@ -547,7 +586,8 @@ class AiAssistantModule extends Module {
         loadHistory: currentScope.resolve<LoadHistoryUseCase>(),
         connect: currentScope.resolve<ConnectUseCase>(),
         executeTool: currentScope.resolve<ExecuteToolUseCase>(),
-        approvalService: currentScope.resolve<ToolApprovalServiceImpl>(),
+        sendPlanDecision: currentScope.resolve<SendPlanDecisionUseCase>(),
+        approvalService: currentScope.resolve<ToolApprovalService>(),
         logger: currentScope.resolve<Logger>(),
       ),
     );

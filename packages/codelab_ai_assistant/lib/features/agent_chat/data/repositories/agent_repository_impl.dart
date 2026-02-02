@@ -409,5 +409,47 @@ class AgentRepositoryImpl implements AgentRepository {
   }
 
   @override
+  Future<Either<Failure, Unit>> sendPlanDecision(
+    SendPlanDecisionParams params,
+  ) async {
+    try {
+      // Создаем WSMessage для отправки решения по плану
+      final wsMessage = WSMessage.planDecision(
+        approvalRequestId: params.approvalRequestId,
+        planId: params.planId,
+        decision: params.decision,
+        feedback: params.feedback,
+      );
+
+      // Конвертируем WSMessage в JSON и отправляем напрямую через WebSocket
+      if (_remoteDataSource.isConnected) {
+        final jsonData = wsMessage.toJson();
+        final jsonString = jsonEncode(jsonData);
+        
+        // Отправляем через низкоуровневый доступ к WebSocket
+        // Используем тот же подход, что и в sendMessage
+        final model = MessageModel(
+          type: 'plan_decision',
+          metadata: {
+            'approval_request_id': params.approvalRequestId,
+            'plan_id': params.planId,
+            'decision': params.decision,
+            if (params.feedback != null) 'feedback': params.feedback,
+          },
+        );
+        
+        await _remoteDataSource.sendMessage(model);
+        return right(unit);
+      } else {
+        return left(Failure.network('WebSocket not connected'));
+      }
+    } on WebSocketException catch (e) {
+      return left(Failure.network(e.message));
+    } catch (e) {
+      return left(Failure.unknown('Failed to send plan decision: $e'));
+    }
+  }
+
+  @override
   bool get isConnected => _remoteDataSource.isConnected;
 }

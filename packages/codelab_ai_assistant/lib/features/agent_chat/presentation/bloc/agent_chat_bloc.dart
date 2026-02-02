@@ -14,6 +14,7 @@ import '../../domain/usecases/receive_messages.dart';
 import '../../domain/usecases/switch_agent.dart';
 import '../../domain/usecases/load_history.dart';
 import '../../domain/usecases/connect.dart';
+import '../../domain/usecases/send_plan_decision.dart';
 import '../../../tool_execution/domain/usecases/execute_tool.dart';
 import '../../../tool_execution/domain/entities/tool_call.dart';
 import '../../../tool_execution/domain/entities/tool_result.dart';
@@ -41,6 +42,12 @@ class AgentChatEvent with _$AgentChatEvent {
   const factory AgentChatEvent.rejectToolCall(String reason) =
       RejectToolCallEvent;
   const factory AgentChatEvent.cancelToolCall() = CancelToolCallEvent;
+  const factory AgentChatEvent.sendPlanDecision({
+    required String approvalRequestId,
+    required String planId,
+    required String decision,
+    String? feedback,
+  }) = SendPlanDecisionEvent;
 }
 
 /// Состояния для AgentChatBloc
@@ -53,6 +60,7 @@ abstract class AgentChatState with _$AgentChatState {
     required String currentAgent,
     required Option<String> error,
     required Option<ApprovalRequestWithCompleter> pendingApproval,
+    required Option<Message> pendingPlanApproval,
   }) = _AgentChatState;
 
   factory AgentChatState.initial() => AgentChatState(
@@ -62,6 +70,7 @@ abstract class AgentChatState with _$AgentChatState {
     currentAgent: AgentType.orchestrator,
     error: none(),
     pendingApproval: none(),
+    pendingPlanApproval: none(),
   );
 }
 
@@ -79,7 +88,8 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
   final LoadHistoryUseCase _loadHistory;
   final ConnectUseCase _connect;
   final ExecuteToolUseCase _executeTool;
-  final ToolApprovalServiceImpl _approvalService;
+  final SendPlanDecisionUseCase _sendPlanDecision;
+  final ToolApprovalService _approvalService;
   final Logger _logger;
 
   StreamSubscription<Either<Failure, Message>>? _messageSubscription;
@@ -93,7 +103,8 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     required LoadHistoryUseCase loadHistory,
     required ConnectUseCase connect,
     required ExecuteToolUseCase executeTool,
-    required ToolApprovalServiceImpl approvalService,
+    required SendPlanDecisionUseCase sendPlanDecision,
+    required ToolApprovalService approvalService,
     required Logger logger,
   }) : _sendMessage = sendMessage,
        _sendToolResult = sendToolResult,
@@ -102,6 +113,7 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
        _loadHistory = loadHistory,
        _connect = connect,
        _executeTool = executeTool,
+       _sendPlanDecision = sendPlanDecision,
        _approvalService = approvalService,
        _logger = logger,
        super(AgentChatState.initial()) {
@@ -115,6 +127,7 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     on<ApprovalRequestedEvent>(_onApprovalRequested);
     on<ApproveToolCallEvent>(_onApproveToolCall);
     on<RejectToolCallEvent>(_onRejectToolCall);
+    on<SendPlanDecisionEvent>(_onSendPlanDecision);
 
     // Подписываемся на запросы подтверждения
     _approvalSubscription = _approvalService.approvalRequests.listen((request) {
@@ -311,6 +324,8 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
 
     // Обновляем текущего агента если это agent_switched
     String newAgent = state.currentAgent;
+    Option<Message> newPendingPlanApproval = state.pendingPlanApproval;
+    
     event.message.content.maybeWhen(
       agentSwitch: (from, to, reason) {
         // Проверяем, что toAgent не пустой
@@ -323,6 +338,21 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
           _logger.w('Agent switch message received but toAgent is empty');
         }
       },
+      planApprovalRequired: (approvalRequestId, planId, planSummary, content) {
+        _logger.i(
+          '[AgentChatBloc] 📋 Plan approval required: $planId',
+        );
+        _logger.i(
+          '[AgentChatBloc] 📋 Setting pendingPlanApproval to trigger dialog',
+        );
+        _logger.i(
+          '[AgentChatBloc] 📋 approval_request_id: $approvalRequestId',
+        );
+        _logger.i(
+          '[AgentChatBloc] 📋 plan_summary keys: ${planSummary.keys.toList()}',
+        );
+        newPendingPlanApproval = some(event.message);
+      },
       orElse: () {},
     );
 
@@ -331,6 +361,7 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
         messages: [...state.messages, event.message],
         currentAgent: newAgent,
         isLoading: false,
+        pendingPlanApproval: newPendingPlanApproval,
       ),
     );
 
@@ -608,6 +639,43 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
         );
         request.completer.complete(const ApprovalDecision.cancelled());
         emit(state.copyWith(pendingApproval: none()));
+      },
+    );
+  }
+
+  Future<void> _onSendPlanDecision(
+    SendPlanDecisionEvent event,
+    Emitter<AgentChatState> emit,
+  ) async {
+    _logger.i(
+      '[AgentChatBloc] 📤 Sending plan decision: ${event.decision} for plan ${event.planId}',
+    );
+    
+    emit(state.copyWith(isLoading: true));
+
+    final result = await _sendPlanDecision(
+      SendPlanDecisionParams(
+        approvalRequestId: event.approvalRequestId,
+        planId: event.planId,
+        decision: event.decision,
+        feedback: event.feedback,
+      ),
+    );
+
+    result.fold(
+      (failure) {
+        _logger.e('Failed to send plan decision: ${failure.message}');
+        emit(state.copyWith(
+          isLoading: false,
+          error: some(failure.message),
+        ));
+      },
+      (_) {
+        _logger.i('Plan decision sent successfully: ${event.decision}');
+        emit(state.copyWith(
+          isLoading: false,
+          pendingPlanApproval: none(),
+        ));
       },
     );
   }

@@ -42,6 +42,14 @@ class MessageMapper {
       ),
       
       error: (errorMessage) => WSMessage.error(content: errorMessage),
+      
+      planApprovalRequired: (approvalRequestId, planId, planSummary, content) =>
+        WSMessage.planApprovalRequired(
+          approvalRequestId: approvalRequestId,
+          planId: planId,
+          planSummary: planSummary,
+          content: content,
+        ),
     );
   }
   
@@ -141,6 +149,40 @@ class MessageMapper {
         ),
         timestamp: timestamp,
         metadata: none(),
+      ),
+      
+      planApprovalRequired: (content, approvalRequestId, planId, planSummary) => Message(
+        id: messageId,
+        role: MessageRole.system,
+        content: MessageContent.planApprovalRequired(
+          approvalRequestId: approvalRequestId,
+          planId: planId,
+          planSummary: planSummary,
+          content: content,
+        ),
+        timestamp: timestamp,
+        metadata: some({
+          'approval_request_id': approvalRequestId,
+          'plan_id': planId,
+          'plan_summary': planSummary,
+        }),
+      ),
+      
+      planDecision: (approvalRequestId, planId, decision, feedback, modificationRequest) => Message(
+        id: messageId,
+        role: MessageRole.system,
+        content: MessageContent.text(
+          text: 'Plan Decision: $decision',
+          isFinal: true,
+        ),
+        timestamp: timestamp,
+        metadata: some({
+          'approval_request_id': approvalRequestId,
+          'plan_id': planId,
+          'decision': decision,
+          if (feedback != null) 'feedback': feedback,
+          if (modificationRequest != null) 'modification_request': modificationRequest,
+        }),
       ),
     );
   }

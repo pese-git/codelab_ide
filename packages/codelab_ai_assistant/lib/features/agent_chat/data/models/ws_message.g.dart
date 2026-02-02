@@ -133,3 +133,43 @@ Map<String, dynamic> _$WSHITLDecisionToJson(WSHITLDecision instance) =>
       'feedback': instance.feedback,
       'type': instance.$type,
     };
+
+WSPlanApprovalRequired _$WSPlanApprovalRequiredFromJson(
+  Map<String, dynamic> json,
+) => WSPlanApprovalRequired(
+  content: json['content'] as String?,
+  approvalRequestId: json['approval_request_id'] as String,
+  planId: json['plan_id'] as String,
+  planSummary: json['plan_summary'] as Map<String, dynamic>,
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$WSPlanApprovalRequiredToJson(
+  WSPlanApprovalRequired instance,
+) => <String, dynamic>{
+  'content': instance.content,
+  'approval_request_id': instance.approvalRequestId,
+  'plan_id': instance.planId,
+  'plan_summary': instance.planSummary,
+  'type': instance.$type,
+};
+
+WSPlanDecision _$WSPlanDecisionFromJson(Map<String, dynamic> json) =>
+    WSPlanDecision(
+      approvalRequestId: json['approval_request_id'] as String,
+      planId: json['plan_id'] as String,
+      decision: json['decision'] as String,
+      feedback: json['feedback'] as String?,
+      modificationRequest: json['modification_request'] as String?,
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$WSPlanDecisionToJson(WSPlanDecision instance) =>
+    <String, dynamic>{
+      'approval_request_id': instance.approvalRequestId,
+      'plan_id': instance.planId,
+      'decision': instance.decision,
+      'feedback': instance.feedback,
+      'modification_request': instance.modificationRequest,
+      'type': instance.$type,
+    };

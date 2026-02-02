@@ -58,6 +58,11 @@ abstract class AgentRepository {
   /// Возвращает [Right] с Unit при успехе или [Left] с ошибкой
   FutureEither<Unit> disconnect();
   
+  /// Отправляет решение пользователя по плану выполнения
+  ///
+  /// Возвращает [Right] с Unit при успехе или [Left] с ошибкой
+  FutureEither<Unit> sendPlanDecision(SendPlanDecisionParams params);
+  
   /// Проверяет, подключен ли WebSocket
   bool get isConnected;
 }
