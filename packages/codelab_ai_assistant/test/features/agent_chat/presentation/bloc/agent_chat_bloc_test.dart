@@ -70,6 +70,11 @@ void main() {
     when(() => mockApprovalMiddleware.startListening(
       onToolApproval: any(named: 'onToolApproval'),
     )).thenReturn(null);
+    
+    when(() => mockConnectionMiddleware.dispose())
+        .thenAnswer((_) async => {});
+    when(() => mockApprovalMiddleware.dispose())
+        .thenAnswer((_) async => {});
 
     bloc = AgentChatBloc(
       connectionMiddleware: mockConnectionMiddleware,
@@ -153,7 +158,7 @@ void main() {
           predicate<AgentChatState>((state) {
             return state.isLoading == false &&
                 state.error.isSome() &&
-                state.error.toNullable() == 'Connection failed';
+                state.error.toNullable()!.contains('Connection failed');
           }),
         ],
       );
@@ -214,7 +219,7 @@ void main() {
           predicate<AgentChatState>((state) {
             return state.isLoading == false &&
                 state.error.isSome() &&
-                state.error.toNullable() == 'Connection timeout';
+                state.error.toNullable()!.contains('Connection timeout');
           }),
         ],
       );

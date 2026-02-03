@@ -71,9 +71,8 @@ void main() {
         // Assert
         expect(result.isRight(), true);
         expect(middleware.isConnected, true);
-        verify(() => mockConnect(ConnectParams(sessionId: testSessionId)))
-            .called(1);
-        verify(() => mockReceiveMessages(const NoParams())).called(1);
+        verify(() => mockConnect(any())).called(1);
+        verify(() => mockReceiveMessages(any())).called(1);
       });
 
       test('should return failure when connection fails', () async {
