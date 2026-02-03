@@ -188,6 +188,12 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
       orElse: () => false,
     );
 
+    // Проверяем, является ли это error сообщением
+    final isError = event.message.content.maybeWhen(
+      error: (_) => true,
+      orElse: () => false,
+    );
+
     // Обрабатываем сообщение через MessageHandlerMiddleware
     final newAgent = await _messageHandlerMiddleware.handleMessage(
       message: event.message,
@@ -205,6 +211,8 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
         currentAgent: newAgent.fold(() => state.currentAgent, (agent) => agent),
         isLoading: false,
         pendingPlanApproval: isPlanApproval ? some(event.message) : state.pendingPlanApproval,
+        // Очищаем error state если это не error сообщение
+        error: isError ? state.error : none(),
       ),
     );
   }

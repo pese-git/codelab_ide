@@ -14,20 +14,17 @@ import '../../domain/entities/message.dart';
 /// - Single Responsibility
 class MessageBubble extends StatelessWidget {
   final Message message;
-  final VoidCallback? onPlanTap;
 
   const MessageBubble({
     super.key,
     required this.message,
-    this.onPlanTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final isUser = message.isUser;
-    final isPlanApproval = message.content is PlanApprovalRequiredMessageContent;
 
-    Widget bubbleContent = Container(
+    final bubbleContent = Container(
       padding: AppSpacing.paddingMd,
       decoration: BoxDecoration(
         color: _getBackgroundColor(),
@@ -48,17 +45,6 @@ class MessageBubble extends StatelessWidget {
         ],
       ),
     );
-
-    // Оборачиваем в GestureDetector если это план и есть callback
-    if (isPlanApproval && onPlanTap != null) {
-      bubbleContent = GestureDetector(
-        onTap: onPlanTap,
-        child: MouseRegion(
-          cursor: material.SystemMouseCursors.click,
-          child: bubbleContent,
-        ),
-      );
-    }
 
     return Padding(
       padding: AppSpacing.paddingVerticalSm,
@@ -211,7 +197,7 @@ class MessageBubble extends StatelessWidget {
             '**Цель:** $goal\n\n'
             '**Подзадач:** $subtasksCount\n'
             '**Время:** $estimatedTime\n\n'
-            '_Нажмите для просмотра деталей и одобрения_';
+            '_Используйте кнопки ниже для одобрения или отклонения плана_';
       },
     );
   }

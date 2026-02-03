@@ -9,7 +9,6 @@ import '../bloc/agent_chat_bloc.dart';
 import '../molecules/message_bubble.dart';
 import '../organisms/chat_input_bar.dart';
 import '../organisms/chat_header.dart';
-import '../widgets/plan_approval_dialog.dart';
 
 /// Новая страница чата с применением Atomic Design
 /// 
@@ -38,7 +37,6 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  String? _currentDialogPlanId; // Отслеживаем, какой диалог уже показан
 
   @override
   void dispose() {
@@ -49,149 +47,97 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<AgentChatBloc, AgentChatState>(
+    return BlocBuilder<AgentChatBloc, AgentChatState>(
       bloc: widget.bloc,
-      listener: (context, state) {
-        // Автоматически показываем диалог при получении плана
-        final pendingPlan = state.pendingPlanApproval.toNullable();
-        print('[ChatPage] BlocListener triggered: pendingPlan=${pendingPlan != null ? "present" : "null"}');
-        
-        if (pendingPlan != null) {
-          // Извлекаем plan_id из сообщения
-          pendingPlan.content.maybeWhen(
-            planApprovalRequired: (approvalRequestId, planId, planSummary, content) {
-              // Показываем диалог только если это новый план
-              if (_currentDialogPlanId != planId) {
-                print('[ChatPage] Showing plan approval dialog for plan: $planId');
-                _currentDialogPlanId = planId;
-                _showPlanApprovalDialog(context, pendingPlan);
-              } else {
-                print('[ChatPage] Dialog already shown for plan: $planId, skipping');
-              }
-            },
-            orElse: () {},
-          );
-        } else {
-          // Сбрасываем отслеживание когда план очищен
-          _currentDialogPlanId = null;
-        }
-      },
-      child: BlocBuilder<AgentChatBloc, AgentChatState>(
-        bloc: widget.bloc,
-        builder: (context, state) {
-          final waiting = state.isLoading;
-          final pendingApproval = state.pendingApproval.toNullable();
-          final messages = state.messages;
-          final currentAgentStr = state.currentAgent;
+      builder: (context, state) {
+        final waiting = state.isLoading;
+        final pendingApproval = state.pendingApproval.toNullable();
+        final pendingPlanApproval = state.pendingPlanApproval.toNullable();
+        final messages = state.messages;
+        final currentAgentStr = state.currentAgent;
 
-          return Column(
-            children: [
-              // Header с использованием нового компонента
-              ChatHeader(
-                onBack: widget.onBackToSessions,
-                currentAgent: currentAgentStr.toUikitAgentType(), // ✅ Используем extension
-                onAgentSelected: (agentType) {
-                  widget.bloc.add(
-                    AgentChatEvent.switchAgent(
-                      agentType.toDomainString(), // ✅ Используем extension
-                      'Switched to ${agentType.displayName}',
-                    ),
-                  );
-                },
-                onLogout: widget.onLogout,
-              ),
-
-              // Messages
-              Expanded(
-                child: messages.isEmpty
-                    ? EmptyState(
-                        icon: FluentIcons.chat,
-                        title: 'Start a conversation',
-                        description: 'Ask me anything or describe what you want to build',
-                        iconSize: 64,
-                      )
-                    : ListView.builder(
-                        controller: _scrollController,
-                        padding: AppSpacing.paddingLg,
-                        itemCount: messages.length,
-                        // ✅ Оптимизация производительности
-                        addAutomaticKeepAlives: false,
-                        addRepaintBoundaries: true,
-                        cacheExtent: 200,
-                        itemBuilder: (ctx, idx) {
-                          final msg = messages[idx];
-                          final isPlanApproval = msg.content is PlanApprovalRequiredMessageContent;
-                          
-                          return RepaintBoundary(
-                            child: MessageBubble(
-                              key: ValueKey(msg.id), // ✅ Ключ для оптимизации
-                              message: msg,
-                              onPlanTap: isPlanApproval
-                                  ? () => _showPlanApprovalDialog(context, msg)
-                                  : null,
-                            ),
-                          );
-                        },
-                      ),
-              ),
-
-              // Tool approval buttons
-              if (pendingApproval != null) ...[
-                Divider(
-                  style: DividerThemeData(
-                    thickness: 1,
-                    decoration: BoxDecoration(color: AppColors.border),
+        return Column(
+          children: [
+            // Header с использованием нового компонента
+            ChatHeader(
+              onBack: widget.onBackToSessions,
+              currentAgent: currentAgentStr.toUikitAgentType(),
+              onAgentSelected: (agentType) {
+                widget.bloc.add(
+                  AgentChatEvent.switchAgent(
+                    agentType.toDomainString(),
+                    'Switched to ${agentType.displayName}',
                   ),
-                ),
-                _buildApprovalButtons(context, pendingApproval),
-              ],
+                );
+              },
+              onLogout: widget.onLogout,
+            ),
 
-              // Input bar с использованием нового компонента
-              ChatInputBar(
-                controller: _controller,
-                onSend: _send,
-                enabled: !waiting && pendingApproval == null,
-                isLoading: waiting,
+            // Messages
+            Expanded(
+              child: messages.isEmpty
+                  ? EmptyState(
+                      icon: FluentIcons.chat,
+                      title: 'Start a conversation',
+                      description: 'Ask me anything or describe what you want to build',
+                      iconSize: 64,
+                    )
+                  : ListView.builder(
+                      controller: _scrollController,
+                      padding: AppSpacing.paddingLg,
+                      itemCount: messages.length,
+                      addAutomaticKeepAlives: false,
+                      addRepaintBoundaries: true,
+                      cacheExtent: 200,
+                      itemBuilder: (ctx, idx) {
+                        final msg = messages[idx];
+                        
+                        return RepaintBoundary(
+                          child: MessageBubble(
+                            key: ValueKey(msg.id),
+                            message: msg,
+                          ),
+                        );
+                      },
+                    ),
+            ),
+
+            // Tool approval buttons
+            if (pendingApproval != null) ...[
+              Divider(
+                style: DividerThemeData(
+                  thickness: 1,
+                  decoration: BoxDecoration(color: AppColors.border),
+                ),
               ),
+              _buildToolApprovalButtons(context, pendingApproval),
             ],
-          );
-        },
-      ),
-    );
-  }
 
-  /// Показывает диалог утверждения плана
-  void _showPlanApprovalDialog(BuildContext context, Message pendingPlan) {
-    pendingPlan.content.maybeWhen(
-      planApprovalRequired: (approvalRequestId, planId, planSummary, content) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (dialogContext) => PlanApprovalDialog(
-            approvalRequestId: approvalRequestId,
-            planId: planId,
-            planSummary: planSummary,
-            onDecision: (decision, feedback) {
-              widget.bloc.add(
-                AgentChatEvent.sendPlanDecision(
-                  approvalRequestId: approvalRequestId,
-                  planId: planId,
-                  decision: decision,
-                  feedback: feedback,
+            // Plan approval buttons
+            if (pendingPlanApproval != null) ...[
+              Divider(
+                style: DividerThemeData(
+                  thickness: 1,
+                  decoration: BoxDecoration(color: AppColors.border),
                 ),
-              );
-              Navigator.of(dialogContext).pop();
-            },
-          ),
+              ),
+              _buildPlanApprovalButtons(context, pendingPlanApproval),
+            ],
+
+            // Input bar с использованием нового компонента
+            ChatInputBar(
+              controller: _controller,
+              onSend: _send,
+              enabled: !waiting && pendingApproval == null && pendingPlanApproval == null,
+              isLoading: waiting,
+            ),
+          ],
         );
       },
-      orElse: () {
-        // Если это не plan approval сообщение, ничего не делаем
-      },
     );
   }
 
-  Widget _buildApprovalButtons(BuildContext context, dynamic pendingApproval) {
+  Widget _buildToolApprovalButtons(BuildContext context, dynamic pendingApproval) {
     final toolCall = pendingApproval.toolCall;
     final toolName = toolCall.toolName;
     final arguments = toolCall.arguments;
@@ -274,6 +220,119 @@ class _ChatPageState extends State<ChatPage> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildPlanApprovalButtons(BuildContext context, Message pendingPlan) {
+    return pendingPlan.content.maybeWhen(
+      planApprovalRequired: (approvalRequestId, planId, planSummary, content) {
+        // Извлекаем основную информацию о плане
+        final goal = planSummary['goal'] as String? ?? 'No goal specified';
+        final subtasksCount = planSummary['subtasks_count'] as int? ?? 0;
+        final estimatedTime = planSummary['total_estimated_time'] as String? ?? 'Unknown';
+
+        return Container(
+          padding: AppSpacing.paddingLg,
+          decoration: BoxDecoration(
+            color: AppColors.info.withOpacity(0.1),
+            border: Border(
+              top: BorderSide(
+                color: AppColors.info,
+                width: 2,
+              ),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    FluentIcons.task_manager,
+                    color: AppColors.info,
+                    size: AppSpacing.iconMd,
+                  ),
+                  AppSpacing.gapHorizontalSm,
+                  Expanded(
+                    child: Text(
+                      'Plan approval required',
+                      style: AppTypography.labelLarge,
+                    ),
+                  ),
+                ],
+              ),
+              AppSpacing.gapVerticalSm,
+              Text(
+                'The agent has created a plan to accomplish your request.',
+                style: AppTypography.bodySmall.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              AppSpacing.gapVerticalSm,
+              Container(
+                padding: AppSpacing.paddingSm,
+                decoration: BoxDecoration(
+                  color: AppColors.grey20,
+                  borderRadius: AppSpacing.borderRadiusXs,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Goal: $goal',
+                      style: AppTypography.bodySmall.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    AppSpacing.gapVerticalXs,
+                    Text(
+                      'Subtasks: $subtasksCount • Estimated time: $estimatedTime',
+                      style: AppTypography.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              AppSpacing.gapVerticalLg,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Button(
+                    onPressed: () {
+                      widget.bloc.add(
+                        AgentChatEvent.sendPlanDecision(
+                          approvalRequestId: approvalRequestId,
+                          planId: planId,
+                          decision: 'reject',
+                          feedback: 'User rejected the plan',
+                        ),
+                      );
+                    },
+                    child: const Text('Reject'),
+                  ),
+                  AppSpacing.gapHorizontalSm,
+                  FilledButton(
+                    onPressed: () {
+                      widget.bloc.add(
+                        AgentChatEvent.sendPlanDecision(
+                          approvalRequestId: approvalRequestId,
+                          planId: planId,
+                          decision: 'approve',
+                        ),
+                      );
+                    },
+                    child: const Text('Approve'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+      orElse: () => const SizedBox.shrink(),
     );
   }
 
