@@ -1,5 +1,5 @@
 /// Clean Architecture AI Assistant
-/// 
+///
 /// Модуль для работы с AI агентами, построенный по принципам Clean Architecture.
 /// Использует функциональное программирование (fpdart) для явной обработки ошибок.
 library;
@@ -14,6 +14,7 @@ export 'core/usecases/usecase.dart';
 export 'core/utils/type_defs.dart';
 export 'core/bloc/app_bloc_observer.dart';
 export 'core/bloc/bloc_setup.dart';
+export 'core/config/feature_flags.dart';
 
 // ============================================================================
 // Session Management Feature
@@ -110,4 +111,16 @@ export 'features/tool_execution/presentation/widgets/tool_approval_dialog.dart';
 // Dependency Injection
 // ============================================================================
 
+// Legacy DI (deprecated, будет удален в Фазе 3.3)
 export 'ai_assistent_module.dart';
+
+// New Modular DI (рекомендуется, включается через FeatureFlags.useModularDI)
+export 'di/app_module.dart';
+export 'di/core_module.dart';
+export 'di/network_module.dart';
+export 'di/features/auth_module.dart';
+export 'di/features/server_settings_module.dart';
+export 'di/features/session_module.dart';
+export 'di/features/approval_module.dart';
+export 'di/features/tool_module.dart';
+export 'di/features/agent_chat_module.dart';

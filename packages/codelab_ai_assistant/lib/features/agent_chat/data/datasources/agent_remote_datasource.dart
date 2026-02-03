@@ -1,5 +1,6 @@
 // Remote data source для работы с агентами через WebSocket
 import 'dart:convert';
+import 'package:logger/logger.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../../../../core/error/exceptions.dart';
 import '../models/message_model.dart';
@@ -28,11 +29,13 @@ abstract class AgentRemoteDataSource {
 /// Реализация удаленного источника данных через WebSocket
 class AgentRemoteDataSourceImpl implements AgentRemoteDataSource {
   final String gatewayUrl;
+  final Logger? logger;
   WebSocketChannel? _channel;
   String? _currentSessionId;
   
   AgentRemoteDataSourceImpl({
     required this.gatewayUrl,
+    this.logger,
   });
   
   @override
@@ -108,28 +111,34 @@ class AgentRemoteDataSourceImpl implements AgentRemoteDataSource {
         
         // Логируем plan_approval_required для отладки
         if (msgType == 'plan_approval_required') {
-          print('[AgentRemoteDataSource] Received plan_approval_required: ${jsonEncode(json)}');
-          print('[AgentRemoteDataSource] Keys: ${json.keys.toList()}');
-          print('[AgentRemoteDataSource] approval_request_id: ${json['approval_request_id']}');
-          print('[AgentRemoteDataSource] plan_id: ${json['plan_id']}');
-          print('[AgentRemoteDataSource] plan_summary: ${json['plan_summary']}');
+          logger?.d('Received plan_approval_required',
+            error: {
+              'json': jsonEncode(json),
+              'keys': json.keys.toList(),
+              'approval_request_id': json['approval_request_id'],
+              'plan_id': json['plan_id'],
+              'plan_summary': json['plan_summary'],
+            },
+          );
         }
         
         final model = MessageModel.fromJson(json);
         
         if (msgType == 'plan_approval_required') {
-          print('[AgentRemoteDataSource] Successfully parsed plan_approval_required to MessageModel');
-          print('[AgentRemoteDataSource] MessageModel type: ${model.type}');
-          print('[AgentRemoteDataSource] MessageModel metadata: ${model.metadata}');
+          logger?.d('Successfully parsed plan_approval_required to MessageModel',
+            error: {
+              'type': model.type,
+              'metadata': model.metadata,
+            },
+          );
         }
         
         return model;
       } on FormatException catch (e) {
-        print('[AgentRemoteDataSource] FormatException: $e');
+        logger?.e('FormatException parsing WebSocket message', error: e);
         throw ParseException('Invalid JSON from WebSocket: $e', e);
       } catch (e, stackTrace) {
-        print('[AgentRemoteDataSource] Parse error: $e');
-        print('[AgentRemoteDataSource] Stack trace: $stackTrace');
+        logger?.e('Parse error', error: e, stackTrace: stackTrace);
         throw ParseException('Failed to parse message: $e', e);
       }
     }).handleError((error) {
