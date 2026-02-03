@@ -17,7 +17,8 @@ import 'package:codelab_ai_assistant/features/agent_chat/domain/usecases/send_to
 import 'package:codelab_ai_assistant/features/agent_chat/domain/usecases/switch_agent.dart';
 import 'package:codelab_ai_assistant/features/agent_chat/presentation/bloc/agent_chat_bloc.dart';
 import 'package:codelab_ai_assistant/features/tool_execution/domain/usecases/execute_tool.dart';
-import 'package:codelab_ai_assistant/features/tool_execution/data/services/tool_approval_service_impl.dart';
+import 'package:codelab_ai_assistant/features/approval/domain/services/approval_service.dart';
+import 'package:codelab_ai_assistant/features/approval/domain/entities/approval_request.dart';
 
 // Моки для use cases
 class MockSendMessageUseCase extends Mock implements SendMessageUseCase {}
@@ -28,7 +29,7 @@ class MockLoadHistoryUseCase extends Mock implements LoadHistoryUseCase {}
 class MockConnectUseCase extends Mock implements ConnectUseCase {}
 class MockExecuteToolUseCase extends Mock implements ExecuteToolUseCase {}
 class MockSendPlanDecisionUseCase extends Mock implements SendPlanDecisionUseCase {}
-class MockToolApprovalService extends Mock implements ToolApprovalService {}
+class MockApprovalService extends Mock implements ApprovalService {}
 class MockLogger extends Mock implements Logger {}
 
 // Fake классы для регистрации fallback значений
@@ -50,7 +51,7 @@ void main() {
   late MockConnectUseCase mockConnect;
   late MockExecuteToolUseCase mockExecuteTool;
   late MockSendPlanDecisionUseCase mockSendPlanDecision;
-  late MockToolApprovalService mockApprovalService;
+  late MockApprovalService mockApprovalService;
   late MockLogger mockLogger;
 
   setUpAll(() {
@@ -73,15 +74,13 @@ void main() {
     mockConnect = MockConnectUseCase();
     mockExecuteTool = MockExecuteToolUseCase();
     mockSendPlanDecision = MockSendPlanDecisionUseCase();
-    mockApprovalService = MockToolApprovalService();
+    mockApprovalService = MockApprovalService();
     mockLogger = MockLogger();
 
-    // Настройка дефолтных моков
+    // Настройка дефолтных моков для unified ApprovalService
     when(() => mockApprovalService.approvalRequests).thenAnswer(
-      (_) => const Stream.empty(),
+      (_) => Stream<ApprovalRequest>.empty(),
     );
-    when(() => mockApprovalService.onExecuteRestoredTool).thenReturn(null);
-    when(() => mockApprovalService.onRejectRestoredTool).thenReturn(null);
 
     bloc = AgentChatBloc(
       sendMessage: mockSendMessage,
@@ -180,7 +179,7 @@ void main() {
             (_) => const Stream.empty(),
           );
           when(() => mockApprovalService.restorePendingApprovals(any()))
-              .thenAnswer((_) async => Future.value());
+              .thenAnswer((_) async => <ApprovalRequest>[]);
           return bloc;
         },
         act: (bloc) => bloc.add(const AgentChatEvent.connect(testSessionId)),
