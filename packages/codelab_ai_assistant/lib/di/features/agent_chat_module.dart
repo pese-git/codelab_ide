@@ -14,6 +14,9 @@ import '../../features/agent_chat/domain/usecases/send_plan_decision.dart';
 import '../../features/agent_chat/domain/usecases/send_tool_result.dart';
 import '../../features/agent_chat/domain/usecases/switch_agent.dart';
 import '../../features/agent_chat/presentation/bloc/agent_chat_bloc.dart';
+import '../../features/agent_chat/presentation/middleware/connection_middleware.dart';
+import '../../features/agent_chat/presentation/middleware/message_handler_middleware.dart';
+import '../../features/agent_chat/presentation/middleware/approval_middleware.dart';
 import '../../features/approval/domain/services/approval_service.dart';
 import '../../features/tool_execution/domain/usecases/execute_tool.dart';
 
@@ -23,6 +26,7 @@ import '../../features/tool_execution/domain/usecases/execute_tool.dart';
 /// - AgentRemoteDataSource (WebSocket)
 /// - AgentRepository
 /// - Use Cases (send, receive, switch, connect, etc.)
+/// - Middleware (connection, message handler, approval)
 /// - AgentChatBloc
 ///
 /// Зависимости:
@@ -95,20 +99,47 @@ class AgentChatModule extends Module {
     );
 
     // ========================================================================
+    // Middleware
+    // ========================================================================
+
+    bind<ConnectionMiddleware>().toProvide(
+      () => ConnectionMiddleware(
+        connect: currentScope.resolve<ConnectUseCase>(),
+        receiveMessages: currentScope.resolve<ReceiveMessagesUseCase>(),
+        logger: currentScope.resolve<Logger>(),
+      ),
+    );
+
+    bind<MessageHandlerMiddleware>().toProvide(
+      () => MessageHandlerMiddleware(
+        executeTool: currentScope.resolve<ExecuteToolUseCase>(),
+        sendToolResult: currentScope.resolve<SendToolResultUseCase>(),
+        logger: currentScope.resolve<Logger>(),
+      ),
+    );
+
+    bind<ApprovalMiddleware>().toProvide(
+      () => ApprovalMiddleware(
+        approvalService: currentScope.resolve<ApprovalService>(),
+        executeTool: currentScope.resolve<ExecuteToolUseCase>(),
+        sendToolResult: currentScope.resolve<SendToolResultUseCase>(),
+        logger: currentScope.resolve<Logger>(),
+      ),
+    );
+
+    // ========================================================================
     // Presentation (BLoC)
     // ========================================================================
 
     bind<AgentChatBloc>().toProvide(
       () => AgentChatBloc(
+        connectionMiddleware: currentScope.resolve<ConnectionMiddleware>(),
+        messageHandlerMiddleware: currentScope.resolve<MessageHandlerMiddleware>(),
+        approvalMiddleware: currentScope.resolve<ApprovalMiddleware>(),
         sendMessage: currentScope.resolve<SendMessageUseCase>(),
-        sendToolResult: currentScope.resolve<SendToolResultUseCase>(),
-        receiveMessages: currentScope.resolve<ReceiveMessagesUseCase>(),
         switchAgent: currentScope.resolve<SwitchAgentUseCase>(),
         loadHistory: currentScope.resolve<LoadHistoryUseCase>(),
-        connect: currentScope.resolve<ConnectUseCase>(),
-        executeTool: currentScope.resolve<ExecuteToolUseCase>(),
         sendPlanDecision: currentScope.resolve<SendPlanDecisionUseCase>(),
-        approvalService: currentScope.resolve<ApprovalService>(),
         logger: currentScope.resolve<Logger>(),
       ),
     );

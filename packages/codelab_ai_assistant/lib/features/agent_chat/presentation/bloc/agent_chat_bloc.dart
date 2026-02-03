@@ -5,27 +5,17 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:logger/logger.dart';
 import '../../../../core/error/failures.dart';
-import '../../../../core/usecases/usecase.dart';
 import '../../domain/entities/message.dart';
 import '../../domain/entities/agent.dart';
 import '../../domain/usecases/send_message.dart';
-import '../../domain/usecases/send_tool_result.dart';
-import '../../domain/usecases/receive_messages.dart';
 import '../../domain/usecases/switch_agent.dart';
 import '../../domain/usecases/load_history.dart';
-import '../../domain/usecases/connect.dart';
 import '../../domain/usecases/send_plan_decision.dart';
-import '../../../tool_execution/domain/usecases/execute_tool.dart';
-import '../../../tool_execution/domain/entities/tool_call.dart';
-import '../../../tool_execution/domain/entities/tool_result.dart';
 import '../../../tool_execution/domain/entities/tool_approval.dart' as tool_approval;
 import '../../../tool_execution/domain/entities/approval_request_with_completer.dart';
-import '../../../approval/domain/services/approval_service.dart';
-import '../../../approval/domain/entities/approval_request.dart';
-import '../../../approval/domain/entities/approval_response.dart';
-import '../../../approval/domain/entities/approval_decision.dart';
-import '../../../approval/domain/entities/approval_type.dart';
-import '../../../approval/data/adapters/approval_request_adapter.dart';
+import '../middleware/connection_middleware.dart';
+import '../middleware/message_handler_middleware.dart';
+import '../middleware/approval_middleware.dart';
 
 part 'agent_chat_bloc.freezed.dart';
 
@@ -80,47 +70,40 @@ abstract class AgentChatState with _$AgentChatState {
   );
 }
 
-/// BLoC для чата с AI агентом с использованием Use Cases
+/// BLoC для чата с AI агентом с использованием Middleware Pattern
 ///
-/// Этот BLoC использует Clean Architecture подход:
-/// - Не содержит бизнес-логики (она в Use Cases)
-/// - Работает только с domain entities
-/// - Обрабатывает Either<Failure, T> из use cases
+/// Этот BLoC использует Middleware Pattern для делегирования логики:
+/// - ConnectionMiddleware: управление WebSocket подключением
+/// - MessageHandlerMiddleware: обработка входящих сообщений
+/// - ApprovalMiddleware: управление подтверждениями (tool и plan)
+///
+/// BLoC фокусируется только на state management и координации middleware.
 class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
+  final ConnectionMiddleware _connectionMiddleware;
+  final MessageHandlerMiddleware _messageHandlerMiddleware;
+  final ApprovalMiddleware _approvalMiddleware;
   final SendMessageUseCase _sendMessage;
-  final SendToolResultUseCase _sendToolResult;
-  final ReceiveMessagesUseCase _receiveMessages;
   final SwitchAgentUseCase _switchAgent;
   final LoadHistoryUseCase _loadHistory;
-  final ConnectUseCase _connect;
-  final ExecuteToolUseCase _executeTool;
   final SendPlanDecisionUseCase _sendPlanDecision;
-  final ApprovalService _approvalService;
   final Logger _logger;
 
-  StreamSubscription<Either<Failure, Message>>? _messageSubscription;
-  StreamSubscription<ApprovalRequest>? _approvalSubscription;
-
   AgentChatBloc({
+    required ConnectionMiddleware connectionMiddleware,
+    required MessageHandlerMiddleware messageHandlerMiddleware,
+    required ApprovalMiddleware approvalMiddleware,
     required SendMessageUseCase sendMessage,
-    required SendToolResultUseCase sendToolResult,
-    required ReceiveMessagesUseCase receiveMessages,
     required SwitchAgentUseCase switchAgent,
     required LoadHistoryUseCase loadHistory,
-    required ConnectUseCase connect,
-    required ExecuteToolUseCase executeTool,
     required SendPlanDecisionUseCase sendPlanDecision,
-    required ApprovalService approvalService,
     required Logger logger,
-  }) : _sendMessage = sendMessage,
-       _sendToolResult = sendToolResult,
-       _receiveMessages = receiveMessages,
+  }) : _connectionMiddleware = connectionMiddleware,
+       _messageHandlerMiddleware = messageHandlerMiddleware,
+       _approvalMiddleware = approvalMiddleware,
+       _sendMessage = sendMessage,
        _switchAgent = switchAgent,
        _loadHistory = loadHistory,
-       _connect = connect,
-       _executeTool = executeTool,
        _sendPlanDecision = sendPlanDecision,
-       _approvalService = approvalService,
        _logger = logger,
        super(AgentChatState.initial()) {
     on<SendMessageEvent>(_onSendMessage);
@@ -133,249 +116,16 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     on<ApprovalRequestedEvent>(_onApprovalRequested);
     on<ApproveToolCallEvent>(_onApproveToolCall);
     on<RejectToolCallEvent>(_onRejectToolCall);
+    on<CancelToolCallEvent>(_onCancelToolCall);
     on<SendPlanDecisionEvent>(_onSendPlanDecision);
 
-    // Подписываемся на запросы подтверждения (unified stream)
-    _approvalSubscription = _approvalService.approvalRequests.listen((request) {
-      _handleApprovalRequest(request);
-    });
-  }
-
-  /// Обрабатывает generic approval request из unified service
-  ///
-  /// Конвертирует ApprovalRequest в legacy формат для UI совместимости
-  /// и запускает event-driven обработку решения.
-  void _handleApprovalRequest(ApprovalRequest request) {
-    // Обрабатываем только tool approvals
-    // Plan approvals обрабатываются через SendPlanDecisionEvent
-    if (request.type != ApprovalType.tool) {
-      _logger.d('Skipping non-tool approval: ${request.type}');
-      return;
-    }
-
-    try {
-      // Конвертируем ApprovalRequest в ToolCall
-      final toolCall = ApprovalRequestAdapter.toToolCall(request);
-      
-      // Создаем legacy ToolApprovalRequest для обратной совместимости с UI
-      final toolApprovalRequest = tool_approval.ToolApprovalRequest(
-        requestId: request.approvalRequestId,
-        toolCall: toolCall,
-        requestedAt: request.requestedAt,
-      );
-      
-      // Создаем completer для UI
-      final completer = Completer<tool_approval.ApprovalDecision>();
-      final requestWithCompleter = ApprovalRequestWithCompleter(
-        toolApprovalRequest,
-        completer,
-      );
-      
-      // Эмитируем событие для UI
-      add(AgentChatEvent.approvalRequested(requestWithCompleter));
-      
-      // Ожидаем решения и отправляем на сервер (event-driven подход)
-      _waitForDecisionAndSend(request, completer, toolCall);
-    } catch (e) {
-      _logger.e('Error handling approval request: $e');
-    }
-  }
-
-  /// Ожидает решения пользователя и отправляет на сервер
-  ///
-  /// Заменяет callbacks на event-driven подход.
-  /// Обрабатывает все типы решений: approve, reject, modify, cancel.
-  Future<void> _waitForDecisionAndSend(
-    ApprovalRequest request,
-    Completer<tool_approval.ApprovalDecision> completer,
-    ToolCall toolCall,
-  ) async {
-    try {
-      // Ждем решения от UI
-      final decision = await completer.future;
-      
-      _logger.i(
-        'Decision received for ${toolCall.toolName}: ${decision.when(
-          approved: () => 'approved',
-          rejected: (_) => 'rejected',
-          modified: (_, __) => 'modified',
-          cancelled: () => 'cancelled',
-        )}',
-      );
-      
-      // Конвертируем tool_approval.ApprovalDecision в unified ApprovalDecision
-      final unifiedDecision = decision.when(
-        approved: () => const ApprovalDecision.approved(),
-        rejected: (reason) => ApprovalDecision.rejected(
-          feedback: reason ?? none(),
-        ),
-        modified: (modifiedArguments, comment) => ApprovalDecision.modified(
-          modifiedData: modifiedArguments,
-          feedback: comment?.fold(() => '', (c) => c) ?? '',
-        ),
-        cancelled: () => const ApprovalDecision.cancelled(),
-      );
-      
-      // Создаем ApprovalResponse для отправки на сервер
-      final response = ApprovalResponse(
-        approvalRequestId: request.approvalRequestId,
-        type: ApprovalType.tool,
-        decision: unifiedDecision,
-        respondedAt: DateTime.now(),
-        decisionTimeMs: DateTime.now()
-            .difference(request.requestedAt)
-            .inMilliseconds,
-      );
-      
-      // Отправляем решение через unified service
-      await _approvalService.sendDecision(response);
-      
-      // Обрабатываем решение (заменяет callbacks)
-      await decision.when(
-        approved: () async {
-          // Выполняем tool после approve
-          await _executeRestoredTool(toolCall);
-        },
-        rejected: (reason) async {
-          // Отправляем rejection на сервер
-          final rejectReason = reason?.fold(() => 'User rejected', (r) => r) ?? 'User rejected';
-          await _rejectRestoredTool(toolCall, rejectReason);
-        },
-        modified: (modifiedArguments, comment) async {
-          // Выполняем tool с измененными аргументами
-          final modifiedToolCall = toolCall.copyWith(
-            arguments: modifiedArguments,
-          );
-          await _executeRestoredTool(modifiedToolCall);
-        },
-        cancelled: () async {
-          // Отправляем cancellation на сервер
-          await _rejectRestoredTool(toolCall, 'User cancelled');
-        },
-      );
-    } catch (e) {
-      _logger.e('Error waiting for decision: $e');
-    }
-  }
-
-  /// Отправить rejection для восстановленного tool на сервер
-  Future<void> _rejectRestoredTool(ToolCall toolCall, String reason) async {
-    _logger.i('Rejecting restored tool: ${toolCall.toolName}, reason: $reason');
-
-    // Отправляем rejection на сервер
-    await _sendToolResult(
-      SendToolResultParams(
-        callId: toolCall.id,
-        toolName: toolCall.toolName,
-        error: 'User rejected: $reason',
-      ),
-    );
-
-    // Добавляем сообщение об отклонении в UI
-    final rejectionMessage = Message(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      role: MessageRole.assistant,
-      content: MessageContent.toolResult(
-        callId: toolCall.id,
-        toolName: toolCall.toolName,
-        result: none(),
-        error: some('User rejected: $reason'),
-      ),
-      timestamp: DateTime.now(),
-      metadata: none(),
-    );
-
-    add(AgentChatEvent.messageReceived(rejectionMessage));
-  }
-
-  /// Выполнить восстановленный tool после approve
-  Future<ToolResult> _executeRestoredTool(ToolCall toolCall) async {
-    _logger.i('Executing restored tool: ${toolCall.toolName}');
-
-    // Выполняем tool (без повторного запроса подтверждения)
-    final result = await _executeTool(
-      ExecuteToolParams(toolCall: toolCall.copyWith(requiresApproval: false)),
-    );
-
-    return result.fold(
-      (failure) async {
-        _logger.e('Restored tool execution failed: ${failure.message}');
-
-        // Отправляем ошибку на сервер
-        await _sendToolResult(
-          SendToolResultParams(
-            callId: toolCall.id,
-            toolName: toolCall.toolName,
-            error: failure.message,
-          ),
-        );
-
-        return ToolResult.failure(
-          callId: toolCall.id,
-          toolName: toolCall.toolName,
-          errorCode: 'execution_failed',
-          errorMessage: failure.message,
-          details: none(),
-          failedAt: DateTime.now(),
-        );
-      },
-      (toolResult) async {
-        _logger.i('Restored tool executed successfully: ${toolCall.toolName}');
-
-        // Добавляем результат в UI сразу
-        final resultMessage = Message(
-          id: DateTime.now().millisecondsSinceEpoch.toString(),
-          role: MessageRole.assistant,
-          content: toolResult.when(
-            success: (id, name, data, duration, time) =>
-                MessageContent.toolResult(
-                  callId: id,
-                  toolName: name,
-                  result: some(data),
-                  error: none(),
-                ),
-            failure: (id, name, code, msg, details, time) =>
-                MessageContent.toolResult(
-                  callId: id,
-                  toolName: name,
-                  result: none(),
-                  error: some(msg),
-                ),
-          ),
-          timestamp: DateTime.now(),
-          metadata: none(),
-        );
-
-        // Добавляем сообщение в чат
-        add(AgentChatEvent.messageReceived(resultMessage));
-
-        // Отправляем результат на сервер
-        await toolResult.when(
-          success: (id, name, data, duration, time) async {
-            await _sendToolResult(
-              SendToolResultParams(
-                callId: toolCall.id,
-                toolName: toolCall.toolName,
-                result: data,
-              ),
-            );
-          },
-          failure: (id, name, code, msg, details, time) async {
-            await _sendToolResult(
-              SendToolResultParams(
-                callId: toolCall.id,
-                toolName: toolCall.toolName,
-                error: msg,
-              ),
-            );
-          },
-        );
-
-        return toolResult;
-      },
+    // Подписываемся на approval requests через middleware
+    _approvalMiddleware.startListening(
+      onToolApproval: (request) => add(AgentChatEvent.approvalRequested(request)),
     );
   }
 
+  /// Отправить сообщение пользователя
   Future<void> _onSendMessage(
     SendMessageEvent event,
     Emitter<AgentChatState> emit,
@@ -423,152 +173,43 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     );
   }
 
+  /// Обработать полученное сообщение
+  ///
+  /// Делегирует обработку MessageHandlerMiddleware
   Future<void> _onMessageReceived(
     MessageReceivedEvent event,
     Emitter<AgentChatState> emit,
   ) async {
-    // TRACE: Детальное логирование для отладки
-    final messageSource = event.message.metadata?.fold(
-      () => 'websocket',
-      (meta) => meta['source'] ?? 'websocket',
+    _logger.d('[AgentChatBloc] 📨 Message received: ${event.message.role}');
+
+    // Проверяем, является ли это plan approval сообщением
+    final isPlanApproval = event.message.content.maybeWhen(
+      planApprovalRequired: (_, __, ___, ____) => true,
+      orElse: () => false,
     );
 
-    _logger.d(
-      '[AgentChatBloc] 📨 Message received: ${event.message.role}, '
-      'content type: ${event.message.content.runtimeType}, '
-      'source: $messageSource',
-    );
-
-    // Обновляем текущего агента если это agent_switched
-    String newAgent = state.currentAgent;
-    Option<Message> newPendingPlanApproval = state.pendingPlanApproval;
-    
-    event.message.content.maybeWhen(
-      agentSwitch: (from, to, reason) {
-        // Проверяем, что toAgent не пустой
-        if (to.isNotEmpty) {
-          newAgent = to;
-          _logger.i(
-            'Agent switched: ${from.isNotEmpty ? from : "unknown"} → $to',
-          );
-        } else {
-          _logger.w('Agent switch message received but toAgent is empty');
-        }
+    // Обрабатываем сообщение через MessageHandlerMiddleware
+    final newAgent = await _messageHandlerMiddleware.handleMessage(
+      message: event.message,
+      onPlanApproval: (message) {
+        _logger.i('[AgentChatBloc] 📋 Plan approval required');
+        // НЕ вызываем add() здесь - это создает бесконечный цикл!
+        // State будет обновлен ниже через emit
       },
-      planApprovalRequired: (approvalRequestId, planId, planSummary, content) {
-        _logger.i(
-          '[AgentChatBloc] 📋 Plan approval required: $planId',
-        );
-        _logger.i(
-          '[AgentChatBloc] 📋 Setting pendingPlanApproval to trigger dialog',
-        );
-        _logger.i(
-          '[AgentChatBloc] 📋 approval_request_id: $approvalRequestId',
-        );
-        _logger.i(
-          '[AgentChatBloc] 📋 plan_summary keys: ${planSummary.keys.toList()}',
-        );
-        newPendingPlanApproval = some(event.message);
-      },
-      orElse: () {},
     );
 
+    // Обновляем state
     emit(
       state.copyWith(
         messages: [...state.messages, event.message],
-        currentAgent: newAgent,
+        currentAgent: newAgent.fold(() => state.currentAgent, (agent) => agent),
         isLoading: false,
-        pendingPlanApproval: newPendingPlanApproval,
+        pendingPlanApproval: isPlanApproval ? some(event.message) : state.pendingPlanApproval,
       ),
-    );
-
-    // Автоматически выполняем tool calls
-    await event.message.content.maybeWhen(
-      toolCall: (callId, toolName, arguments) async {
-        // BUGFIX: Проверяем, не является ли это tool_call из истории
-        // Tool_calls из истории НЕ должны выполняться автоматически,
-        // так как они либо уже обработаны, либо будут восстановлены
-        // через restorePendingApprovals() если еще ожидают подтверждения
-        bool isFromHistory = false;
-        event.message.metadata?.fold(() => null, (meta) {
-          isFromHistory = meta['source'] == 'history';
-        });
-
-        if (isFromHistory) {
-          _logger.i(
-            '📜 Skipping tool_call from history: $callId ($toolName). '
-            'Will be restored via restorePendingApprovals() if still pending.',
-          );
-          return; // НЕ выполняем исторические tool_calls
-        }
-
-        _logger.i('▶️ Executing NEW tool from WebSocket: $toolName');
-
-        // Получаем флаг requiresApproval из сообщения
-        // Проверяем WSMessage для получения фактического значения
-        bool requiresApproval = false;
-
-        // Пытаемся получить requiresApproval из metadata сообщения
-        event.message.metadata?.fold(() => null, (meta) {
-          if (meta.containsKey('requires_approval')) {
-            requiresApproval = meta['requires_approval'] as bool? ?? false;
-          }
-        });
-
-        final toolCall = ToolCall(
-          id: callId,
-          toolName: toolName,
-          arguments: arguments,
-          requiresApproval: requiresApproval,
-          createdAt: DateTime.now(),
-        );
-
-        final result = await _executeTool(
-          ExecuteToolParams(toolCall: toolCall),
-        );
-
-        result.fold(
-          (failure) async {
-            _logger.e('Tool execution failed: ${failure.message}');
-            // Send error result back to server using dedicated use case
-            await _sendToolResult(
-              SendToolResultParams(
-                callId: callId,
-                toolName: toolName,
-                error: failure.message,
-              ),
-            );
-          },
-          (toolResult) async {
-            _logger.i('Tool executed successfully: $toolName');
-            // Send result back to server using when for exhaustive matching
-            await toolResult.when(
-              success: (id, name, data, duration, time) async {
-                await _sendToolResult(
-                  SendToolResultParams(
-                    callId: callId,
-                    toolName: toolName,
-                    result: data,
-                  ),
-                );
-              },
-              failure: (id, name, code, msg, details, time) async {
-                await _sendToolResult(
-                  SendToolResultParams(
-                    callId: callId,
-                    toolName: toolName,
-                    error: msg,
-                  ),
-                );
-              },
-            );
-          },
-        );
-      },
-      orElse: () async {},
     );
   }
 
+  /// Переключить агента
   Future<void> _onSwitchAgent(
     SwitchAgentEvent event,
     Emitter<AgentChatState> emit,
@@ -586,16 +227,17 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
 
     result.fold(
       (failure) {
-        _logger.e('Failed to switch agent: ${failure.message}');
+        _logger.e('[AgentChatBloc] ❌ Failed to switch agent: ${failure.message}');
         emit(state.copyWith(isLoading: false, error: some(failure.message)));
       },
       (_) {
-        _logger.i('Agent switch requested: ${event.agentType}');
+        _logger.i('[AgentChatBloc] ✅ Agent switch requested: ${event.agentType}');
         emit(state.copyWith(isLoading: false, currentAgent: event.agentType));
       },
     );
   }
 
+  /// Загрузить историю сообщений
   Future<void> _onLoadHistory(
     LoadHistoryEvent event,
     Emitter<AgentChatState> emit,
@@ -611,11 +253,11 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
 
     result.fold(
       (failure) {
-        _logger.e('Failed to load history: ${failure.message}');
+        _logger.e('[AgentChatBloc] ❌ Failed to load history: ${failure.message}');
         emit(state.copyWith(isLoading: false, error: some(failure.message)));
       },
       (messages) {
-        _logger.i('Loaded ${messages.length} messages');
+        _logger.i('[AgentChatBloc] ✅ Loaded ${messages.length} messages');
         emit(
           state.copyWith(messages: messages, isLoading: false, error: none()),
         );
@@ -623,6 +265,9 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     );
   }
 
+  /// Подключиться к WebSocket
+  ///
+  /// Делегирует подключение ConnectionMiddleware и восстановление approvals ApprovalMiddleware
   Future<void> _onConnect(
     ConnectEvent event,
     Emitter<AgentChatState> emit,
@@ -630,40 +275,27 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     _logger.d('[AgentChatBloc] 🔌 Connecting to session: ${event.sessionId}');
     emit(state.copyWith(isLoading: true, error: none()));
 
-    // Подключаемся к WebSocket через use case
-    final connectResult = await _connect(
-      ConnectParams(sessionId: event.sessionId),
+    // Подключаемся через ConnectionMiddleware
+    final result = await _connectionMiddleware.connect(
+      sessionId: event.sessionId,
+      onMessage: (message) => add(AgentChatEvent.messageReceived(message)),
+      onError: (failure) => add(AgentChatEvent.error(failure)),
     );
 
-    await connectResult.fold(
+    await result.fold(
       (failure) async {
-        _logger.e('Failed to connect: ${failure.message}');
+        _logger.e('[AgentChatBloc] ❌ Failed to connect: ${failure.message}');
         emit(state.copyWith(isLoading: false, error: some(failure.message)));
-        return;
       },
       (_) async {
-        _logger.i('Connected to WebSocket: ${event.sessionId}');
+        _logger.i('[AgentChatBloc] ✅ Connected to WebSocket: ${event.sessionId}');
 
-        // Подписываемся на поток сообщений
-        _messageSubscription?.cancel();
-        _messageSubscription = _receiveMessages(const NoParams()).listen((
-          either,
-        ) {
-          either.fold(
-            (failure) => add(AgentChatEvent.error(failure)),
-            (message) => add(AgentChatEvent.messageReceived(message)),
-          );
-        });
-
-        // ВАЖНО: Восстанавливаем ожидающие подтверждения с сервера
-        // Это позволяет продолжить работу после перезапуска/переустановки IDE
-        // Unified service возвращает список восстановленных approvals
+        // Восстанавливаем pending approvals через ApprovalMiddleware
         try {
-          final restoredApprovals = await _approvalService.restorePendingApprovals(event.sessionId);
-          _logger.i('Restored ${restoredApprovals.length} pending approvals');
-          // Approvals уже эмитированы в stream через _handleApprovalRequest
+          final restoredCount = await _approvalMiddleware.restorePendingApprovals(event.sessionId);
+          _logger.i('[AgentChatBloc] ✅ Restored $restoredCount pending approvals');
         } catch (e) {
-          _logger.e('Failed to restore pending approvals: $e');
+          _logger.e('[AgentChatBloc] ⚠️ Failed to restore pending approvals: $e');
           // Не блокируем подключение из-за ошибки восстановления
         }
 
@@ -672,17 +304,18 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     );
   }
 
+  /// Отключиться от WebSocket
+  ///
+  /// Делегирует отключение ConnectionMiddleware и очистку ApprovalMiddleware
   Future<void> _onDisconnect(
     DisconnectEvent event,
     Emitter<AgentChatState> emit,
   ) async {
     _logger.d('[AgentChatBloc] 🔌 Disconnecting from chat');
-    await _messageSubscription?.cancel();
-    _messageSubscription = null;
 
-    // Очищаем активные completers чтобы при повторном подключении
-    // pending approvals могли быть восстановлены заново
-    _approvalService.clearActiveCompleters();
+    // Отключаемся через middleware
+    await _connectionMiddleware.disconnect();
+    _approvalMiddleware.clearActiveCompleters();
 
     emit(
       state.copyWith(
@@ -691,17 +324,20 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
         isLoading: false,
         error: none(),
         pendingApproval: none(),
+        pendingPlanApproval: none(),
       ),
     );
 
     _logger.i('[AgentChatBloc] ✅ Disconnected from chat');
   }
 
+  /// Обработать ошибку
   Future<void> _onError(ErrorEvent event, Emitter<AgentChatState> emit) async {
-    _logger.e('Chat error: ${event.failure.message}');
+    _logger.e('[AgentChatBloc] ❌ Chat error: ${event.failure.message}');
     emit(state.copyWith(error: some(event.failure.message), isLoading: false));
   }
 
+  /// Обработать запрос подтверждения tool
   Future<void> _onApprovalRequested(
     ApprovalRequestedEvent event,
     Emitter<AgentChatState> emit,
@@ -712,6 +348,7 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     emit(state.copyWith(pendingApproval: some(event.request)));
   }
 
+  /// Подтвердить выполнение tool
   Future<void> _onApproveToolCall(
     ApproveToolCallEvent event,
     Emitter<AgentChatState> emit,
@@ -728,6 +365,7 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     );
   }
 
+  /// Отклонить выполнение tool
   Future<void> _onRejectToolCall(
     RejectToolCallEvent event,
     Emitter<AgentChatState> emit,
@@ -746,6 +384,7 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     );
   }
 
+  /// Отменить выполнение tool
   Future<void> _onCancelToolCall(
     CancelToolCallEvent event,
     Emitter<AgentChatState> emit,
@@ -762,6 +401,7 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     );
   }
 
+  /// Отправить решение по плану
   Future<void> _onSendPlanDecision(
     SendPlanDecisionEvent event,
     Emitter<AgentChatState> emit,
@@ -769,7 +409,7 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     _logger.i(
       '[AgentChatBloc] 📤 Sending plan decision: ${event.decision} for plan ${event.planId}',
     );
-    
+
     emit(state.copyWith(isLoading: true));
 
     final result = await _sendPlanDecision(
@@ -783,14 +423,14 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
 
     result.fold(
       (failure) {
-        _logger.e('Failed to send plan decision: ${failure.message}');
+        _logger.e('[AgentChatBloc] ❌ Failed to send plan decision: ${failure.message}');
         emit(state.copyWith(
           isLoading: false,
           error: some(failure.message),
         ));
       },
       (_) {
-        _logger.i('Plan decision sent successfully: ${event.decision}');
+        _logger.i('[AgentChatBloc] ✅ Plan decision sent successfully: ${event.decision}');
         emit(state.copyWith(
           isLoading: false,
           pendingPlanApproval: none(),
@@ -802,8 +442,8 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
   @override
   Future<void> close() async {
     _logger.d('[AgentChatBloc] 🔒 Closing bloc');
-    await _messageSubscription?.cancel();
-    await _approvalSubscription?.cancel();
+    await _connectionMiddleware.dispose();
+    await _approvalMiddleware.dispose();
     return super.close();
   }
 }

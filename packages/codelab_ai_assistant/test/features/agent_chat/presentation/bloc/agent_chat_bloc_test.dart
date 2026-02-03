@@ -8,90 +8,77 @@ import 'package:codelab_ai_assistant/core/error/failures.dart';
 import 'package:codelab_ai_assistant/core/usecases/usecase.dart';
 import 'package:codelab_ai_assistant/features/agent_chat/domain/entities/agent.dart';
 import 'package:codelab_ai_assistant/features/agent_chat/domain/entities/message.dart';
-import 'package:codelab_ai_assistant/features/agent_chat/domain/usecases/connect.dart';
 import 'package:codelab_ai_assistant/features/agent_chat/domain/usecases/load_history.dart';
-import 'package:codelab_ai_assistant/features/agent_chat/domain/usecases/receive_messages.dart';
 import 'package:codelab_ai_assistant/features/agent_chat/domain/usecases/send_message.dart';
 import 'package:codelab_ai_assistant/features/agent_chat/domain/usecases/send_plan_decision.dart';
-import 'package:codelab_ai_assistant/features/agent_chat/domain/usecases/send_tool_result.dart';
 import 'package:codelab_ai_assistant/features/agent_chat/domain/usecases/switch_agent.dart';
 import 'package:codelab_ai_assistant/features/agent_chat/presentation/bloc/agent_chat_bloc.dart';
-import 'package:codelab_ai_assistant/features/tool_execution/domain/usecases/execute_tool.dart';
-import 'package:codelab_ai_assistant/features/approval/domain/services/approval_service.dart';
-import 'package:codelab_ai_assistant/features/approval/domain/entities/approval_request.dart';
+import 'package:codelab_ai_assistant/features/agent_chat/presentation/middleware/connection_middleware.dart';
+import 'package:codelab_ai_assistant/features/agent_chat/presentation/middleware/message_handler_middleware.dart';
+import 'package:codelab_ai_assistant/features/agent_chat/presentation/middleware/approval_middleware.dart';
+
+// Моки для middleware
+class MockConnectionMiddleware extends Mock implements ConnectionMiddleware {}
+class MockMessageHandlerMiddleware extends Mock implements MessageHandlerMiddleware {}
+class MockApprovalMiddleware extends Mock implements ApprovalMiddleware {}
 
 // Моки для use cases
 class MockSendMessageUseCase extends Mock implements SendMessageUseCase {}
-class MockSendToolResultUseCase extends Mock implements SendToolResultUseCase {}
-class MockReceiveMessagesUseCase extends Mock implements ReceiveMessagesUseCase {}
 class MockSwitchAgentUseCase extends Mock implements SwitchAgentUseCase {}
 class MockLoadHistoryUseCase extends Mock implements LoadHistoryUseCase {}
-class MockConnectUseCase extends Mock implements ConnectUseCase {}
-class MockExecuteToolUseCase extends Mock implements ExecuteToolUseCase {}
 class MockSendPlanDecisionUseCase extends Mock implements SendPlanDecisionUseCase {}
-class MockApprovalService extends Mock implements ApprovalService {}
 class MockLogger extends Mock implements Logger {}
 
 // Fake классы для регистрации fallback значений
 class FakeSendMessageParams extends Fake implements SendMessageParams {}
-class FakeSendToolResultParams extends Fake implements SendToolResultParams {}
-class FakeNoParams extends Fake implements NoParams {}
 class FakeSwitchAgentParams extends Fake implements SwitchAgentParams {}
 class FakeLoadHistoryParams extends Fake implements LoadHistoryParams {}
-class FakeConnectParams extends Fake implements ConnectParams {}
 class FakeSendPlanDecisionParams extends Fake implements SendPlanDecisionParams {}
+class FakeMessage extends Fake implements Message {}
 
 void main() {
   late AgentChatBloc bloc;
+  late MockConnectionMiddleware mockConnectionMiddleware;
+  late MockMessageHandlerMiddleware mockMessageHandlerMiddleware;
+  late MockApprovalMiddleware mockApprovalMiddleware;
   late MockSendMessageUseCase mockSendMessage;
-  late MockSendToolResultUseCase mockSendToolResult;
-  late MockReceiveMessagesUseCase mockReceiveMessages;
   late MockSwitchAgentUseCase mockSwitchAgent;
   late MockLoadHistoryUseCase mockLoadHistory;
-  late MockConnectUseCase mockConnect;
-  late MockExecuteToolUseCase mockExecuteTool;
   late MockSendPlanDecisionUseCase mockSendPlanDecision;
-  late MockApprovalService mockApprovalService;
   late MockLogger mockLogger;
 
   setUpAll(() {
     // Регистрируем fallback значения для всех Params классов
     registerFallbackValue(FakeSendMessageParams());
-    registerFallbackValue(FakeSendToolResultParams());
-    registerFallbackValue(FakeNoParams());
     registerFallbackValue(FakeSwitchAgentParams());
     registerFallbackValue(FakeLoadHistoryParams());
-    registerFallbackValue(FakeConnectParams());
     registerFallbackValue(FakeSendPlanDecisionParams());
+    registerFallbackValue(FakeMessage());
   });
 
   setUp(() {
+    mockConnectionMiddleware = MockConnectionMiddleware();
+    mockMessageHandlerMiddleware = MockMessageHandlerMiddleware();
+    mockApprovalMiddleware = MockApprovalMiddleware();
     mockSendMessage = MockSendMessageUseCase();
-    mockSendToolResult = MockSendToolResultUseCase();
-    mockReceiveMessages = MockReceiveMessagesUseCase();
     mockSwitchAgent = MockSwitchAgentUseCase();
     mockLoadHistory = MockLoadHistoryUseCase();
-    mockConnect = MockConnectUseCase();
-    mockExecuteTool = MockExecuteToolUseCase();
     mockSendPlanDecision = MockSendPlanDecisionUseCase();
-    mockApprovalService = MockApprovalService();
     mockLogger = MockLogger();
 
-    // Настройка дефолтных моков для unified ApprovalService
-    when(() => mockApprovalService.approvalRequests).thenAnswer(
-      (_) => Stream<ApprovalRequest>.empty(),
-    );
+    // Настройка дефолтных моков для middleware
+    when(() => mockApprovalMiddleware.startListening(
+      onToolApproval: any(named: 'onToolApproval'),
+    )).thenReturn(null);
 
     bloc = AgentChatBloc(
+      connectionMiddleware: mockConnectionMiddleware,
+      messageHandlerMiddleware: mockMessageHandlerMiddleware,
+      approvalMiddleware: mockApprovalMiddleware,
       sendMessage: mockSendMessage,
-      sendToolResult: mockSendToolResult,
-      receiveMessages: mockReceiveMessages,
       switchAgent: mockSwitchAgent,
       loadHistory: mockLoadHistory,
-      connect: mockConnect,
-      executeTool: mockExecuteTool,
       sendPlanDecision: mockSendPlanDecision,
-      approvalService: mockApprovalService,
       logger: mockLogger,
     );
   });
@@ -110,6 +97,12 @@ void main() {
         expect(bloc.state.error.isNone(), true);
         expect(bloc.state.pendingApproval.isNone(), true);
         expect(bloc.state.pendingPlanApproval.isNone(), true);
+      });
+
+      test('should start listening for approvals on initialization', () {
+        verify(() => mockApprovalMiddleware.startListening(
+          onToolApproval: any(named: 'onToolApproval'),
+        )).called(1);
       });
     });
 
@@ -172,14 +165,15 @@ void main() {
       blocTest<AgentChatBloc, AgentChatState>(
         'emits connected state when connection succeeds',
         build: () {
-          when(() => mockConnect(any())).thenAnswer(
-            (_) async => right(unit),
-          );
-          when(() => mockReceiveMessages(any())).thenAnswer(
-            (_) => const Stream.empty(),
-          );
-          when(() => mockApprovalService.restorePendingApprovals(any()))
-              .thenAnswer((_) async => <ApprovalRequest>[]);
+          when(() => mockConnectionMiddleware.connect(
+            sessionId: any(named: 'sessionId'),
+            onMessage: any(named: 'onMessage'),
+            onError: any(named: 'onError'),
+          )).thenAnswer((_) async => right(unit));
+          
+          when(() => mockApprovalMiddleware.restorePendingApprovals(any()))
+              .thenAnswer((_) async => 0);
+          
           return bloc;
         },
         act: (bloc) => bloc.add(const AgentChatEvent.connect(testSessionId)),
@@ -192,10 +186,12 @@ void main() {
           }),
         ],
         verify: (_) {
-          verify(() => mockConnect(ConnectParams(sessionId: testSessionId)))
-              .called(1);
-          verify(() => mockReceiveMessages(const NoParams())).called(1);
-          verify(() => mockApprovalService.restorePendingApprovals(testSessionId))
+          verify(() => mockConnectionMiddleware.connect(
+            sessionId: testSessionId,
+            onMessage: any(named: 'onMessage'),
+            onError: any(named: 'onError'),
+          )).called(1);
+          verify(() => mockApprovalMiddleware.restorePendingApprovals(testSessionId))
               .called(1);
         },
       );
@@ -203,7 +199,11 @@ void main() {
       blocTest<AgentChatBloc, AgentChatState>(
         'emits error state when connection fails',
         build: () {
-          when(() => mockConnect(any())).thenAnswer(
+          when(() => mockConnectionMiddleware.connect(
+            sessionId: any(named: 'sessionId'),
+            onMessage: any(named: 'onMessage'),
+            onError: any(named: 'onError'),
+          )).thenAnswer(
             (_) async => left(const Failure.network('Connection timeout')),
           );
           return bloc;
@@ -306,7 +306,9 @@ void main() {
       blocTest<AgentChatBloc, AgentChatState>(
         'disconnects and clears state',
         build: () {
-          when(() => mockApprovalService.clearActiveCompleters())
+          when(() => mockConnectionMiddleware.disconnect())
+              .thenAnswer((_) async => {});
+          when(() => mockApprovalMiddleware.clearActiveCompleters())
               .thenReturn(null);
           return bloc;
         },
@@ -336,7 +338,8 @@ void main() {
           }),
         ],
         verify: (_) {
-          verify(() => mockApprovalService.clearActiveCompleters()).called(1);
+          verify(() => mockConnectionMiddleware.disconnect()).called(1);
+          verify(() => mockApprovalMiddleware.clearActiveCompleters()).called(1);
         },
       );
     });
@@ -354,6 +357,11 @@ void main() {
           timestamp: DateTime.now(),
           metadata: none(),
         );
+
+        when(() => mockMessageHandlerMiddleware.handleMessage(
+          message: any(named: 'message'),
+          onPlanApproval: any(named: 'onPlanApproval'),
+        )).thenAnswer((_) async => some(AgentType.code));
 
         bloc.add(AgentChatEvent.messageReceived(agentSwitchMessage));
 
@@ -381,6 +389,11 @@ void main() {
           timestamp: DateTime.now(),
           metadata: none(),
         );
+
+        when(() => mockMessageHandlerMiddleware.handleMessage(
+          message: any(named: 'message'),
+          onPlanApproval: any(named: 'onPlanApproval'),
+        )).thenAnswer((_) async => none());
 
         bloc.add(AgentChatEvent.messageReceived(planApprovalMessage));
 

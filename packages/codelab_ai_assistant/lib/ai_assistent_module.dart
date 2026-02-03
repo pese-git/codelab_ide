@@ -60,6 +60,9 @@ import 'features/agent_chat/domain/usecases/switch_agent.dart';
 import 'features/agent_chat/domain/usecases/load_history.dart';
 import 'features/agent_chat/domain/usecases/connect.dart';
 import 'features/agent_chat/domain/usecases/send_plan_decision.dart';
+import 'features/agent_chat/presentation/middleware/connection_middleware.dart';
+import 'features/agent_chat/presentation/middleware/message_handler_middleware.dart';
+import 'features/agent_chat/presentation/middleware/approval_middleware.dart';
 
 // Presentation
 import 'features/authentication/presentation/bloc/auth_bloc.dart';
@@ -515,6 +518,32 @@ class AiAssistantModule extends Module {
       () => SendPlanDecisionUseCase(currentScope.resolve<AgentRepository>()),
     );
 
+    // Middleware
+    bind<ConnectionMiddleware>().toProvide(
+      () => ConnectionMiddleware(
+        connect: currentScope.resolve<ConnectUseCase>(),
+        receiveMessages: currentScope.resolve<ReceiveMessagesUseCase>(),
+        logger: currentScope.resolve<Logger>(),
+      ),
+    );
+
+    bind<MessageHandlerMiddleware>().toProvide(
+      () => MessageHandlerMiddleware(
+        executeTool: currentScope.resolve<ExecuteToolUseCase>(),
+        sendToolResult: currentScope.resolve<SendToolResultUseCase>(),
+        logger: currentScope.resolve<Logger>(),
+      ),
+    );
+
+    bind<ApprovalMiddleware>().toProvide(
+      () => ApprovalMiddleware(
+        approvalService: currentScope.resolve<ApprovalService>(),
+        executeTool: currentScope.resolve<ExecuteToolUseCase>(),
+        sendToolResult: currentScope.resolve<SendToolResultUseCase>(),
+        logger: currentScope.resolve<Logger>(),
+      ),
+    );
+
     // ========================================================================
     // Presentation Layer (BLoCs)
     // ========================================================================
@@ -547,15 +576,13 @@ class AiAssistantModule extends Module {
     // AgentChatBloc
     bind<AgentChatBloc>().toProvide(
       () => AgentChatBloc(
+        connectionMiddleware: currentScope.resolve<ConnectionMiddleware>(),
+        messageHandlerMiddleware: currentScope.resolve<MessageHandlerMiddleware>(),
+        approvalMiddleware: currentScope.resolve<ApprovalMiddleware>(),
         sendMessage: currentScope.resolve<SendMessageUseCase>(),
-        sendToolResult: currentScope.resolve<SendToolResultUseCase>(),
-        receiveMessages: currentScope.resolve<ReceiveMessagesUseCase>(),
         switchAgent: currentScope.resolve<SwitchAgentUseCase>(),
         loadHistory: currentScope.resolve<LoadHistoryUseCase>(),
-        connect: currentScope.resolve<ConnectUseCase>(),
-        executeTool: currentScope.resolve<ExecuteToolUseCase>(),
         sendPlanDecision: currentScope.resolve<SendPlanDecisionUseCase>(),
-        approvalService: currentScope.resolve<ApprovalService>(),
         logger: currentScope.resolve<Logger>(),
       ),
     );
