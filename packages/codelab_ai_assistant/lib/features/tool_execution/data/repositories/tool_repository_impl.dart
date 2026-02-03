@@ -1,6 +1,5 @@
 // Реализация ToolRepository (Data слой)
 import 'dart:async';
-import 'package:codelab_ai_assistant/features/tool_execution/data/services/tool_approval_service_impl.dart';
 import 'package:fpdart/fpdart.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/error/failures.dart';
@@ -10,6 +9,9 @@ import '../../domain/entities/tool_approval.dart';
 import '../../domain/repositories/tool_repository.dart';
 import '../datasources/tool_executor_datasource.dart';
 import '../models/tool_call_model.dart';
+import '../../../approval/domain/services/approval_service.dart';
+import '../../../approval/domain/entities/approval_decision.dart' as unified;
+import '../../../approval/data/adapters/approval_request_adapter.dart';
 
 /// Реализация репозитория для выполнения инструментов
 ///
@@ -17,11 +19,11 @@ import '../models/tool_call_model.dart';
 /// Конвертирует exceptions в failures и возвращает Either<Failure, T>.
 class ToolRepositoryImpl implements ToolRepository {
   final ToolExecutorDataSource _executor;
-  final ToolApprovalService _approvalService;
+  final ApprovalService _approvalService;
 
   ToolRepositoryImpl({
     required ToolExecutorDataSource executor,
-    required ToolApprovalService approvalService,
+    required ApprovalService approvalService,
   }) : _executor = executor,
        _approvalService = approvalService;
 
@@ -56,11 +58,24 @@ class ToolRepositoryImpl implements ToolRepository {
     RequestApprovalParams params,
   ) async {
     try {
-      // Создаем запрос на подтверждение
-      final request = params.toolCall;
+      // Конвертируем ToolCall в ApprovalRequest
+      final approvalRequest = ApprovalRequestAdapter.fromToolCall(params.toolCall);
 
-      // Запрашиваем подтверждение через сервис
-      final decision = await _approvalService.requestApproval(request);
+      // Запрашиваем подтверждение через unified service
+      final unifiedDecision = await _approvalService.requestApproval(approvalRequest);
+
+      // Конвертируем unified ApprovalDecision обратно в tool_approval.ApprovalDecision
+      final decision = unifiedDecision.when(
+        approved: () => const ApprovalDecision.approved(),
+        rejected: (feedback) => ApprovalDecision.rejected(
+          reason: feedback ?? none(),
+        ),
+        modified: (modifiedData, feedbackText) => ApprovalDecision.modified(
+          modifiedArguments: modifiedData,
+          comment: some(feedbackText),
+        ),
+        cancelled: () => const ApprovalDecision.cancelled(),
+      );
 
       return right(decision);
     } on TimeoutException {

@@ -42,12 +42,10 @@ import 'features/tool_execution/domain/repositories/tool_repository.dart';
 import 'features/tool_execution/domain/usecases/execute_tool.dart';
 import 'features/tool_execution/domain/usecases/request_approval.dart';
 import 'features/tool_execution/domain/usecases/validate_safety.dart';
-import 'features/tool_execution/data/services/approval_sync_service.dart';
 
 // Unified Approval System
 import 'features/approval/domain/services/approval_service.dart';
 import 'features/approval/data/services/unified_approval_service_impl.dart';
-import 'features/approval/data/services/tool_approval_service_adapter.dart';
 import 'features/approval/data/datasources/approval_api_datasource.dart';
 import 'features/approval/data/datasources/approval_api_datasource_impl.dart';
 
@@ -68,9 +66,6 @@ import 'features/authentication/presentation/bloc/auth_bloc.dart';
 import 'features/session_management/presentation/bloc/session_manager_bloc.dart';
 import 'features/agent_chat/presentation/bloc/agent_chat_bloc.dart';
 import 'features/tool_execution/presentation/bloc/tool_approval_bloc.dart';
-
-// Services
-import 'features/tool_execution/data/services/tool_approval_service_impl.dart';
 
 /// Модуль DI для AI Assistant с Clean Architecture
 ///
@@ -443,39 +438,12 @@ class AiAssistantModule extends Module {
       ),
     );
 
-    // ApprovalSyncService for restoring pending approvals (deprecated, kept for compatibility)
-    bind<ApprovalSyncService>()
-        .toProvide(
-          () => ApprovalSyncService(
-            api: currentScope.resolve<GatewayApi>(),
-            logger: currentScope.resolve<Logger>(),
-          ),
-        )
-        .singleton();
-
-    // ToolApprovalServiceAdapter - wraps UnifiedApprovalService for backward compatibility
-    // Реализует интерфейс ToolApprovalService с полным API для AgentChatBloc
-    bind<ToolApprovalServiceAdapter>()
-        .toProvide(
-          () => ToolApprovalServiceAdapter(
-            unifiedService: currentScope.resolve<ApprovalService>(),
-            logger: currentScope.resolve<Logger>(),
-          ),
-        )
-        .singleton();
-
-    // ToolApprovalService interface - используется ToolRepository и AgentChatBloc
-    // Адаптер реализует полный интерфейс ToolApprovalService включая все методы
-    bind<ToolApprovalService>()
-        .toProvide(() => currentScope.resolve<ToolApprovalServiceAdapter>())
-        .singleton();
-
     // Repository
     bind<ToolRepository>()
         .toProvide(
           () => ToolRepositoryImpl(
             executor: currentScope.resolve<ToolExecutorDataSource>(),
-            approvalService: currentScope.resolve<ToolApprovalService>(),
+            approvalService: currentScope.resolve<ApprovalService>(),
           ),
         )
         .singleton();
@@ -587,7 +555,7 @@ class AiAssistantModule extends Module {
         connect: currentScope.resolve<ConnectUseCase>(),
         executeTool: currentScope.resolve<ExecuteToolUseCase>(),
         sendPlanDecision: currentScope.resolve<SendPlanDecisionUseCase>(),
-        approvalService: currentScope.resolve<ToolApprovalService>(),
+        approvalService: currentScope.resolve<ApprovalService>(),
         logger: currentScope.resolve<Logger>(),
       ),
     );

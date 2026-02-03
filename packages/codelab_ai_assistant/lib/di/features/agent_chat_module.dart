@@ -14,7 +14,7 @@ import '../../features/agent_chat/domain/usecases/send_plan_decision.dart';
 import '../../features/agent_chat/domain/usecases/send_tool_result.dart';
 import '../../features/agent_chat/domain/usecases/switch_agent.dart';
 import '../../features/agent_chat/presentation/bloc/agent_chat_bloc.dart';
-import '../../features/tool_execution/data/services/tool_approval_service_impl.dart';
+import '../../features/approval/domain/services/approval_service.dart';
 import '../../features/tool_execution/domain/usecases/execute_tool.dart';
 
 /// Модуль для регистрации зависимостей Agent Chat feature
@@ -29,7 +29,7 @@ import '../../features/tool_execution/domain/usecases/execute_tool.dart';
 /// - Logger (из CoreModule)
 /// - GatewayApi (из NetworkModule)
 /// - String с именем 'gatewayBaseUrl' (из NetworkModule)
-/// - ToolApprovalService (из ApprovalModule)
+/// - ApprovalService (из ApprovalModule) - UNIFIED
 /// - ExecuteToolUseCase (из ToolModule)
 class AgentChatModule extends Module {
   @override
@@ -108,7 +108,7 @@ class AgentChatModule extends Module {
         connect: currentScope.resolve<ConnectUseCase>(),
         executeTool: currentScope.resolve<ExecuteToolUseCase>(),
         sendPlanDecision: currentScope.resolve<SendPlanDecisionUseCase>(),
-        approvalService: currentScope.resolve<ToolApprovalService>(),
+        approvalService: currentScope.resolve<ApprovalService>(),
         logger: currentScope.resolve<Logger>(),
       ),
     );

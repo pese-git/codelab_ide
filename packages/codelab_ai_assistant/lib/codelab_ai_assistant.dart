@@ -39,7 +39,8 @@ export 'features/session_management/presentation/bloc/session_manager_bloc.dart'
 // Domain
 export 'features/tool_execution/domain/entities/tool_call.dart';
 export 'features/tool_execution/domain/entities/tool_result.dart';
-export 'features/tool_execution/domain/entities/tool_approval.dart';
+export 'features/tool_execution/domain/entities/tool_approval.dart' hide ApprovalDecision, $ApprovalDecisionCopyWith, ApprovalDecisionPatterns;
+export 'features/tool_execution/domain/entities/approval_request_with_completer.dart';
 export 'features/tool_execution/domain/repositories/tool_repository.dart';
 export 'features/tool_execution/domain/usecases/execute_tool.dart';
 export 'features/tool_execution/domain/usecases/request_approval.dart';
@@ -106,6 +107,18 @@ export 'features/shared/utils/formatters/agent_formatter.dart';
 // ============================================================================
 
 export 'features/tool_execution/presentation/widgets/tool_approval_dialog.dart';
+
+// ============================================================================
+// Unified Approval System
+// ============================================================================
+
+export 'features/approval/domain/services/approval_service.dart';
+export 'features/approval/domain/entities/approval_request.dart';
+export 'features/approval/domain/entities/approval_response.dart';
+// ApprovalDecision не экспортируется чтобы избежать конфликта с tool_approval.ApprovalDecision
+// Используется внутренне через ApprovalService
+export 'features/approval/domain/entities/approval_type.dart';
+export 'features/approval/data/adapters/approval_request_adapter.dart';
 
 // ============================================================================
 // Dependency Injection

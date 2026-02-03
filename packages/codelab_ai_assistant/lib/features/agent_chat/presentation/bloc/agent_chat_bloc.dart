@@ -18,8 +18,14 @@ import '../../domain/usecases/send_plan_decision.dart';
 import '../../../tool_execution/domain/usecases/execute_tool.dart';
 import '../../../tool_execution/domain/entities/tool_call.dart';
 import '../../../tool_execution/domain/entities/tool_result.dart';
-import '../../../tool_execution/domain/entities/tool_approval.dart';
-import '../../../tool_execution/data/services/tool_approval_service_impl.dart';
+import '../../../tool_execution/domain/entities/tool_approval.dart' as tool_approval;
+import '../../../tool_execution/domain/entities/approval_request_with_completer.dart';
+import '../../../approval/domain/services/approval_service.dart';
+import '../../../approval/domain/entities/approval_request.dart';
+import '../../../approval/domain/entities/approval_response.dart';
+import '../../../approval/domain/entities/approval_decision.dart';
+import '../../../approval/domain/entities/approval_type.dart';
+import '../../../approval/data/adapters/approval_request_adapter.dart';
 
 part 'agent_chat_bloc.freezed.dart';
 
@@ -89,11 +95,11 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
   final ConnectUseCase _connect;
   final ExecuteToolUseCase _executeTool;
   final SendPlanDecisionUseCase _sendPlanDecision;
-  final ToolApprovalService _approvalService;
+  final ApprovalService _approvalService;
   final Logger _logger;
 
   StreamSubscription<Either<Failure, Message>>? _messageSubscription;
-  StreamSubscription<ApprovalRequestWithCompleter>? _approvalSubscription;
+  StreamSubscription<ApprovalRequest>? _approvalSubscription;
 
   AgentChatBloc({
     required SendMessageUseCase sendMessage,
@@ -104,7 +110,7 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     required ConnectUseCase connect,
     required ExecuteToolUseCase executeTool,
     required SendPlanDecisionUseCase sendPlanDecision,
-    required ToolApprovalService approvalService,
+    required ApprovalService approvalService,
     required Logger logger,
   }) : _sendMessage = sendMessage,
        _sendToolResult = sendToolResult,
@@ -129,16 +135,127 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
     on<RejectToolCallEvent>(_onRejectToolCall);
     on<SendPlanDecisionEvent>(_onSendPlanDecision);
 
-    // Подписываемся на запросы подтверждения
+    // Подписываемся на запросы подтверждения (unified stream)
     _approvalSubscription = _approvalService.approvalRequests.listen((request) {
-      add(AgentChatEvent.approvalRequested(request));
+      _handleApprovalRequest(request);
     });
+  }
 
-    // Устанавливаем callback для выполнения восстановленных tool
-    _approvalService.onExecuteRestoredTool = _executeRestoredTool;
+  /// Обрабатывает generic approval request из unified service
+  ///
+  /// Конвертирует ApprovalRequest в legacy формат для UI совместимости
+  /// и запускает event-driven обработку решения.
+  void _handleApprovalRequest(ApprovalRequest request) {
+    // Обрабатываем только tool approvals
+    // Plan approvals обрабатываются через SendPlanDecisionEvent
+    if (request.type != ApprovalType.tool) {
+      _logger.d('Skipping non-tool approval: ${request.type}');
+      return;
+    }
 
-    // Устанавливаем callback для отправки rejection на сервер
-    _approvalService.onRejectRestoredTool = _rejectRestoredTool;
+    try {
+      // Конвертируем ApprovalRequest в ToolCall
+      final toolCall = ApprovalRequestAdapter.toToolCall(request);
+      
+      // Создаем legacy ToolApprovalRequest для обратной совместимости с UI
+      final toolApprovalRequest = tool_approval.ToolApprovalRequest(
+        requestId: request.approvalRequestId,
+        toolCall: toolCall,
+        requestedAt: request.requestedAt,
+      );
+      
+      // Создаем completer для UI
+      final completer = Completer<tool_approval.ApprovalDecision>();
+      final requestWithCompleter = ApprovalRequestWithCompleter(
+        toolApprovalRequest,
+        completer,
+      );
+      
+      // Эмитируем событие для UI
+      add(AgentChatEvent.approvalRequested(requestWithCompleter));
+      
+      // Ожидаем решения и отправляем на сервер (event-driven подход)
+      _waitForDecisionAndSend(request, completer, toolCall);
+    } catch (e) {
+      _logger.e('Error handling approval request: $e');
+    }
+  }
+
+  /// Ожидает решения пользователя и отправляет на сервер
+  ///
+  /// Заменяет callbacks на event-driven подход.
+  /// Обрабатывает все типы решений: approve, reject, modify, cancel.
+  Future<void> _waitForDecisionAndSend(
+    ApprovalRequest request,
+    Completer<tool_approval.ApprovalDecision> completer,
+    ToolCall toolCall,
+  ) async {
+    try {
+      // Ждем решения от UI
+      final decision = await completer.future;
+      
+      _logger.i(
+        'Decision received for ${toolCall.toolName}: ${decision.when(
+          approved: () => 'approved',
+          rejected: (_) => 'rejected',
+          modified: (_, __) => 'modified',
+          cancelled: () => 'cancelled',
+        )}',
+      );
+      
+      // Конвертируем tool_approval.ApprovalDecision в unified ApprovalDecision
+      final unifiedDecision = decision.when(
+        approved: () => const ApprovalDecision.approved(),
+        rejected: (reason) => ApprovalDecision.rejected(
+          feedback: reason ?? none(),
+        ),
+        modified: (modifiedArguments, comment) => ApprovalDecision.modified(
+          modifiedData: modifiedArguments,
+          feedback: comment?.fold(() => '', (c) => c) ?? '',
+        ),
+        cancelled: () => const ApprovalDecision.cancelled(),
+      );
+      
+      // Создаем ApprovalResponse для отправки на сервер
+      final response = ApprovalResponse(
+        approvalRequestId: request.approvalRequestId,
+        type: ApprovalType.tool,
+        decision: unifiedDecision,
+        respondedAt: DateTime.now(),
+        decisionTimeMs: DateTime.now()
+            .difference(request.requestedAt)
+            .inMilliseconds,
+      );
+      
+      // Отправляем решение через unified service
+      await _approvalService.sendDecision(response);
+      
+      // Обрабатываем решение (заменяет callbacks)
+      await decision.when(
+        approved: () async {
+          // Выполняем tool после approve
+          await _executeRestoredTool(toolCall);
+        },
+        rejected: (reason) async {
+          // Отправляем rejection на сервер
+          final rejectReason = reason?.fold(() => 'User rejected', (r) => r) ?? 'User rejected';
+          await _rejectRestoredTool(toolCall, rejectReason);
+        },
+        modified: (modifiedArguments, comment) async {
+          // Выполняем tool с измененными аргументами
+          final modifiedToolCall = toolCall.copyWith(
+            arguments: modifiedArguments,
+          );
+          await _executeRestoredTool(modifiedToolCall);
+        },
+        cancelled: () async {
+          // Отправляем cancellation на сервер
+          await _rejectRestoredTool(toolCall, 'User cancelled');
+        },
+      );
+    } catch (e) {
+      _logger.e('Error waiting for decision: $e');
+    }
   }
 
   /// Отправить rejection для восстановленного tool на сервер
@@ -540,9 +657,11 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
 
         // ВАЖНО: Восстанавливаем ожидающие подтверждения с сервера
         // Это позволяет продолжить работу после перезапуска/переустановки IDE
+        // Unified service возвращает список восстановленных approvals
         try {
-          await _approvalService.restorePendingApprovals(event.sessionId);
-          _logger.i('Pending approvals restored successfully');
+          final restoredApprovals = await _approvalService.restorePendingApprovals(event.sessionId);
+          _logger.i('Restored ${restoredApprovals.length} pending approvals');
+          // Approvals уже эмитированы в stream через _handleApprovalRequest
         } catch (e) {
           _logger.e('Failed to restore pending approvals: $e');
           // Не блокируем подключение из-за ошибки восстановления
@@ -603,7 +722,7 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
         _logger.i(
           '[AgentChatBloc] ✅ Tool call approved: ${request.toolCall.toolName}',
         );
-        request.completer.complete(const ApprovalDecision.approved());
+        request.completer.complete(const tool_approval.ApprovalDecision.approved());
         emit(state.copyWith(pendingApproval: none()));
       },
     );
@@ -620,7 +739,7 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
           '[AgentChatBloc] ❌ Tool call rejected: ${request.toolCall.toolName}, reason: ${event.reason}',
         );
         request.completer.complete(
-          ApprovalDecision.rejected(reason: some(event.reason)),
+          tool_approval.ApprovalDecision.rejected(reason: some(event.reason)),
         );
         emit(state.copyWith(pendingApproval: none()));
       },
@@ -637,7 +756,7 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
         _logger.i(
           '[AgentChatBloc] 🚫 Tool call cancelled: ${request.toolCall.toolName}',
         );
-        request.completer.complete(const ApprovalDecision.cancelled());
+        request.completer.complete(const tool_approval.ApprovalDecision.cancelled());
         emit(state.copyWith(pendingApproval: none()));
       },
     );

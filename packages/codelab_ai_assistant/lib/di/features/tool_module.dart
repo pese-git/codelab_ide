@@ -5,12 +5,12 @@ import 'package:logger/logger.dart';
 import '../../features/tool_execution/data/datasources/file_system_datasource.dart';
 import '../../features/tool_execution/data/datasources/tool_executor_datasource.dart';
 import '../../features/tool_execution/data/repositories/tool_repository_impl.dart';
-import '../../features/tool_execution/data/services/tool_approval_service_impl.dart';
 import '../../features/tool_execution/domain/repositories/tool_repository.dart';
 import '../../features/tool_execution/domain/usecases/execute_tool.dart';
 import '../../features/tool_execution/domain/usecases/request_approval.dart';
 import '../../features/tool_execution/domain/usecases/validate_safety.dart';
 import '../../features/tool_execution/presentation/bloc/tool_approval_bloc.dart';
+import '../../features/approval/domain/services/approval_service.dart';
 
 /// Модуль для регистрации зависимостей Tool Execution feature
 ///
@@ -23,7 +23,7 @@ import '../../features/tool_execution/presentation/bloc/tool_approval_bloc.dart'
 ///
 /// Зависимости:
 /// - Logger (из CoreModule)
-/// - ToolApprovalService (из ApprovalModule)
+/// - ApprovalService (из ApprovalModule) - UNIFIED
 class ToolModule extends Module {
   @override
   void builder(Scope currentScope) {
@@ -47,7 +47,7 @@ class ToolModule extends Module {
         .toProvide(
           () => ToolRepositoryImpl(
             executor: currentScope.resolve<ToolExecutorDataSource>(),
-            approvalService: currentScope.resolve<ToolApprovalService>(),
+            approvalService: currentScope.resolve<ApprovalService>(),
           ),
         )
         .singleton();
