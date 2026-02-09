@@ -32,11 +32,22 @@ class MessageHandlerMiddleware {
   ///
   /// Возвращает обновленное имя агента если произошло переключение
   /// Вызывает onPlanApproval если требуется подтверждение плана
+  /// Вызывает onSessionInfo если получена информация о сессии
   Future<Option<String>> handleMessage({
     required Message message,
     required void Function(Message message) onPlanApproval,
+    void Function(String sessionId)? onSessionInfo,
   }) async {
     _logMessageReceived(message);
+
+    // Обрабатываем session_info для получения ID сессии
+    message.content.maybeWhen(
+      sessionInfo: (sessionId, isNewSession) {
+        _logger.i('[MessageHandlerMiddleware] 🆔 Session info received: $sessionId (new: $isNewSession)');
+        onSessionInfo?.call(sessionId);
+      },
+      orElse: () {},
+    );
 
     // Обрабатываем agent_switch для обновления текущего агента
     final newAgent = _extractAgentSwitch(message);

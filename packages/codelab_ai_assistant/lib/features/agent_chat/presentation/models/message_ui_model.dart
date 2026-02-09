@@ -83,6 +83,10 @@ abstract class MessageUIModel with _$MessageUIModel {
         label = '📋 План требует одобрения';
         labelColor = AppColors.warning;
       },
+      sessionInfo: (sessionId, isNewSession) {
+        // Session info не отображается в UI, игнорируем
+        type = MessageUIType.text;
+      },
     );
 
     // Форматируем content для отображения
@@ -147,6 +151,7 @@ abstract class MessageUIModel with _$MessageUIModel {
             '**Время:** $estimatedTime\n\n'
             '_Нажмите для просмотра деталей и одобрения_';
       },
+      sessionInfo: (sessionId, isNewSession) => '', // Session info не отображается
     );
   }
 }

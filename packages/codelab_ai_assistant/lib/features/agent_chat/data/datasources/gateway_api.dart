@@ -49,12 +49,22 @@ class GatewayApi {
     return CurrentAgentInfo.fromJson(response.data);
   }
 
-  /// Создать новую сессию
+  /// DEPRECATED: Создать новую сессию
   ///
-  /// POST /sessions
+  /// POST /sessions - ОТКЛЮЧЕН на сервере (возвращает 405)
+  ///
+  /// В новом протоколе сессии создаются автоматически при первом сообщении.
+  /// Сервер отправляет session_info чанк с ID созданной сессии.
+  ///
+  /// Этот метод оставлен для совместимости, но больше не используется.
+  @Deprecated('Use auto-create via /agent/message/stream without session_id')
   Future<Map<String, dynamic>> createSession() async {
-    final response = await _dio.post('$baseUrl/sessions');
-    return response.data as Map<String, dynamic>;
+    throw UnimplementedError(
+      'POST /sessions is disabled. Sessions are now created automatically '
+      'when sending the first message without session_id.',
+    );
+    // final response = await _dio.post('$baseUrl/sessions');
+    // return response.data as Map<String, dynamic>;
   }
 
   /// Получить ожидающие подтверждения для сессии

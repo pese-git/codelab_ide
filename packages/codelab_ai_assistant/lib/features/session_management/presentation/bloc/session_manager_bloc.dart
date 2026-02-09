@@ -137,30 +137,21 @@ class SessionManagerBloc
     CreateSession event,
     Emitter<SessionManagerState> emit,
   ) async {
-    _logger.d('[SessionManagerBloc] ➕ Creating new session...');
-    emit(const SessionManagerState.loading());
-
-    final result = await _createSession(CreateSessionParams.defaults());
-
-    result.fold(
-      (failure) {
-        _logger.e('[SessionManagerBloc] ❌ Failed to create session: ${failure.message}');
-        emit(SessionManagerState.error(failure.message));
-      },
-      (session) {
-        _logger.i('[SessionManagerBloc] ✅ Created session: ${session.id}');
-        
-        // ✅ Эмитим side effect для listener (навигация, уведомления)
-        _sideEffectsController.add(
-          NewSessionCreatedEffect(sessionId: session.id),
-        );
-        
-        // ✅ Сразу перезагружаем список, чтобы вернуться в состояние loaded
-        // Больше не используем событийные состояния
-        _logger.d('[SessionManagerBloc] 🔄 Reloading sessions after creation');
-        add(const SessionManagerEvent.loadSessions());
-      },
+    _logger.d('[SessionManagerBloc] ➕ Creating new session (auto-create mode)...');
+    
+    // В новом протоколе сессия создается автоматически при первом сообщении
+    // Генерируем временный ID для навигации
+    final tempSessionId = 'new_${DateTime.now().millisecondsSinceEpoch}';
+    
+    _logger.i('[SessionManagerBloc] ✅ Using auto-create mode with temp ID: $tempSessionId');
+    
+    // ✅ Эмитим side effect для listener (навигация к чату)
+    _sideEffectsController.add(
+      NewSessionCreatedEffect(sessionId: tempSessionId),
     );
+    
+    // Состояние не меняем - остаемся в текущем состоянии
+    _logger.d('[SessionManagerBloc] State unchanged, session will be created on first message');
   }
 
   Future<void> _onSelectSession(

@@ -182,6 +182,12 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
   ) async {
     _logger.d('[AgentChatBloc] 📨 Message received: ${event.message.role}');
 
+    // Проверяем, является ли это session_info сообщением
+    final isSessionInfo = event.message.content.maybeWhen(
+      sessionInfo: (_, __) => true,
+      orElse: () => false,
+    );
+
     // Проверяем, является ли это plan approval сообщением
     final isPlanApproval = event.message.content.maybeWhen(
       planApprovalRequired: (_, __, ___, ____) => true,
@@ -202,7 +208,17 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
         // НЕ вызываем add() здесь - это создает бесконечный цикл!
         // State будет обновлен ниже через emit
       },
+      onSessionInfo: (sessionId) {
+        _logger.i('[AgentChatBloc] 🆔 Session ID received: $sessionId');
+        // Session ID будет обработан в ConnectionMiddleware
+      },
     );
+
+    // Session info сообщения не добавляем в историю
+    if (isSessionInfo) {
+      _logger.d('[AgentChatBloc] Skipping session_info message in history');
+      return;
+    }
 
     // Обновляем state
     emit(
@@ -298,13 +314,18 @@ class AgentChatBloc extends Bloc<AgentChatEvent, AgentChatState> {
       (_) async {
         _logger.i('[AgentChatBloc] ✅ Connected to WebSocket: ${event.sessionId}');
 
-        // Восстанавливаем pending approvals через ApprovalMiddleware
-        try {
-          final restoredCount = await _approvalMiddleware.restorePendingApprovals(event.sessionId);
-          _logger.i('[AgentChatBloc] ✅ Restored $restoredCount pending approvals');
-        } catch (e) {
-          _logger.e('[AgentChatBloc] ⚠️ Failed to restore pending approvals: $e');
-          // Не блокируем подключение из-за ошибки восстановления
+        // Восстанавливаем pending approvals только для реальных session_id
+        // Временные ID (new_*) пропускаем, т.к. сессия еще не создана на сервере
+        if (!event.sessionId.startsWith('new_')) {
+          try {
+            final restoredCount = await _approvalMiddleware.restorePendingApprovals(event.sessionId);
+            _logger.i('[AgentChatBloc] ✅ Restored $restoredCount pending approvals');
+          } catch (e) {
+            _logger.e('[AgentChatBloc] ⚠️ Failed to restore pending approvals: $e');
+            // Не блокируем подключение из-за ошибки восстановления
+          }
+        } else {
+          _logger.d('[AgentChatBloc] ⏭️ Skipping approval restoration for temporary session_id: ${event.sessionId}');
         }
 
         emit(state.copyWith(isConnected: true, isLoading: false));

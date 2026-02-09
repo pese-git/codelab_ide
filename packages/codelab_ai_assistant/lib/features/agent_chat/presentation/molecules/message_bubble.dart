@@ -137,6 +137,7 @@ class MessageBubble extends StatelessWidget {
       agentSwitch: (_, __, ___) => AppColors.agentSwitchBackground(0.1),
       error: (_) => AppColors.errorMessageBackground(0.1),
       planApprovalRequired: (_, __, ___, ____) => AppColors.warning.withOpacity(0.1),
+      sessionInfo: (_, __) => AppColors.assistantMessageBackground(0.1),
     );
   }
 
@@ -150,6 +151,7 @@ class MessageBubble extends StatelessWidget {
       agentSwitch: (_, __, ___) => AppColors.agentSwitchBorder(0.3),
       error: (_) => AppColors.errorMessageBorder(0.3),
       planApprovalRequired: (_, __, ___, ____) => AppColors.warning.withOpacity(0.3),
+      sessionInfo: (_, __) => AppColors.assistantMessageBorder(0.3),
     );
   }
 
@@ -199,6 +201,7 @@ class MessageBubble extends StatelessWidget {
             '**Время:** $estimatedTime\n\n'
             '_Используйте кнопки ниже для одобрения или отклонения плана_';
       },
+      sessionInfo: (_, __) => '', // Session info не отображается
     );
   }
 }

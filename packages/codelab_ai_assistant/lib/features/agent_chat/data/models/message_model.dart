@@ -25,6 +25,10 @@ abstract class MessageModel with _$MessageModel {
     // ignore: invalid_annotation_target
     @JsonKey(name: 'is_final') bool? isFinal,
 
+    /// ID сессии (для session_info)
+    // ignore: invalid_annotation_target
+    @JsonKey(name: 'session_id') String? sessionId,
+
     /// ID вызова инструмента (для tool_call, tool_result)
     // ignore: invalid_annotation_target
     @JsonKey(name: 'call_id') String? callId,
@@ -138,6 +142,7 @@ abstract class MessageModel with _$MessageModel {
         return MessageRole.tool;
       case 'error':
       case 'plan_approval_required':
+      case 'session_info':
         return MessageRole.system;
       default:
         return role == 'user' ? MessageRole.user : MessageRole.assistant;
@@ -217,6 +222,12 @@ abstract class MessageModel with _$MessageModel {
           content: content,
         );
 
+      case 'session_info':
+        return MessageContent.sessionInfo(
+          sessionId: sessionId ?? '',
+          isNewSession: true,
+        );
+
       default:
         return MessageContent.text(text: content ?? '', isFinal: true);
     }
@@ -264,6 +275,10 @@ abstract class MessageModel with _$MessageModel {
           'plan_id': planId,
           'plan_summary': planSummary,
         },
+      ),
+      sessionInfo: (sessionId, isNewSession) => MessageModel(
+        type: 'session_info',
+        sessionId: sessionId,
       ),
     );
   }

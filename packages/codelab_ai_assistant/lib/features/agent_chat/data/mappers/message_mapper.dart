@@ -50,6 +50,11 @@ class MessageMapper {
           planSummary: planSummary,
           content: content,
         ),
+      
+      sessionInfo: (sessionId, isNewSession) => WSMessage.assistantMessage(
+        content: 'Session created: $sessionId',
+        isFinal: true,
+      ),
     );
   }
   

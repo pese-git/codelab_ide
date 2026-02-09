@@ -50,6 +50,7 @@ abstract class Message with _$Message {
       agentSwitch: (_, __, ___) => none(),
       error: (msg) => some(msg),
       planApprovalRequired: (_, __, ___, content) => content != null ? some(content) : none(),
+      sessionInfo: (_, __) => none(),
     );
   }
 }
@@ -96,6 +97,12 @@ sealed class MessageContent with _$MessageContent {
     required Map<String, dynamic> planSummary,
     String? content,
   }) = PlanApprovalRequiredMessageContent;
+
+  /// Информация о сессии (автоматически созданной)
+  const factory MessageContent.sessionInfo({
+    required String sessionId,
+    @Default(false) bool isNewSession,
+  }) = SessionInfoMessageContent;
 
   const MessageContent._();
 
